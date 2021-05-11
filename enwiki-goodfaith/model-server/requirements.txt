@@ -1,0 +1,4 @@
+nltk
+revscoring
+editquality
+kfserving==0.3.0

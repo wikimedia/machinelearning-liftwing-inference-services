@@ -1,0 +1,13 @@
+apiVersion: serving.kubeflow.org/v1alpha2
+kind: InferenceService
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: enwiki-goodfaith
+spec:
+  default:
+    predictor:
+      custom:
+        name: custom
+        container:
+          image: accraze/kfserving-custom-model
