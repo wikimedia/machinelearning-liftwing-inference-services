@@ -8,6 +8,6 @@ spec:
   default:
     predictor:
       custom:
-        name: custom
+        name: enwiki-goodfaith
         container:
           image: accraze/kfserving-custom-model
