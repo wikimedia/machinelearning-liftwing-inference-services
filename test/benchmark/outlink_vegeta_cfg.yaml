@@ -1,0 +1,16 @@
+apiVersion: v1
+data:
+  cfg: |
+    POST http://outlink-topic-model.kubeflow-user.svc.cluster.local/v1/models/outlink-topic-model:predict
+    @/var/vegeta/payload
+  payload: |
+    {
+      "lang": "en",
+      "page_title": "Toni Morrison",
+      "threshold": 0.5
+    }
+kind: ConfigMap
+metadata:
+  annotations:
+  name: outlink-vegeta-cfg
+
