@@ -26,12 +26,12 @@ spec:
               memory: 1Gi
           volumeMounts:
             - mountPath: /var/vegeta
-              name: vegeta-cfg
+              name: enwiki-goodfaith-vegeta-cfg
       restartPolicy: Never
       volumes:
         - configMap:
             defaultMode: 420
-            name: vegeta-cfg
-          name: vegeta-cfg
+            name: enwiki-goodfaith-vegeta-cfg
+          name: enwiki-goodfaith-vegeta-cfg
 ---
 
