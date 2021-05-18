@@ -1,9 +1,11 @@
 apiVersion: serving.kubeflow.org/v1alpha2
 kind: InferenceService
 metadata:
+  name: enwiki-goodfaith
+  annotations:
+    sidecar.istio.io/inject: "false"
   labels:
     controller-tools.k8s.io: "1.0"
-  name: enwiki-goodfaith
 spec:
   default:
     predictor:
