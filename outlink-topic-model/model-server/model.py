@@ -5,9 +5,6 @@ import mwapi
 from typing import Dict
 
 
-__dir__ = os.path.dirname(__file__)
-
-
 class OutlinksTopicModel(kfserving.KFModel):
     def __init__(self, name: str):
         super().__init__(name)
@@ -15,8 +12,7 @@ class OutlinksTopicModel(kfserving.KFModel):
         self.ready = False
 
     def load(self):
-        self.model = fasttext.load_model(
-            os.path.join(__dir__, 'model.bin'))
+        self.model = fasttext.load_model('/mnt/models/model.bin')
         self.ready = True
 
     def predict(self, request: Dict) -> Dict:

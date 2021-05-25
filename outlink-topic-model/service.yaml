@@ -10,6 +10,9 @@ spec:
   default:
     predictor:
       custom:
-        name: outlink-topic-model
         container:
-          image: accraze/outlinks-topic-model
+          image: accraze/outlink-topic-model
+          name: kfserving-container
+          env:
+            - name: STORAGE_URI
+              value: "s3://wmf-ml-models/outlinks-topic-model/202105251012/"

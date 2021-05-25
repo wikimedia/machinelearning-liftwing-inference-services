@@ -1,5 +1,3 @@
-# Use the official lightweight Python image.
-# https://hub.docker.com/_/python
 FROM ubuntu:20.04
 
 ENV APP_HOME /app
@@ -20,8 +18,6 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt ./
 RUN pip3 install --no-cache-dir -r ./requirements.txt
 
-# TODO: move the model bin to storage
-COPY model.bin ./
 # Copy local code to container image
 COPY model.py  ./
 
