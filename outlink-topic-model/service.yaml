@@ -16,3 +16,11 @@ spec:
           env:
             - name: STORAGE_URI
               value: "s3://wmf-ml-models/outlinks-topic-model/202105251012/"
+    transformer:
+      custom:
+        container:
+          image: accraze/outlink-transformer:latest
+          name: user-container
+          env:
+            - name: CUSTOM_UA
+              value: "liftwing-outlink-topic-model <acraze@wikimedia.org>"
