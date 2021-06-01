@@ -1,9 +1,9 @@
 # Dockerfile for building a Docker container.  See https://docs.docker.com/engine/reference/builder/
 	# Install 
 	#    1. Revscoring with dependencies
-	#    2. English wikipedia goodfaith gradient boosting model
-	#    3. Python Machine Learning code that takes an input ( wikipedia article revision id ) 
-	#       and returns an output ( prediction )
+	#    2. KFServing
+	#    3. Python ML code that uses Revscoring and KFServing to take an input ( wikipedia article revision id )
+	#       and return an output ( prediction )
 	
 	FROM ubuntu:20.04
 	
@@ -62,11 +62,9 @@
 	        hunspell-vi \
 	        voikko-fi
 	
-	COPY requirements.txt ./
+	COPY requirements.txt model.py ./
 	
 	RUN pip3 install --no-cache-dir -r ./requirements.txt \
 	   && python3 -m nltk.downloader omw sentiwordnet stopwords wordnet
-	
-	COPY model.py enwiki.goodfaith.gradient_boosting.model ./
 	
 	CMD ["python3", "model.py"]

@@ -11,6 +11,14 @@ spec:
     predictor:
       custom:
         container:
-          image: accraze/kfserving-custom-model
-          name: enwiki-goodfaith
+          name: kfserving-container
+          image: kevinbazira/kfserving-revscoring-model:v15
+          env:
+            # TODO: https://phabricator.wikimedia.org/T284091
+            - name: STORAGE_URI
+              value: "s3://wmf-ml-models/goodfaith/enwiki/202105132212/"
+            - name: INFERENCE_NAME
+              value: "enwiki-goodfaith"
+            - name: WIKI_URL
+              value: "https://en.wikipedia.org"
 
