@@ -24,13 +24,26 @@ docker push {username}/kfserving-custom-model
 Apply the CRD
 
 ```
-kubectl apply -f service.yaml
+$ kubectl apply -f service.yaml
 ```
 
 Expected Output
 
 ```
 $ inferenceservice.serving.kubeflow.org/enwiki-goodfaith created
+```
+
+### Check InferenceServices that exist to confirm yours was created
+
+```
+$ kubectl get inferenceservice
+```
+
+Expected Output
+
+```
+NAME               URL                                                 READY   DEFAULT TRAFFIC   CANARY TRAFFIC   AGE
+enwiki-goodfaith   http://enwiki-goodfaith.kubeflow-user.example.com   True    100                                5d
 ```
 
 ### Run a prediction
@@ -71,7 +84,7 @@ Expected Output:
 ### Delete the InferenceService
 
 ```
-kubectl delete -f service.yaml
+$ kubectl delete -f service.yaml
 ```
 
 Expected Output
