@@ -1,8 +1,8 @@
-# enwiki-goodfaith KFServer
+# Revscoring InferenceServices that use a KFServing Model Server
 
-Custom KFServing model running the enwiki-goodfaith revscoring model
+This is how we serve [revscoring](https://github.com/wikimedia/revscoring) models using [KFServing](https://github.com/kubeflow/kfserving).
 
-## Deploy a custom image InferenceService using the command line
+## Deploy a revscoring InferenceService using the command line
 
 ### Setup
 
@@ -13,10 +13,10 @@ Custom KFServing model running the enwiki-goodfaith revscoring model
 
 ```
 # Build the container on your local machine
-docker build -t {username}/kfserving-custom-model ./model-server
+docker build -t {username}/kfserving-revscoring-model ./model-server
 
 # Push the container to docker registry
-docker push {username}/kfserving-custom-model
+docker push {username}/kfserving-revscoring-model
 ```
 
 ### Create the InferenceService
@@ -24,7 +24,7 @@ docker push {username}/kfserving-custom-model
 Apply the CRD
 
 ```
-$ kubectl apply -f service.yaml
+$ kubectl apply -f ./enwiki-goodfaith/service.yaml
 ```
 
 Expected Output
@@ -51,10 +51,10 @@ The first step is to [determine the ingress IP and ports](../../../../README.md#
 
 ```
 MODEL_NAME=enwiki-goodfaith
-INPUT_PATH=@./input.json
+INPUT_PATH=@./enwiki-goodfaith/input.json
 SERVICE_HOSTNAME=$(kubectl get inferenceservice ${MODEL_NAME} -o jsonpath='{.status.url}' | cut -d "/" -f 3)
 
-curl -v -H "Host: ${SERVICE_HOSTNAME}" http://${INGRESS_HOST}:${INGRESS_PORT}/v1/models/${MODEL_NAME}:predict -d $INPUT_PATH
+$ curl -v -H "Host: ${SERVICE_HOSTNAME}" http://${INGRESS_HOST}:${INGRESS_PORT}/v1/models/${MODEL_NAME}:predict -d ${INPUT_PATH}
 ```
 
 Expected Output:
@@ -84,7 +84,7 @@ Expected Output:
 ### Delete the InferenceService
 
 ```
-$ kubectl delete -f service.yaml
+$ kubectl delete -f ./enwiki-goodfaith/service.yaml
 ```
 
 Expected Output
@@ -92,4 +92,3 @@ Expected Output
 ```
 $ inferenceservice.serving.kubeflow.org "enwiki-goodfaith" deleted
 ```
-
