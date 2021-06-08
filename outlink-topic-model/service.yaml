@@ -1,26 +1,21 @@
-apiVersion: serving.kubeflow.org/v1alpha2
+apiVersion: serving.kubeflow.org/v1beta1
 kind: InferenceService
 metadata:
   name: outlink-topic-model
   annotations:
     sidecar.istio.io/inject: "false"
-  labels:
-    controller-tools.k8s.io: "1.0"
 spec:
-  default:
-    predictor:
-      custom:
-        container:
-          image: accraze/outlink-topic-model
-          name: kfserving-container
-          env:
-            - name: STORAGE_URI
-              value: "s3://wmf-ml-models/outlinks-topic-model/202105251012/"
-    transformer:
-      custom:
-        container:
-          image: accraze/outlink-transformer:latest
-          name: user-container
-          env:
-            - name: CUSTOM_UA
-              value: "liftwing-outlink-topic-model <acraze@wikimedia.org>"
+  predictor:
+    containers:
+      - image: accraze/outlink-topic-model
+        name: kfserving-container
+        env:
+          - name: STORAGE_URI
+            value: "s3://wmf-ml-models/outlinks-topic-model/202105251012/"
+  transformer:
+    containers:
+      - image: accraze/outlink-transformer:latest
+        name: user-container
+        env:
+          - name: CUSTOM_UA
+            value: "liftwing-outlink-topic-model <acraze@wikimedia.org>"
