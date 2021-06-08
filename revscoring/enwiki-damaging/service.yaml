@@ -1,24 +1,19 @@
-apiVersion: serving.kubeflow.org/v1alpha2
+apiVersion: serving.kubeflow.org/v1beta1
 kind: InferenceService
 metadata:
   name: enwiki-damaging
   annotations:
     sidecar.istio.io/inject: "false"
-  labels:
-    controller-tools.k8s.io: "1.0"
 spec:
-  default:
-    predictor:
-      custom:
-        container:
-          name: kfserving-container
-          image: kevinbazira/kfserving-revscoring-model:v15
-          env:
-            # TODO: https://phabricator.wikimedia.org/T284091
-            - name: STORAGE_URI
-              value: "s3://wmf-ml-models/damaging/enwiki/202105260914/"
-            - name: INFERENCE_NAME
-              value: "enwiki-damaging"
-            - name: WIKI_URL
-              value: "https://en.wikipedia.org"
-
+  predictor:
+    containers:
+      - name: kfserving-container
+        image: kevinbazira/kfserving-revscoring-model:v15
+        env:
+          # TODO: https://phabricator.wikimedia.org/T284091
+          - name: STORAGE_URI
+            value: "s3://wmf-ml-models/damaging/enwiki/202105260914/"
+          - name: INFERENCE_NAME
+            value: "enwiki-damaging"
+          - name: WIKI_URL
+            value: "https://en.wikipedia.org"
