@@ -1,4 +1,4 @@
-FROM ubuntu:20.04
+FROM docker-registry.wikimedia.org/bullseye:20210606
 
 ENV APP_HOME /app
 WORKDIR $APP_HOME
