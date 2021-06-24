@@ -1,6 +1,6 @@
 # Revscoring InferenceServices that use a KFServing Model Server
 
-This is how we serve [revscoring](https://github.com/wikimedia/revscoring) models using [KFServing](https://github.com/kubeflow/kfserving).
+This is how we serve [revscoring](https://github.com/wikimedia/revscoring) ( [articlequality](https://github.com/wikimedia/articlequality), [editquality](https://github.com/wikimedia/editquality) ) models using [KFServing](https://github.com/kubeflow/kfserving).
 
 ## Deploy a revscoring InferenceService using the command line
 
@@ -13,10 +13,10 @@ This is how we serve [revscoring](https://github.com/wikimedia/revscoring) model
 
 ```
 # Build the container on your local machine
-docker build -t {username}/kfserving-revscoring-model ./model-server
+docker build -t {username}/kfserving-revscoring-editquality-model-server ./editquality/model-server
 
 # Push the container to docker registry
-docker push {username}/kfserving-revscoring-model
+docker push {username}/kfserving-revscoring-editquality-model-server
 ```
 
 ### Create the InferenceService
@@ -24,7 +24,7 @@ docker push {username}/kfserving-revscoring-model
 Apply the CRD
 
 ```
-$ kubectl apply -f ./enwiki-goodfaith/service.yaml
+$ kubectl apply -f ./editquality/enwiki-goodfaith/service.yaml
 ```
 
 Expected Output
@@ -51,7 +51,7 @@ The first step is to [determine the ingress IP and ports](../../../../README.md#
 
 ```
 MODEL_NAME=enwiki-goodfaith
-INPUT_PATH=@./enwiki-goodfaith/input.json
+INPUT_PATH=@./editquality/enwiki-goodfaith/input.json
 SERVICE_HOSTNAME=$(kubectl get inferenceservice ${MODEL_NAME} -o jsonpath='{.status.url}' | cut -d "/" -f 3)
 
 $ curl -v -H "Host: ${SERVICE_HOSTNAME}" http://${INGRESS_HOST}:${INGRESS_PORT}/v1/models/${MODEL_NAME}:predict -d ${INPUT_PATH}
@@ -84,7 +84,7 @@ Expected Output:
 ### Delete the InferenceService
 
 ```
-$ kubectl delete -f ./enwiki-goodfaith/service.yaml
+$ kubectl delete -f ./editquality/enwiki-goodfaith/service.yaml
 ```
 
 Expected Output
