@@ -8,7 +8,7 @@ spec:
   predictor:
     containers:
       - name: kfserving-container
-        image: kevinbazira/kfserving-articlequality-bionic:v6
+        image: kevinbazira/kfserving-articlequality-buster:v2
         env:
           # TODO: https://phabricator.wikimedia.org/T284091
           - name: STORAGE_URI

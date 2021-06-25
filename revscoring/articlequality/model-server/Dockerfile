@@ -6,7 +6,7 @@
 #    4. Python ML code that uses Revscoring and KFServing to take an input ( wikipedia article revision id )
 #       and return an output ( prediction )
 
-FROM ubuntu:18.04
+FROM docker-registry.wikimedia.org/python3-buster:0.0.1
 
 ENV APP_HOME /app
 WORKDIR $APP_HOME
@@ -15,6 +15,9 @@ RUN apt-get update \
   && apt-get install -y \
     python3-pip \
     python3-dev \
+    python-dev \
+    build-essential \
+    python3-enchant \
     g++ \
     gfortran \
     git \
@@ -24,7 +27,8 @@ RUN apt-get update \
     aspell-ar \
     aspell-bn \
     aspell-el \
-    aspell-id \
+    hunspell-id \
+    hunspell-en-us \
     aspell-is \
     aspell-pl \
     aspell-ro \
