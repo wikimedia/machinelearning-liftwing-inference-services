@@ -1,0 +1,19 @@
+apiVersion: serving.kubeflow.org/v1beta1
+kind: InferenceService
+metadata:
+  name: enwiki-drafttopic
+  annotations:
+    sidecar.istio.io/inject: "false"
+spec:
+  predictor:
+    containers:
+      - name: kfserving-container
+        image: kevinbazira/kfserving-drafttopic-buster:v7
+        env:
+          # TODO: https://phabricator.wikimedia.org/T284091
+          - name: STORAGE_URI
+            value: "s3://wmf-ml-models/drafttopic/enwiki/202105271548/"
+          - name: INFERENCE_NAME
+            value: "enwiki-drafttopic"
+          - name: WIKI_URL
+            value: "https://en.wikipedia.org"

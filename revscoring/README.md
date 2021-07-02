@@ -1,6 +1,6 @@
 # Revscoring InferenceServices that use a KFServing Model Server
 
-This is how we serve [revscoring](https://github.com/wikimedia/revscoring) ( [articlequality](https://github.com/wikimedia/articlequality), [editquality](https://github.com/wikimedia/editquality) ) models using [KFServing](https://github.com/kubeflow/kfserving).
+This is how we serve [revscoring](https://github.com/wikimedia/revscoring) ( [articlequality](https://github.com/wikimedia/articlequality), topic ( [drafttopic , articletopic](https://github.com/wikimedia/drafttopic) ), and [editquality](https://github.com/wikimedia/editquality) ) models using [KFServing](https://github.com/kubeflow/kfserving).
 
 ## Deploy a revscoring InferenceService using the command line
 
@@ -47,7 +47,7 @@ enwiki-goodfaith   http://enwiki-goodfaith.kubeflow-user.example.com   True    1
 ```
 
 ### Run a prediction
-The first step is to [determine the ingress IP and ports](../../../../README.md#determine-the-ingress-ip-and-ports) and set `INGRESS_HOST` and `INGRESS_PORT`
+The first step is to [determine the ingress IP and ports](https://github.com/kubeflow/kfserving/#determine-the-ingress-ip-and-ports) and set `INGRESS_HOST` and `INGRESS_PORT`
 
 ```
 MODEL_NAME=enwiki-goodfaith
