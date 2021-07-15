@@ -1,6 +1,6 @@
 # Revscoring InferenceServices that use a KFServing Model Server
 
-This is how we serve [revscoring](https://github.com/wikimedia/revscoring) ( [articlequality](https://github.com/wikimedia/articlequality), topic ( [drafttopic , articletopic](https://github.com/wikimedia/drafttopic) ), and [editquality](https://github.com/wikimedia/editquality) ) models using [KFServing](https://github.com/kubeflow/kfserving).
+This is how we serve [revscoring](https://github.com/wikimedia/revscoring) ( [articlequality](https://github.com/wikimedia/articlequality), [editquality](https://github.com/wikimedia/editquality), [draftquality](https://github.com/wikimedia/draftquality), and topic ( [drafttopic , articletopic](https://github.com/wikimedia/drafttopic) ) ) models using [KFServing](https://github.com/kubeflow/kfserving).
 
 ## Deploy a revscoring InferenceService using the command line
 
