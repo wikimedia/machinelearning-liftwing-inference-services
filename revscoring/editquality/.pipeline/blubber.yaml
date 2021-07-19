@@ -4,14 +4,14 @@ runs:
   insecurely: true
 
 lives:
-  in: /srv/revscoring-inference-service
+  in: /srv/editquality
 
 variants:
   build:
     copies:
       - from: local
-        source: .
-        destination: .
+        source: model-server
+        destination: model-server
     python:
       version: python3.7
       requirements: [model-server/requirements.txt]
