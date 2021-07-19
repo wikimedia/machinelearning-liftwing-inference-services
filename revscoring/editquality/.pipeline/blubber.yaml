@@ -1,5 +1,5 @@
 version: v4
-base: docker-registry.wikimedia.org/buster
+base: docker-registry.wikimedia.org/buster:20210530
 runs:
   insecurely: true
 
@@ -66,6 +66,7 @@ variants:
         - hunspell-vi
         - voikko-fi
     builder:
+      # FIXME: path hack - see: https://phabricator.wikimedia.org/T267685
       command: ["PYTHONPATH=/opt/lib/python/site-packages", "python3.7", "-m",
         "nltk.downloader", "omw", "sentiwordnet", "stopwords", "wordnet"]
 
