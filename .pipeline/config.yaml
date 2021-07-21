@@ -1,14 +1,11 @@
 pipelines:
-  test:
+  enwiki-goodfaith:
     blubberfile: blubber.yaml
+    directory: revscoring/editquality/
     stages:
       - name: run-test
         build: test
         run: true
-
-  publish:
-    blubberfile: blubber.yaml
-    stages:
       - name: production
         build: production
         publish:
