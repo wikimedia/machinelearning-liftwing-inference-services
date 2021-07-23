@@ -16,15 +16,14 @@ class RevscoringModel(kfserving.KFModel):
         with open("/mnt/models/model.bin") as f:
             self.model = Model.load(f)
         wiki_url = os.environ.get("WIKI_URL")
-        self.extractor = api.Extractor(mwapi.Session(
-            wiki_url,
-            user_agent="KFServing revscoring demo"))
+        self.extractor = api.Extractor(
+            mwapi.Session(wiki_url, user_agent="KFServing revscoring demo")
+        )
         self.ready = True
 
     def predict(self, request: Dict) -> Dict:
         inputs = request["rev_id"]
-        feature_values = list(
-            self.extractor.extract(inputs, self.model.features))
+        feature_values = list(self.extractor.extract(inputs, self.model.features))
         results = self.model.score(feature_values)
         return {"predictions": results}
 

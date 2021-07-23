@@ -65,16 +65,19 @@ variants:
         - hunspell-sr
         - hunspell-vi
         - voikko-fi
+
+  production:
+    includes: [build]
+    entrypoint: ["python3",  "model-server/model.py"]
     builder:
       # FIXME: path hack - see: https://phabricator.wikimedia.org/T267685
       command: ["PYTHONPATH=/opt/lib/python/site-packages", "python3.7", "-m",
         "nltk.downloader", "omw", "sentiwordnet", "stopwords", "wordnet"]
 
-
-  production:
-    includes: [build]
-    entrypoint: ["python3",  "model-server/model.py"]
-
   test:
     includes: [build]
-    entrypoint: ["python3", "model-server/model.py"]
+    entrypoint: [tox -c model-server/tox.ini]
+    python:
+      version: python3.7
+      requirements: [model-server/requirements-test.txt]
+      use-system-flag: false
