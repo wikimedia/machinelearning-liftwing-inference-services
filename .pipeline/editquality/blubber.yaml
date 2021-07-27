@@ -76,7 +76,7 @@ variants:
 
   test:
     includes: [build]
-    entrypoint: [tox -c model-server/tox.ini]
+    entrypoint: ["tox", "-c", "model-server/tox.ini"]
     python:
       version: python3.7
       requirements: [model-server/requirements-test.txt]

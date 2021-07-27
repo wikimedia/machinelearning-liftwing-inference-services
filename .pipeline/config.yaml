@@ -1,7 +1,6 @@
 pipelines:
-  enwiki-goodfaith:
-    blubberfile: blubber.yaml
-    directory: revscoring/editquality/
+  editquality:
+    directory: revscoring/editquality
     stages:
       - name: run-test
         build: test
@@ -9,5 +8,5 @@ pipelines:
       - name: production
         build: production
         publish:
-          image: true
+          image:
             tags: [stable]
