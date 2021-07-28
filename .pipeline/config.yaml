@@ -9,4 +9,5 @@ pipelines:
         build: production
         publish:
           image:
+            name: '${setup.project}-editquality'
             tags: [stable]
