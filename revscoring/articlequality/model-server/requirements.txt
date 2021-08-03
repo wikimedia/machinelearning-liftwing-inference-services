@@ -1,1 +1,2 @@
 kfserving==0.3.0
+git+https://github.com/wikimedia/articlequality.git
