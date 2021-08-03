@@ -11,3 +11,15 @@ pipelines:
           image:
             name: '${setup.project}-editquality'
             tags: [stable]
+  articlequality:
+    directory: revscoring/articlequality
+    stages:
+      - name: run-test
+        build: test
+        run: true
+      - name: production
+        build: production
+        publish:
+          image:
+            name: '${setup.project}-articlequality'
+            tags: [stable]
