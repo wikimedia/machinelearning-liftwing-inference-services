@@ -8,7 +8,7 @@ spec:
   predictor:
     containers:
       - name: kfserving-container
-        image: kevinbazira/kfserving-articlequality-buster:v2
+        image: docker-registry.wikimedia.org/wikimedia/machinelearning-liftwing-inference-services-articlequality:2021-08-05-222549-production
         env:
           # TODO: https://phabricator.wikimedia.org/T284091
           - name: STORAGE_URI
