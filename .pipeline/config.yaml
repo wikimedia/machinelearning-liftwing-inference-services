@@ -23,3 +23,15 @@ pipelines:
           image:
             name: '${setup.project}-articlequality'
             tags: [stable]
+  draftquality:
+    directory: revscoring/draftquality
+    stages:
+      - name: run-test
+        build: test
+        run: true
+      - name: production
+        build: production
+        publish:
+          image:
+            name: '${setup.project}-draftquality'
+            tags: [stable]
