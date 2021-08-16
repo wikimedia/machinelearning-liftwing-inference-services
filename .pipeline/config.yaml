@@ -35,3 +35,15 @@ pipelines:
           image:
             name: '${setup.project}-draftquality'
             tags: [stable]
+  topic:
+    directory: revscoring/topic
+    stages:
+      - name: run-test
+        build: test
+        run: true
+      - name: production
+        build: production
+        publish:
+          image:
+            name: '${setup.project}-topic'
+            tags: [stable]
