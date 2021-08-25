@@ -69,6 +69,7 @@ variants:
         - hunspell-sr
         - hunspell-vi
         - voikko-fi
+        - wget
 
   production:
     includes: [build]
