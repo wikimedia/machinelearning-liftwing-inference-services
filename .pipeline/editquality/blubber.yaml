@@ -65,6 +65,7 @@ variants:
         - hunspell-sr
         - hunspell-vi
         - voikko-fi
+        - wmf-certificates
 
   production:
     includes: [build]
