@@ -15,6 +15,15 @@ spec:
             value: "s3://wmf-ml-models/goodfaith/enwiki/202105132212/"
           - name: INFERENCE_NAME
             value: "enwiki-goodfaith"
+          # WIKI_URL may be an internet routable endpoint (for example,
+          # en.wikipedia.org) or an internal endpoint. In the latter use case
+          # the WIKI_HOST variable is needed to populate the HTTP Host header.
+          # Last but not least, REQUESTS_CA_BUNDLE may be added to trust a TLS
+          # certificate signed by a private/internal CA.
           - name: WIKI_URL
-            value: "https://en.wikipedia.org"
+            value: "https://api-ro.discovery.wmnet"
+          - name: WIKI_HOST
+            value: "en.wikipedia.org"
+          - name: REQUESTS_CA_BUNDLE
+            value: /usr/share/ca-certificates/wikimedia/Puppet_Internal_CA.crt
 
