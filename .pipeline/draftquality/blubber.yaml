@@ -86,6 +86,7 @@ variants:
         - hunspell-sr
         - hunspell-vi
         - voikko-fi
+        - wmf-certificates
     entrypoint: ["python3",  "model-server/model.py"]
 
   test:
