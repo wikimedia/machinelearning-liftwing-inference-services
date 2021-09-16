@@ -89,6 +89,7 @@ variants:
         - hunspell-vi
         - voikko-fi
         - wget
+        - wmf-certificates
     entrypoint: ["python3",  "model-server/model.py"]
     builder:
       command: [model-server/topic-prerequisites.sh]

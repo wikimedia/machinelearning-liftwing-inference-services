@@ -8,12 +8,21 @@ spec:
   predictor:
     containers:
       - name: kfserving-container
-        image: kevinbazira/kfserving-drafttopic-buster:v7
+        image: docker-registry.wikimedia.org/wikimedia/machinelearning-liftwing-inference-services-topic:stable
         env:
           # TODO: https://phabricator.wikimedia.org/T284091
           - name: STORAGE_URI
             value: "s3://wmf-ml-models/articletopic/enwiki/202107121056/"
           - name: INFERENCE_NAME
             value: "enwiki-articletopic"
+          # WIKI_URL may be an internet routable endpoint (for example,
+          # en.wikipedia.org) or an internal endpoint. In the latter use case
+          # the WIKI_HOST variable is needed to populate the HTTP Host header.
+          # Last but not least, REQUESTS_CA_BUNDLE may be added to trust a TLS
+          # certificate signed by a private/internal CA.
           - name: WIKI_URL
-            value: "https://en.wikipedia.org"
+            value: "https://api-ro.discovery.wmnet"
+          - name: WIKI_HOST
+            value: "en.wikipedia.org"
+          - name: REQUESTS_CA_BUNDLE
+            value: /usr/share/ca-certificates/wikimedia/Puppet_Internal_CA.crt

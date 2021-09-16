@@ -1,6 +1,7 @@
 import kfserving
 import mwapi
 import os
+import requests
 from revscoring import Model
 from revscoring.extractors import api
 from typing import Dict
@@ -16,8 +17,14 @@ class DrafttopicModel(kfserving.KFModel):
         with open("/mnt/models/model.bin") as f:
             self.model = Model.load(f)
         wiki_url = os.environ.get("WIKI_URL")
+        wiki_host = os.environ.get("WIKI_HOST")
+        if wiki_host:
+            s = requests.Session()
+            s.headers.update({"Host": wiki_host})
+        else:
+            s = None
         self.extractor = api.Extractor(
-            mwapi.Session(wiki_url, user_agent="KFServing revscoring demo")
+            mwapi.Session(wiki_url, user_agent="KFServing revscoring demo", session=s)
         )
         self.ready = True
 
