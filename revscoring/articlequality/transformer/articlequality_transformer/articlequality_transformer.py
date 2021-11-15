@@ -47,7 +47,6 @@ class ArticleQualityTransformer(kfserving.KFModel):
             raise  # propagate exception again
         try:
             rev_doc = page_doc["revisions"][0]
-            rev_doc["page"] = {k: v for k, v in page_doc.items() if k != "revisions"}
         except (KeyError, IndexError) as e:
             logging.error("No revisions matched", str(e))
             raise  # propagate exception again
