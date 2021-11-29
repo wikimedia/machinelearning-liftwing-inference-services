@@ -61,3 +61,31 @@ pipelines:
           image:
             name: '${setup.project}-topic'
             tags: [stable]
+
+  outlink:
+    blubberfile: outlink/blubber.yaml
+    directory: outlink-topic-model
+    stages:
+      - name: run-test
+        build: test
+        run: true
+      - name: production
+        build: production
+        publish:
+          image:
+            name: '${setup.project}-outlink'
+            tags: [stable]
+
+  outlink-transformer:
+    blubberfile: outlink/transformer.yaml
+    directory: outlink-topic-model
+    stages:
+      - name: run-test
+        build: test
+        run: true
+      - name: production
+        build: production
+        publish:
+          image:
+            name: '${setup.project}-outlink-transformer'
+            tags: [stable]

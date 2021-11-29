@@ -38,8 +38,7 @@ def get_outlinks(title: str, lang: str, limit=1000, session=None) -> Set:
             for outlink in r["query"]["pages"]:
                 # namespace 0 and not a red link
                 if outlink["ns"] == 0 and "missing" not in outlink:
-                    qid = outlink.get("pageprops", {}).get(
-                        "wikibase_item", None)
+                    qid = outlink.get("pageprops", {}).get("wikibase_item", None)
                     if qid is not None:
                         outlink_qids.add(qid)
             if len(outlink_qids) > limit:
