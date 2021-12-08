@@ -1,4 +1,4 @@
-import kfserving
+import kserve
 from typing import Dict
 import logging
 import mwapi
@@ -6,10 +6,10 @@ import os
 import requests
 
 
-logging.basicConfig(level=kfserving.constants.KFSERVING_LOGLEVEL)
+logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
 
 
-class ArticleQualityTransformer(kfserving.KFModel):
+class ArticleQualityTransformer(kserve.KFModel):
     def __init__(self, name: str, predictor_host: str):
         super().__init__(name)
         self.predictor_host = predictor_host
@@ -25,7 +25,7 @@ class ArticleQualityTransformer(kfserving.KFModel):
         else:
             s = None
         self.session = mwapi.Session(
-            wiki_url, user_agent="KFServing revscoring demo", session=s
+            wiki_url, user_agent="WMF ML team articlequality transformer", session=s
         )
         return self._fetch_articlequality_text(rev_id)
 

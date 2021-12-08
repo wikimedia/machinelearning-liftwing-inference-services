@@ -1,11 +1,11 @@
 import articlequality
-import kfserving
+import kserve
 import os
 from revscoring import Model
 from typing import Dict
 
 
-class ArticlequalityModel(kfserving.KFModel):
+class ArticlequalityModel(kserve.KFModel):
     def __init__(self, name: str):
         super().__init__(name)
         self.name = name
@@ -26,4 +26,4 @@ if __name__ == "__main__":
     inference_name = os.environ.get("INFERENCE_NAME")
     model = ArticlequalityModel(inference_name)
     model.load()
-    kfserving.KFServer(workers=1).start([model])
+    kserve.KFServer(workers=1).start([model])

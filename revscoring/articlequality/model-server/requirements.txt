@@ -4,7 +4,7 @@ aiohttp-cors==0.7.0
 aioredis==2.0.0
 aiosignal==1.2.0
 anyio==3.4.0
-articlequality @ git+https://github.com/wikimedia/articlequality.git@9d07c4c6f50ef64658e0a951f0ea5652f8369ed4
+articlequality @ git+https://github.com/wikimedia/articlequality.git@bcb74e782f09360dc1e9d1fff70f45510e20ccfb
 asgiref==3.4.1
 async-timeout==4.0.1
 asynctest==0.13.0
@@ -26,7 +26,7 @@ colorama==0.4.4
 configparser==5.1.0
 cryptography==3.4.7
 deep-merge==0.0.4
-deltas==0.7.0
+deltas==0.5.1
 Deprecated==1.2.13
 deprecation==2.1.0
 docopt==0.6.2
@@ -101,7 +101,7 @@ redis==4.0.2
 regex==2021.11.10
 requests==2.26.0
 requests-oauthlib==1.3.0
-revscoring==2.11.1
+revscoring==2.8.2
 rsa==4.8
 s3transfer==0.5.0
 scikit-learn==0.22.1
