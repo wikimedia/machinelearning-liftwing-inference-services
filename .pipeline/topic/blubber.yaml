@@ -33,7 +33,7 @@ variants:
     copies:
       - from: local
         source: model-server
-        destination: model-server
+        destination: .
       - from: build
         source: /opt/lib/python/site-packages
         destination: /opt/lib/python/site-packages
@@ -90,11 +90,13 @@ variants:
         - voikko-fi
         - wget
         - wmf-certificates
-    entrypoint: ["python3",  "model-server/model.py"]
+    entrypoint: ["python3",  "model.py"]
     builder:
-      command: [model-server/topic-prerequisites.sh]
-      requirements: [model-server/topic-prerequisites.sh]
-
+      command: [./topic-prerequisites.sh]
+      requirements:
+        - from: local
+          source: model-server/topic-prerequisites.sh
+          destination: topic-prerequisites.sh
   test:
     apt:
       packages:
