@@ -1,5 +1,5 @@
 import bz2
-import kfserving
+import kserve
 import mwapi
 import os
 import requests
@@ -8,7 +8,7 @@ from revscoring.extractors import api
 from typing import Dict
 
 
-class DraftqualityModel(kfserving.KFModel):
+class DraftqualityModel(kserve.KFModel):
     def __init__(self, name: str):
         super().__init__(name)
         self.name = name
@@ -25,7 +25,7 @@ class DraftqualityModel(kfserving.KFModel):
         else:
             s = None
         self.extractor = api.Extractor(
-            mwapi.Session(wiki_url, user_agent="KFServing revscoring demo", session=s)
+            mwapi.Session(wiki_url, user_agent="WMF ML team draftquality", session=s)
         )
         self.ready = True
 
@@ -40,4 +40,4 @@ if __name__ == "__main__":
     inference_name = os.environ.get("INFERENCE_NAME")
     model = DraftqualityModel(inference_name)
     model.load()
-    kfserving.KFServer(workers=1).start([model])
+    kserve.KFServer(workers=1).start([model])
