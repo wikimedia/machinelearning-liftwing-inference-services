@@ -1,10 +1,10 @@
-import kfserving
+import kserve
 import fasttext
 import os
 from typing import Dict
 
 
-class OutlinksTopicModel(kfserving.KFModel):
+class OutlinksTopicModel(kserve.KFModel):
     def __init__(self, name: str):
         super().__init__(name)
         self.name = name
@@ -49,4 +49,4 @@ class OutlinksTopicModel(kfserving.KFModel):
 if __name__ == "__main__":
     model = OutlinksTopicModel("outlink-topic-model")
     model.load()
-    kfserving.KFServer(workers=1).start([model])
+    kserve.KFServer(workers=1).start([model])
