@@ -1,11 +1,11 @@
-import kfserving
+import kserve
 from typing import Dict, Set
 import logging
 import mwapi
 import os
 
 
-logging.basicConfig(level=kfserving.constants.KFSERVING_LOGLEVEL)
+logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
 
 
 def get_outlinks(title: str, lang: str, limit=1000, session=None) -> Set:
@@ -49,7 +49,7 @@ def get_outlinks(title: str, lang: str, limit=1000, session=None) -> Set:
         return set()  # return empty set to join on feature_str
 
 
-class OutlinkTransformer(kfserving.KFModel):
+class OutlinkTransformer(kserve.KFModel):
     def __init__(self, name: str, predictor_host: str):
         super().__init__(name)
         self.predictor_host = predictor_host
