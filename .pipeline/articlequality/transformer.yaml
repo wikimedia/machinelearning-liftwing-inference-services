@@ -37,6 +37,9 @@ variants:
     python:
       version: python3
       use-system-flag: false
+    apt:
+      packages:
+        - wmf-certificates
     entrypoint: ["python3",  "-m", "articlequality_transformer"]
   test:
     apt:
