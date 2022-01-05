@@ -7,10 +7,18 @@ pipelines:
         run: true
       - name: production
         build: production
+
+  editquality-publish:
+    blubberfile: editquality/blubber.yaml
+    directory: revscoring/editquality
+    stages:
+      - name: publish
+        build: production
         publish:
           image:
             name: '${setup.project}-editquality'
             tags: [stable]
+
   articlequality:
     directory: revscoring/articlequality
     stages:
@@ -19,10 +27,18 @@ pipelines:
         run: true
       - name: production
         build: production
+
+  articlequality-publish:
+    blubberfile: articlequality/blubber.yaml
+    directory: revscoring/articlequality
+    stages:
+      - name: publish
+        build: production
         publish:
           image:
             name: '${setup.project}-articlequality'
             tags: [stable]
+
   articlequality-transformer:
     blubberfile: articlequality/transformer.yaml
     directory: revscoring/articlequality
@@ -31,6 +47,13 @@ pipelines:
         build: test
         run: true
       - name: production
+        build: production
+
+  articlequality-transformer-publish:
+    blubberfile: articlequality/transformer.yaml
+    directory: revscoring/articlequality
+    stages:
+      - name: publish
         build: production
         publish:
           image:
@@ -45,10 +68,18 @@ pipelines:
         run: true
       - name: production
         build: production
+
+  draftquality-publish:
+    blubberfile: draftquality/blubber.yaml
+    directory: revscoring/draftquality
+    stages:
+      - name: publish
+        build: production
         publish:
           image:
             name: '${setup.project}-draftquality'
             tags: [stable]
+
   topic:
     directory: revscoring/topic
     stages:
@@ -56,6 +87,13 @@ pipelines:
         build: test
         run: true
       - name: production
+        build: production
+
+  topic-publish:
+    blubberfile: topic/blubber.yaml
+    directory: revscoring/topic
+    stages:
+      - name: publish
         build: production
         publish:
           image:
@@ -71,6 +109,13 @@ pipelines:
         run: true
       - name: production
         build: production
+
+  outlink-publish:
+    blubberfile: outlink/blubber.yaml
+    directory: outlink-topic-model
+    stages:
+      - name: publish
+        build: production
         publish:
           image:
             name: '${setup.project}-outlink'
@@ -84,6 +129,13 @@ pipelines:
         build: test
         run: true
       - name: production
+        build: production
+
+  outlink-transformer-publish:
+    blubberfile: outlink/transformer.yaml
+    directory: outlink-topic-model
+    stages:
+      - name: publish
         build: production
         publish:
           image:
