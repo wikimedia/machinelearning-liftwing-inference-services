@@ -1,12 +1,12 @@
-# Outlinks Topic Model KFServer
+# Outlinks Topic Model KServer
 
-Custom KFServing model running the Outlinks (fastText) topic model
+Custom KServe model running the Outlinks (fastText) topic model
 
 ## Deploy a custom image InferenceService using the command line
 
 ### Setup
 
-1. Your ~/.kube/config should point to a cluster with [KFServing installed](https://github.com/kubeflow/kfserving/#install-kfserving).
+1. Your ~/.kube/config should point to a cluster with [KServe installed](https://github.com/kserve/kserve#installation).
 2. Your cluster's Istio Ingress gateway must be [network accessible](https://istio.io/latest/docs/tasks/traffic-management/ingress/ingress-control/).
 
 ### Build and push the Docker Image
@@ -55,7 +55,7 @@ Expected Output:
 > Accept: */*
 > Content-Length: 18
 > Content-Type: application/x-www-form-urlencoded
-> 
+>
 * upload completely sent off: 18 out of 18 bytes
 < HTTP/1.1 200 OK
 < content-length: 112
@@ -63,7 +63,7 @@ Expected Output:
 < date: Fri, 07 May 2021 20:09:10 GMT
 < server: istio-envoy
 < x-envoy-upstream-service-time: 192
-< 
+<
 * Connection #0 to host 10.100.34.202 left intact
 {"prediction": {"article": "https://en.wikipedia.org/wiki/Toni Morrison", "results": [{"topic": "Culture.Biography.Biography*", "score": 0.9626831412315369}, {"topic": "Culture.Literature", "score": 0.6654205918312073}, {"topic": "Geography.Regions.Americas.North_America", "score": 0.607673168182373}]}}
 ```

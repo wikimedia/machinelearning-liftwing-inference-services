@@ -1,6 +1,6 @@
 ## Load Test Benchmarking
 
-### KFServing revscoring enwiki-goodfaith
+### KServe revscoring enwiki-goodfaith
 - Create `InferenceService`
 ```bash
 kubectl apply -f ../../enwiki-goodfaith/service.yaml -n kubeflow-user

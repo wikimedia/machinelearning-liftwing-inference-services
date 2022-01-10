@@ -1,8 +1,8 @@
 # Dockerfile for building a Docker container.  See https://docs.docker.com/engine/reference/builder/
-# Install 
+# Install
 #    1. Revscoring with dependencies
-#    2. KFServing
-#    3. Python ML code that uses Revscoring and KFServing to take an input ( wikipedia article revision id )
+#    2. KServe
+#    3. Python ML code that uses Revscoring and KServe to take an input ( wikipedia article revision id )
 #       and return an output ( prediction )
 
 FROM docker-registry.wikimedia.org/buster:20210530

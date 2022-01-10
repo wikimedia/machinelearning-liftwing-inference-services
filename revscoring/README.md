@@ -1,22 +1,22 @@
-# Revscoring InferenceServices that use a KFServing Model Server
+# Revscoring InferenceServices that use a KServe Model Server
 
-This is how we serve [revscoring](https://github.com/wikimedia/revscoring) ( [articlequality](https://github.com/wikimedia/articlequality), [editquality](https://github.com/wikimedia/editquality), [draftquality](https://github.com/wikimedia/draftquality), and topic ( [drafttopic , articletopic](https://github.com/wikimedia/drafttopic) ) ) models using [KFServing](https://github.com/kubeflow/kfserving).
+This is how we serve [revscoring](https://github.com/wikimedia/revscoring) ( [articlequality](https://github.com/wikimedia/articlequality), [editquality](https://github.com/wikimedia/editquality), [draftquality](https://github.com/wikimedia/draftquality), and topic ( [drafttopic , articletopic](https://github.com/wikimedia/drafttopic) ) ) models using [KServe](https://github.com/kserve/kserve).
 
 ## Deploy a revscoring InferenceService using the command line
 
 ### Setup
 
-1. Your ~/.kube/config should point to a cluster with [KFServing installed](https://github.com/kubeflow/kfserving/#install-kfserving).
+1. Your ~/.kube/config should point to a cluster with [KServe installed](https://github.com/kserve/kserve#installation).
 2. Your cluster's Istio Ingress gateway must be [network accessible](https://istio.io/latest/docs/tasks/traffic-management/ingress/ingress-control/).
 
 ### Build and push the Docker Image
 
 ```
 # Build the container on your local machine
-docker build -t {username}/kfserving-revscoring-editquality-model-server ./editquality/model-server
+docker build -t {username}/kserve-revscoring-editquality-model-server ./editquality/model-server
 
 # Push the container to docker registry
-docker push {username}/kfserving-revscoring-editquality-model-server
+docker push {username}/kserve-revscoring-editquality-model-server
 ```
 
 ### Create the InferenceService
@@ -47,7 +47,7 @@ enwiki-goodfaith   http://enwiki-goodfaith.kubeflow-user.example.com   True    1
 ```
 
 ### Run a prediction
-The first step is to [determine the ingress IP and ports](https://github.com/kubeflow/kfserving/#determine-the-ingress-ip-and-ports) and set `INGRESS_HOST` and `INGRESS_PORT`
+The first step is to [determine the ingress IP and ports](https://kserve.github.io/website/get_started/first_isvc/#3-determine-the-ingress-ip-and-ports) and set `INGRESS_HOST` and `INGRESS_PORT`
 
 ```
 MODEL_NAME=enwiki-goodfaith
@@ -68,7 +68,7 @@ Expected Output:
 > Accept: */*
 > Content-Length: 18
 > Content-Type: application/x-www-form-urlencoded
-> 
+>
 * upload completely sent off: 18 out of 18 bytes
 < HTTP/1.1 200 OK
 < content-length: 112
@@ -76,7 +76,7 @@ Expected Output:
 < date: Fri, 07 May 2021 20:09:10 GMT
 < server: istio-envoy
 < x-envoy-upstream-service-time: 192
-< 
+<
 * Connection #0 to host 10.100.34.202 left intact
 {"predictions": {"prediction": true, "probability": {"false": 0.03387957196040836, "true": 0.9661204280395916}}}
 ```
