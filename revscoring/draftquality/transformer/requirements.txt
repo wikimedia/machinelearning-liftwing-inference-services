@@ -1,0 +1,5 @@
+kserve==0.7.0
+argparse>=1.4.0
+draftquality==0.0.2
+mwapi==0.5.1
+revscoring==2.8.2
