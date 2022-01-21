@@ -19,6 +19,27 @@ pipelines:
             name: '${setup.project}-editquality'
             tags: [stable]
 
+  editquality-transformer:
+    blubberfile: editquality/transformer.yaml
+    directory: revscoring/editquality
+    stages:
+      - name: run-test
+        build: test
+        run: true
+      - name: production
+        build: production
+
+  editquality-transformer-publish:
+    blubberfile: editquality/transformer.yaml
+    directory: revscoring/editquality
+    stages:
+      - name: publish
+        build: production
+        publish:
+          image:
+            name: '${setup.project}-editquality-transformer'
+            tags: [stable]
+
   articlequality:
     directory: revscoring/articlequality
     stages:
