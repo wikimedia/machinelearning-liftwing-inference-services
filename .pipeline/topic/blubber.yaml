@@ -1,5 +1,5 @@
 version: v4
-base: docker-registry.wikimedia.org/python3-buster:0.0.1
+base: docker-registry.wikimedia.org/python3-buster:0.0.1-20220123
 runs:
   insecurely: true
 
