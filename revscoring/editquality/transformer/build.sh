@@ -1,4 +1,4 @@
-# Installs the NLTK stopwords and also installs
+# Installs the NLTK stopwords and
 # the transformer module via setuptools.
 # FIXME: path hack - see: https://phabricator.wikimedia.org/T267685
 PYTHONPATH=/opt/lib/python/site-packages
