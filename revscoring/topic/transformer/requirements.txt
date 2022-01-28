@@ -116,6 +116,6 @@ urllib3==1.26.7
 uvicorn==0.16.0
 websocket-client==1.2.3
 wrapt==1.13.3
-yamlconf @ git+https://github.com/halfak/yamlconf.git@6b84ca8a7f738a1fe6b3b67b30b55acaaa8a56a8
+yamlconf==0.2.5
 yarl==1.7.2
 zipp==3.6.0
