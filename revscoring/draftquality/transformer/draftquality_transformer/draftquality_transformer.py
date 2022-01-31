@@ -33,7 +33,7 @@ class DraftQualityTransformer(kserve.KFModel):
         self.extractor = api.Extractor(
             mwapi.Session(wiki_url, user_agent=ua, session=s)
         )
-        return self._fetch_draftquality_text(rev_id)
+        return self._fetch_draftquality_features(rev_id)
 
     def _load(self):
         """Load model so we can access features."""
