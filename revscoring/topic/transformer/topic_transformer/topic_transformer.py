@@ -3,6 +3,7 @@ import logging
 import mwapi
 import os
 import requests
+from revscoring import Model
 from revscoring.extractors import api
 from typing import Dict
 
@@ -14,6 +15,8 @@ class DrafttopicTransformer(kserve.KFModel):
     def __init__(self, name: str, predictor_host: str):
         super().__init__(name)
         self.predictor_host = predictor_host
+        self.ready = False  # ensure we can load model
+        self._load()
 
     def preprocess(self, inputs: Dict) -> Dict:
         """Use MW API session and Revscoring API to extract feature values
@@ -26,10 +29,20 @@ class DrafttopicTransformer(kserve.KFModel):
             s.headers.update({"Host": wiki_host})
         else:
             s = None
-        extractor = api.Extractor(
+        self.extractor = api.Extractor(
             mwapi.Session(
                 wiki_url, user_agent="WMF ML Team topic model", session=s
             )
         )
-        feature_values = list(extractor.extract(rev_id, self.model.features))
+        return self._fetch_topic_features(rev_id)
+
+    def _load(self):
+        """Load model so we can access features."""
+        with open("/mnt/models/model.bin") as f:
+            self.model = Model.load(f)
+        self.ready = True
+
+    def _fetch_topic_features(self, rev_id: int) -> Dict:
+        """Retrieve topic features."""
+        feature_values = list(self.extractor.extract(rev_id, self.model.features))
         return {"feature_values": feature_values}
