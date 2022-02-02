@@ -96,7 +96,7 @@ variants:
         - hunspell-vi
         - voikko-fi
         - wmf-certificates
-    entrypoint: [python3",  "-m", "editquality_transformer"]
+    entrypoint: ["python3",  "-m", "editquality_transformer"]
 
   test:
     apt:
