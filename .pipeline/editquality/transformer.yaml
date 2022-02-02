@@ -9,7 +9,7 @@ lives:
 variants:
   build:
     python:
-      version: python3
+      version: python3.7
       requirements: [transformer/requirements.txt]
     apt:
       packages:
@@ -47,7 +47,7 @@ variants:
         source: /opt/lib/python/site-packages
         destination: /opt/lib/python/site-packages
     python:
-      version: python3
+      version: python3.7
       use-system-flag: false
     apt:
       packages:
