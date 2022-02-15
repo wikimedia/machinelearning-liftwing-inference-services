@@ -1,10 +1,11 @@
+import os
+from typing import Dict
+
 import kserve
 import mwapi
-import os
 import requests
 from revscoring import Model
 from revscoring.extractors import api
-from typing import Dict
 
 
 class EditQualityModel(kserve.KFModel):
@@ -12,6 +13,7 @@ class EditQualityModel(kserve.KFModel):
         super().__init__(name)
         self.name = name
         self.ready = False
+        self.FEAT_KEY = "feature_values"
 
     def load(self):
         with open("/mnt/models/model.bin") as f:
@@ -37,7 +39,9 @@ class EditQualityModel(kserve.KFModel):
             )
         )
 
-        return self.fetch_editquality_features(rev_id)
+        feature_values = self.fetch_editquality_features(rev_id)
+        inputs[self.FEAT_KEY] = feature_values
+        return inputs
 
     def fetch_editquality_features(self, rev_id: int) -> Dict:
         """Retrieve editquality features."""
@@ -45,7 +49,7 @@ class EditQualityModel(kserve.KFModel):
         return feature_values
 
     def predict(self, request: Dict) -> Dict:
-        feature_values = self.preprocess(request)
+        feature_values = request.get(self.FEAT_KEY)
         results = self.model.score(feature_values)
         return {"predictions": results}
 
