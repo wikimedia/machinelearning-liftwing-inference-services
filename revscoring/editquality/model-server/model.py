@@ -7,6 +7,7 @@ import mwapi
 import requests
 import tornado.web
 from revscoring import Model
+from revscoring.errors import RevisionNotFound
 from revscoring.extractors import api
 
 
@@ -62,7 +63,14 @@ class EditQualityModel(kserve.KFModel):
 
     def fetch_editquality_features(self, rev_id: int) -> Dict:
         """Retrieve editquality features."""
-        feature_values = list(self.extractor.extract(rev_id, self.model.features))
+        try:
+            feature_values = list(self.extractor.extract(rev_id, self.model.features))
+        except RevisionNotFound:
+            raise tornado.web.HTTPError(
+                status_code=HTTPStatus.BAD_REQUEST,
+                reason="Revision {} not found".format(rev_id),
+            )
+
         return feature_values
 
     def predict(self, request: Dict) -> Dict:
