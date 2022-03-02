@@ -9,6 +9,7 @@ import tornado.web
 from revscoring import Model
 from revscoring.errors import RevisionNotFound
 from revscoring.extractors import api
+from revscoring.features import trim
 
 
 class EditQualityModel(kserve.KFModel):
@@ -16,7 +17,8 @@ class EditQualityModel(kserve.KFModel):
         super().__init__(name)
         self.name = name
         self.ready = False
-        self.FEAT_KEY = "feature_values"
+        self.FEATURE_VAL_KEY = "feature_values"
+        self.EXTENDED_OUTPUT_KEY = "extended_output"
 
     def load(self):
         with open("/mnt/models/model.bin") as f:
@@ -27,6 +29,7 @@ class EditQualityModel(kserve.KFModel):
         """Use MW API session and Revscoring API to extract feature values
         of edit text based on its revision id"""
         rev_id = self._get_rev_id(inputs)
+        extended_output = inputs.get("extended_output", False)
         wiki_url = os.environ.get("WIKI_URL")
         wiki_host = os.environ.get("WIKI_HOST")
 
@@ -43,7 +46,8 @@ class EditQualityModel(kserve.KFModel):
         )
 
         feature_values = self.fetch_editquality_features(rev_id)
-        inputs[self.FEAT_KEY] = feature_values
+        inputs[self.FEATURE_VAL_KEY] = feature_values
+        inputs[self.EXTENDED_OUTPUT_KEY] = extended_output
         return inputs
 
     def _get_rev_id(self, inputs: Dict) -> Dict:
@@ -74,8 +78,18 @@ class EditQualityModel(kserve.KFModel):
         return feature_values
 
     def predict(self, request: Dict) -> Dict:
-        feature_values = request.get(self.FEAT_KEY)
+        feature_values = request.get(self.FEATURE_VAL_KEY)
+        extended_output = request.get(self.EXTENDED_OUTPUT_KEY)
         results = self.model.score(feature_values)
+        if extended_output:
+            # add extended output to reach feature parity with ORES, like:
+            # https://ores.wikimedia.org/v3/scores/enwiki/186357639/goodfaith?features
+            # If only rev_id is given in input.json, only the prediction results
+            # will be present in the response. If the extended_output flag is true,
+            # features output will be included in the response.
+            feature_name = list(trim(self.model.features))
+            features = {str(f): v for f, v in zip(feature_name, feature_values)}
+            return {"predictions": results, "features": features}
         return {"predictions": results}
 
 
