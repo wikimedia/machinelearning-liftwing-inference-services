@@ -101,27 +101,6 @@ pipelines:
             name: '${setup.project}-draftquality'
             tags: [stable]
 
-  draftquality-transformer:
-    blubberfile: draftquality/transformer.yaml
-    directory: revscoring/draftquality
-    stages:
-      - name: run-test
-        build: test
-        run: true
-      - name: production
-        build: production
-
-  draftquality-transformer-publish:
-    blubberfile: draftquality/transformer.yaml
-    directory: revscoring/draftquality
-    stages:
-      - name: publish
-        build: production
-        publish:
-          image:
-            name: '${setup.project}-draftquality-transformer'
-            tags: [stable]
-
   topic:
     directory: revscoring/topic
     stages:
