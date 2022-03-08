@@ -1,10 +1,13 @@
 import os
+from http import HTTPStatus
 from typing import Dict
 
 import kserve
 import mwapi
 import requests
+import tornado.web
 from revscoring import Model
+from revscoring.errors import RevisionNotFound
 from revscoring.extractors import api
 
 
@@ -23,7 +26,7 @@ class DrafttopicModel(kserve.KFModel):
     def preprocess(self, inputs: Dict) -> Dict:
         """Use MW API session and Revscoring API to extract feature values
         of edit text based on its revision id"""
-        rev_id = inputs.get("rev_id")
+        rev_id = self._get_rev_id(inputs)
         wiki_url = os.environ.get("WIKI_URL")
         wiki_host = os.environ.get("WIKI_HOST")
         if wiki_host:
@@ -42,9 +45,31 @@ class DrafttopicModel(kserve.KFModel):
         results = self.model.score(feature_values)
         return {"predictions": results}
 
+    def _get_rev_id(self, inputs: Dict) -> Dict:
+        try:
+            rev_id = inputs["rev_id"]
+        except KeyError:
+            raise tornado.web.HTTPError(
+                status_code=HTTPStatus.BAD_REQUEST,
+                reason='Expected "rev_id" in input data.',
+            )
+        if not isinstance(rev_id, int):
+            raise tornado.web.HTTPError(
+                status_code=HTTPStatus.BAD_REQUEST,
+                reason='Expected "rev_id" to be an integer.',
+            )
+        return rev_id
+
     def _fetch_topic_features(self, rev_id: int) -> Dict:
         """Retrieve topic features."""
-        feature_values = list(self.extractor.extract(rev_id, self.model.features))
+        try:
+            feature_values = list(self.extractor.extract(rev_id, self.model.features))
+        except RevisionNotFound:
+            raise tornado.web.HTTPError(
+                status_code=HTTPStatus.BAD_REQUEST,
+                reason="Revision {} not found".format(rev_id),
+            )
+
         return feature_values
 
 
