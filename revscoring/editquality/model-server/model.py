@@ -44,10 +44,15 @@ class EditQualityModel(kserve.KFModel):
                 wiki_url, user_agent="WMF ML Team editquality model", session=s
             )
         )
-
-        feature_values = self.fetch_editquality_features(rev_id)
-        inputs[self.FEATURE_VAL_KEY] = feature_values
-        inputs[self.EXTENDED_OUTPUT_KEY] = extended_output
+        inputs[self.FEATURE_VAL_KEY] = self.fetch_editquality_features(rev_id)
+        if extended_output:
+            base_feature_values = self.extractor.extract(
+                rev_id, list(trim(self.model.features))
+            )
+            inputs[self.EXTENDED_OUTPUT_KEY] = {
+                str(f): v
+                for f, v in zip(list(trim(self.model.features)), base_feature_values)
+            }
         return inputs
 
     def _get_rev_id(self, inputs: Dict) -> Dict:
@@ -87,9 +92,7 @@ class EditQualityModel(kserve.KFModel):
             # If only rev_id is given in input.json, only the prediction results
             # will be present in the response. If the extended_output flag is true,
             # features output will be included in the response.
-            feature_name = list(trim(self.model.features))
-            features = {str(f): v for f, v in zip(feature_name, feature_values)}
-            return {"predictions": results, "features": features}
+            return {"predictions": results, "features": extended_output}
         return {"predictions": results}
 
 
