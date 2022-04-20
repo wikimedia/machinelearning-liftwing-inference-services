@@ -62,6 +62,7 @@ jsonschema==4.2.1
 konlpy==0.5.2
 kserve==0.7.0
 kubernetes==17.17.0
+langdetect==1.0.7
 lxml==4.6.4
 minio==6.0.2
 mmh3==2.5.1

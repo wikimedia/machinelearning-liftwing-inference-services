@@ -1,5 +1,5 @@
 version: v4
-base: docker-registry.wikimedia.org/buster:20220123
+base: docker-registry.wikimedia.org/buster:20220417
 runs:
   insecurely: true
 
