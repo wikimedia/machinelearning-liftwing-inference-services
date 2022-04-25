@@ -60,27 +60,6 @@ pipelines:
             name: '${setup.project}-articlequality'
             tags: [stable]
 
-  articlequality-transformer:
-    blubberfile: articlequality/transformer.yaml
-    directory: revscoring/articlequality
-    stages:
-      - name: run-test
-        build: test
-        run: true
-      - name: production
-        build: production
-
-  articlequality-transformer-publish:
-    blubberfile: articlequality/transformer.yaml
-    directory: revscoring/articlequality
-    stages:
-      - name: publish
-        build: production
-        publish:
-          image:
-            name: '${setup.project}-articlequality-transformer'
-            tags: [stable]
-
   draftquality:
     directory: revscoring/draftquality
     stages:
