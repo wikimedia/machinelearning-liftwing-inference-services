@@ -7,9 +7,8 @@ import requests
 import mwapi
 import tornado.web
 from http import HTTPStatus
-import logging
-
-logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
+from revscoring.extractors import api
+from revscoring.features import trim
 
 
 class ArticlequalityModel(kserve.KFModel):
@@ -17,6 +16,8 @@ class ArticlequalityModel(kserve.KFModel):
         super().__init__(name)
         self.name = name
         self.ready = False
+        self.FEATURE_VAL_KEY = "article_text"
+        self.EXTENDED_OUTPUT_KEY = "extended_output"
 
     def load(self):
         with open("/mnt/models/model.bin") as f:
@@ -26,6 +27,7 @@ class ArticlequalityModel(kserve.KFModel):
     def preprocess(self, inputs: Dict) -> Dict:
         """Fetch article text"""
         rev_id = self._get_rev_id(inputs)
+        extended_output = inputs.get("extended_output", False)
         wiki_url = os.environ.get("WIKI_URL")
         wiki_host = os.environ.get("WIKI_HOST")
         if wiki_host:
@@ -36,11 +38,29 @@ class ArticlequalityModel(kserve.KFModel):
         self.session = mwapi.Session(
             wiki_url, user_agent="WMF ML team articlequality transformer", session=s
         )
-        return self._fetch_articlequality_text(rev_id)
+        inputs[self.FEATURE_VAL_KEY] = self._fetch_articlequality_text(rev_id)
+        self.extractor = api.Extractor(self.session)
+        if extended_output:
+            base_feature_values = self.extractor.extract(
+                rev_id, list(trim(self.model.features))
+            )
+            inputs[self.EXTENDED_OUTPUT_KEY] = {
+                str(f): v
+                for f, v in zip(list(trim(self.model.features)), base_feature_values)
+            }
+        return inputs
 
     def predict(self, request: Dict) -> Dict:
-        inputs = request["article_text"]
-        results = articlequality.score(self.model, inputs)
+        feature_values = request.get(self.FEATURE_VAL_KEY)
+        extended_output = request.get(self.EXTENDED_OUTPUT_KEY)
+        results = articlequality.score(self.model, feature_values)
+        if extended_output:
+            # add extended output to reach feature parity with ORES, like:
+            # https://ores.wikimedia.org/v3/scores/enwiki/186357639/articlequality?features
+            # If only rev_id is given in input.json, only the prediction results
+            # will be present in the response. If the extended_output flag is true,
+            # features output will be included in the response.
+            return {"predictions": results, "features": extended_output}
         return {"predictions": results}
 
     def _get_rev_id(self, inputs: Dict) -> Dict:
@@ -76,7 +96,7 @@ class ArticlequalityModel(kserve.KFModel):
                 reason="Revision {} not found.".format(rev_id),
             )
         content = rev_doc["slots"]["main"].get("content")
-        return {"article_text": content}
+        return content
 
 
 if __name__ == "__main__":
