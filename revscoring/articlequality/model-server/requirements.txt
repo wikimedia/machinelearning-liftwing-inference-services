@@ -89,7 +89,7 @@ pyasn1==0.4.8
 pyasn1-modules==0.2.8
 pycparser==2.21
 pydantic==1.8.2
-pyenchant==1.6.6
+pyenchant==1.6.11
 PyJWT==2.3.0
 pyparsing==3.0.6
 pyrsistent==0.18.0
