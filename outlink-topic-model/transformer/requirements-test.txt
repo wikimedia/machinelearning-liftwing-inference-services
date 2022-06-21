@@ -1,4 +1,5 @@
 pytest
+pytest-asyncio
 flake8
 black
 tox

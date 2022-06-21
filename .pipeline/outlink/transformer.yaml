@@ -1,5 +1,5 @@
 version: v4
-base: docker-registry.wikimedia.org/python3-buster:0.0.1
+base: docker-registry.wikimedia.org/buster:20220724
 runs:
   insecurely: true
 
@@ -37,6 +37,10 @@ variants:
       - from: build
         source: /opt/lib/python/site-packages
         destination: /opt/lib/python/site-packages
+    apt:
+      packages:
+        - python3
+        - wmf-certificates
     python:
       version: python3
       use-system-flag: false
@@ -54,5 +58,5 @@ variants:
     entrypoint: ["tox", "-c", "transformer/tox.ini"]
     python:
       version: python3
-      requirements: [transformer/requirements-test.txt]
+      requirements: [transformer/requirements.txt, transformer/requirements-test.txt]
       use-system-flag: false
