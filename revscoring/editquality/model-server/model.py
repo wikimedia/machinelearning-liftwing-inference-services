@@ -1,6 +1,6 @@
+import json
 import logging
 import os
-import urllib
 from http import HTTPStatus
 from typing import Dict, Optional
 
@@ -143,7 +143,7 @@ class EditQualityModel(kserve.KFModel):
                 self.EVENTGATE_URL,
                 method="POST",
                 ca_certs=self.TLS_CERT_BUNDLE_PATH,
-                body=urllib.parse.urlencode(revision_score_event),
+                body=json.dumps(revision_score_event),
                 user_agent=os.environ.get("CUSTOM_UA"),
             )
             logging.debug(
