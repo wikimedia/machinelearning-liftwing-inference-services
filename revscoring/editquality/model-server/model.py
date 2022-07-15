@@ -144,6 +144,7 @@ class EditQualityModel(kserve.KFModel):
                 method="POST",
                 ca_certs=self.TLS_CERT_BUNDLE_PATH,
                 body=json.dumps(revision_score_event),
+                headers={"Content-type": "application/json"},
                 user_agent=os.environ.get("CUSTOM_UA"),
             )
             logging.debug(
