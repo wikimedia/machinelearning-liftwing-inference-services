@@ -1,7 +1,7 @@
 adal==1.2.7
 aiohttp==3.8.1
 aiohttp-cors==0.7.0
-aioredis==2.0.0
+aioredis<2
 aiosignal==1.2.0
 anyio==3.4.0
 asgiref==3.4.1
@@ -13,8 +13,8 @@ azure-core==1.17.0
 azure-identity==1.6.0
 azure-storage-blob==12.8.1
 blessings==1.7
-boto3==1.18.18
-botocore==1.21.18
+boto3==1.20.24
+botocore==1.23.24
 cachetools==4.2.2
 certifi==2021.5.30
 cffi==1.14.6
@@ -42,7 +42,7 @@ google-cloud-storage==1.41.1
 google-crc32c==1.3.0
 google-resumable-media==2.1.0
 googleapis-common-protos==1.53.0
-gpustat==0.6.0
+gpustat==1.0.0b1
 grpcio==1.38.1
 h11==0.12.0
 hanziconv==0.3.2
@@ -54,7 +54,7 @@ jmespath==0.10.0
 joblib==1.1.0
 jsonable==0.3.1
 jsonschema==4.2.1
-kserve==0.7.0
+kserve==0.8.0
 kubernetes==17.17.0
 minio==6.0.2
 mmh3==2.5.1
@@ -70,7 +70,7 @@ mwparserfromhell==0.6.4
 mwtypes==0.3.2
 mysqltsv==0.0.7
 nltk==3.5
-numpy==1.18.5
+numpy==1.19.2
 nvidia-ml-py3==7.352.0
 oauthlib==3.1.1
 opencensus==0.8.0
@@ -92,12 +92,12 @@ pyrsistent==0.18.0
 python-dateutil==2.8.2
 pytz==2021.3
 PyYAML==5.4
-ray==1.5.0
+ray==1.9.0
 redis==4.0.2
 regex==2021.11.10
 requests==2.26.0
 requests-oauthlib==1.3.0
-revscoring==2.11.4
+revscoring==2.11.5
 rsa==4.8
 s3transfer==0.5.0
 scikit-learn==0.22.1

@@ -4,7 +4,7 @@ from .outlink_transformer import OutlinkTransformer
 
 DEFAULT_MODEL_NAME = "model"
 
-parser = argparse.ArgumentParser(parents=[kserve.kfserver.parser])
+parser = argparse.ArgumentParser(parents=[kserve.model_server.parser])
 parser.add_argument(
     "--model_name",
     default=DEFAULT_MODEL_NAME,
@@ -20,5 +20,5 @@ if __name__ == "__main__":
     transformer = OutlinkTransformer(
         args.model_name, predictor_host=args.predictor_host
     )
-    kfserver = kserve.KFServer()
-    kfserver.start(models=[transformer])
+    kserver = kserve.ModelServer()
+    kserver.start(models=[transformer])

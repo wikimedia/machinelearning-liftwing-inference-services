@@ -4,7 +4,7 @@ import os
 from typing import Dict
 
 
-class OutlinksTopicModel(kserve.KFModel):
+class OutlinksTopicModel(kserve.Model):
     def __init__(self, name: str):
         super().__init__(name)
         self.name = name
@@ -49,4 +49,4 @@ class OutlinksTopicModel(kserve.KFModel):
 if __name__ == "__main__":
     model = OutlinksTopicModel("outlink-topic-model")
     model.load()
-    kserve.KFServer(workers=1).start([model])
+    kserve.ModelServer(workers=1).start([model])

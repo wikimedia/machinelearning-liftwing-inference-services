@@ -13,7 +13,7 @@ from revscoring.extractors import api
 from revscoring.features import trim
 
 
-class DraftqualityModel(kserve.KFModel):
+class DraftqualityModel(kserve.Model):
     def __init__(self, name: str):
         super().__init__(name)
         self.name = name
@@ -96,4 +96,4 @@ if __name__ == "__main__":
     inference_name = os.environ.get("INFERENCE_NAME")
     model = DraftqualityModel(inference_name)
     model.load()
-    kserve.KFServer(workers=1).start([model])
+    kserve.ModelServer(workers=1).start([model])

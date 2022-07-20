@@ -17,7 +17,7 @@ from revscoring.features import trim
 logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
 
 
-class EditQualityModel(kserve.KFModel):
+class EditQualityModel(kserve.Model):
     def __init__(self, name: str):
         super().__init__(name)
         self.name = name
@@ -206,4 +206,4 @@ if __name__ == "__main__":
     inference_name = os.environ.get("INFERENCE_NAME")
     model = EditQualityModel(inference_name)
     model.load()
-    kserve.KFServer(workers=1).start([model])
+    kserve.ModelServer(workers=1).start([model])
