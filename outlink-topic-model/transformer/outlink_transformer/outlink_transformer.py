@@ -13,9 +13,19 @@ logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
 
 async def get_outlinks(title: str, lang: str, limit=1000) -> Set:
     """Gather set of up to `limit` outlinks for an article."""
+    wiki_url = os.environ.get("WIKI_URL")
+    if wiki_url is None:
+        # other domains like wikibooks etc are not supported.
+        wiki_url = "https://{0}.wikipedia.org".format(lang)
     async with aiohttp.ClientSession() as s:
+        if wiki_url.endswith("wmnet"):
+            # accessing MediaWiki API from within internal networks
+            # is to use https://api-ro.discovery.wmnet and set the
+            # HTTP Host header to the domain of the site you want
+            # to access.
+            s.headers.update({"Host": "{0}.wikipedia.org".format(lang)})
         session = mwapi.AsyncSession(
-            "https://{0}.wikipedia.org".format(lang),
+            wiki_url,
             user_agent=os.environ.get("CUSTOM_UA"),
             session=s,
         )
