@@ -1,9 +1,11 @@
+import asyncio
 import json
 import logging
 import os
 from http import HTTPStatus
 from typing import Dict, Optional
 
+import aiohttp
 import kserve
 import mwapi
 import requests
@@ -12,7 +14,15 @@ import tornado.httpclient
 from revscoring import Model
 from revscoring.errors import RevisionNotFound
 from revscoring.extractors import api
+from revscoring.extractors.api import MWAPICache
 from revscoring.features import trim
+from mwapi.errors import (
+    APIError,
+    ConnectionError,
+    RequestError,
+    TimeoutError,
+    TooManyRedirectsError,
+)
 
 logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
 
@@ -36,7 +46,7 @@ class EditQualityModel(kserve.Model):
             self.model = Model.load(f)
         self.ready = True
 
-    def preprocess(self, inputs: Dict) -> Dict:
+    async def preprocess(self, inputs: Dict) -> Dict:
         """Use MW API session and Revscoring API to extract feature values
         of edit text based on its revision id"""
         rev_id = self._get_rev_id(inputs)
@@ -47,25 +57,132 @@ class EditQualityModel(kserve.Model):
         wiki_url = os.environ.get("WIKI_URL")
         wiki_host = os.environ.get("WIKI_HOST")
 
-        if wiki_host:
-            s = requests.Session()
-            s.headers.update({"Host": wiki_host})
-        else:
-            s = None
+        async with aiohttp.ClientSession() as s:
+            if wiki_host:
+                s.headers.update({"Host": wiki_host})
 
-        self.extractor = api.Extractor(
-            mwapi.Session(wiki_url, user_agent=self.CUSTOM_UA, session=s)
-        )
-        inputs[self.FEATURE_VAL_KEY] = self.fetch_editquality_features(rev_id)
-        if extended_output:
-            base_feature_values = self.extractor.extract(
-                rev_id, list(trim(self.model.features))
-            )
-            inputs[self.EXTENDED_OUTPUT_KEY] = {
-                str(f): v
-                for f, v in zip(list(trim(self.model.features)), base_feature_values)
+            session = mwapi.AsyncSession(wiki_url, user_agent=self.CUSTOM_UA, session=s)
+
+            # Get all info from MediaWiki API.
+            # The revscoring API extractor can automatically fetch
+            # data from the MW API as well, but sadly only with blocking
+            # IO (namely, using Session from the mwapi package).
+            # Since KServe works with Tornado and asyncio, we prefer
+            # to use mwapi's AsyncSession and pass the data (as MWAPICache)
+            # to revscoring.
+            # From tests in T309623, the API extractor fetches:
+            # - info related to the rev-id
+            # - user and parent-rev-id data as well
+            # The total is 3 MW API calls.
+            params = {
+                "rvprop": {
+                    "content",
+                    "userid",
+                    "size",
+                    "contentmodel",
+                    "ids",
+                    "user",
+                    "comment",
+                    "timestamp",
+                }
             }
-        return inputs
+            try:
+                rev_id_doc = await asyncio.create_task(
+                    session.get(
+                        action="query",
+                        prop="revisions",
+                        revids=[rev_id],
+                        rvslots="main",
+                        **params
+                    )
+                )
+
+                # The output returned by the MW API is a little
+                # convoluted and probably meant for batches of rev-ids.
+                # In our case we fetch only one rev-id at the time,
+                # so we can use assumptions about how many elements
+                # there will be in the results.
+                try:
+                    revision_info = list(rev_id_doc.get("query").get("pages").values())[
+                        0
+                    ]["revisions"][0]
+                except Exception as e:
+                    logger.error(
+                        "The rev-id doc retrieved from the MW API "
+                        "does not contain all the data needed "
+                        "to extract features properly. "
+                        "The error is {} and the document is: {}".format(e, rev_id_doc)
+                    )
+                    raise tornado.web.HTTPError(
+                        status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+                        reason=(
+                            "The rev-id doc retrieved from the MW API "
+                            "does not contain all the data needed "
+                            "to extract features properly. Please contact the ML-Team if the issue persists."
+                        ),
+                    )
+
+                parent_rev_id = revision_info.get("parentid")
+                user = revision_info.get("user")
+                user_params = {
+                    "usprop": {"groups", "registration", "editcount", "gender"}
+                }
+
+                parent_rev_id_doc, user_doc = await asyncio.gather(
+                    session.get(
+                        action="query",
+                        prop="revisions",
+                        revids=[parent_rev_id],
+                        rvslots="main",
+                        **params
+                    ),
+                    session.get(
+                        action="query", list="users", ususers=[user], **user_params
+                    ),
+                )
+            except (
+                APIError,
+                ConnectionError,
+                RequestError,
+                TimeoutError,
+                TooManyRedirectsError,
+            ) as e:
+                logging.error(
+                    "An error has occurred while fetching feature "
+                    "values from the MW API: {}".format(e)
+                )
+                raise tornado.web.HTTPError(
+                    status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+                    reason=(
+                        "An error happened while fetching feature values from "
+                        "the MediaWiki API, please contact the ML-Team "
+                        "if the issue persists."
+                    ),
+                )
+
+            # Populate the MWAPICache
+            http_cache = MWAPICache()
+            http_cache.add_revisions_batch_doc([rev_id], rev_id_doc)
+            http_cache.add_revisions_batch_doc([parent_rev_id], parent_rev_id_doc)
+            http_cache.add_users_batch_doc([user], user_doc)
+
+            # Call the extractor with the MWAPICache
+            self.extractor = api.Extractor(
+                mwapi.Session(wiki_url, user_agent=self.CUSTOM_UA, session=s),
+                http_cache=http_cache,
+            )
+            inputs[self.FEATURE_VAL_KEY] = self.fetch_editquality_features(rev_id)
+            if extended_output:
+                base_feature_values = self.extractor.extract(
+                    rev_id, list(trim(self.model.features))
+                )
+                inputs[self.EXTENDED_OUTPUT_KEY] = {
+                    str(f): v
+                    for f, v in zip(
+                        list(trim(self.model.features)), base_feature_values
+                    )
+                }
+            return inputs
 
     def _get_revision_event(self, inputs: Dict) -> Optional[str]:
         try:
