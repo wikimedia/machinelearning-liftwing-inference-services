@@ -11,6 +11,7 @@ import mwapi
 import requests
 import tornado.web
 import tornado.httpclient
+from ray import serve
 from revscoring import Model
 from revscoring.errors import RevisionNotFound
 from revscoring.extractors import api
@@ -27,6 +28,7 @@ from mwapi.errors import (
 logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
 
 
+@serve.deployment
 class EditQualityModel(kserve.Model):
     def __init__(self, name: str):
         super().__init__(name)
@@ -321,6 +323,9 @@ class EditQualityModel(kserve.Model):
 
 if __name__ == "__main__":
     inference_name = os.environ.get("INFERENCE_NAME")
-    model = EditQualityModel(inference_name)
-    model.load()
-    kserve.ModelServer(workers=1).start([model])
+    models = {
+        inference_name: EditQualityModel.options(
+            name=inference_name, num_replicas=1, init_args=(inference_name,)
+        )
+    }
+    kserve.ModelServer(workers=1).start(models)
