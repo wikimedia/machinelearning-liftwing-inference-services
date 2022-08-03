@@ -11,13 +11,15 @@ Custom KServe model running the Outlinks (fastText) topic model
 
 ### Build and push the Docker Image
 
-```
-# Build the container on your local machine
-docker build -t {username}/outlinks-topic-model ./model-server
+To build the Docker image, [Blubber](https://wikitech.wikimedia.org/wiki/Blubber) is needed:
 
-# Push the container to docker registry
-docker push {username}/outlinks-topic-model
 ```
+blubber ../../.pipeline/outlink/blubber.yaml production | docker build --tag SOME-DOCKER-TAG-THAT-YOU-LIKE --file - .
+
+blubber ../../.pipeline/outlink/transformer.yaml production | docker build --tag SOME-DOCKER-TAG-THAT-YOU-LIKE --file - .
+```
+
+See also the Wikitech [Kserve](https://wikitech.wikimedia.org/wiki/Machine_Learning/LiftWing/KServe) documentation for more info about local testing with Docker.
 
 ### Create the InferenceService
 

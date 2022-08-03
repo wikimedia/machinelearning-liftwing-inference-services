@@ -11,13 +11,13 @@ This is how we serve [revscoring](https://github.com/wikimedia/revscoring) ( [ar
 
 ### Build and push the Docker Image
 
-```
-# Build the container on your local machine
-docker build -t {username}/kserve-revscoring-editquality-model-server ./editquality/model-server
+To build the Docker image, [Blubber](https://wikitech.wikimedia.org/wiki/Blubber) is needed:
 
-# Push the container to docker registry
-docker push {username}/kserve-revscoring-editquality-model-server
 ```
+blubber ../../.pipeline/editquality/blubber.yaml production | docker build --tag SOME-DOCKER-TAG-THAT-YOU-LIKE --file - .
+```
+
+See also the Wikitech [Kserve](https://wikitech.wikimedia.org/wiki/Machine_Learning/LiftWing/KServe) documentation for more info about local testing with Docker.
 
 ### Create the InferenceService
 
