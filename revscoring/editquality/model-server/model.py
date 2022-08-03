@@ -24,6 +24,8 @@ from mwapi.errors import (
     TooManyRedirectsError,
 )
 
+import events
+
 logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
 
 
@@ -230,71 +232,13 @@ class EditQualityModel(kserve.Model):
             model_name = "damaging"
         else:
             model_name = "reverted"
-        return {
-            "$schema": "/mediawiki/revision/score/2.0.0",
-            "meta": {
-                "stream": self.EVENTGATE_STREAM,
-            },
-            "database": rev_create_event["database"],
-            "page_id": rev_create_event["page_id"],
-            "page_title": rev_create_event["page_title"],
-            "page_namespace": rev_create_event["page_namespace"],
-            "page_is_redirect": rev_create_event["page_is_redirect"],
-            "performer": rev_create_event["performer"],
-            "rev_id": rev_create_event["rev_id"],
-            "rev_parent_id": rev_create_event["rev_parent_id"],
-            "rev_timestamp": rev_create_event["rev_timestamp"],
-            model_name: {
-                "model_name": model_name,
-                "model_version": self.model.version,
-                "predictions": self.prediction_results,
-            },
-        }
-
-    async def send_event(self, revision_create_event):
-        # TODO: check if the revision_create_event is well formed,
-        # maybe checking the schema and report an error if not revision/create.
-        revision_score_event = self.get_revision_score_event(revision_create_event)
-        try:
-            response = await self._http_client.fetch(
-                self.EVENTGATE_URL,
-                method="POST",
-                ca_certs=self.TLS_CERT_BUNDLE_PATH,
-                body=json.dumps(revision_score_event),
-                headers={"Content-type": "application/json"},
-                user_agent=os.environ.get("CUSTOM_UA"),
-            )
-            logging.debug(
-                "Successfully sent the following event to "
-                "EventGate: {}".format(revision_score_event)
-            )
-        except tornado.httpclient.HTTPError as e:
-            logging.error(
-                "The revision score event has been rejected by EventGate, "
-                "that returned a non-200 HTTP return code "
-                "with the following error: {}".format(e)
-            )
-            raise tornado.web.HTTPError(
-                status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
-                reason=(
-                    "Eventgate rejected the revision-score event "
-                    "(a non-HTTP-200 response was returned). "
-                    "Please contact the ML team for more info."
-                ),
-            )
-        except Exception as e:
-            logging.error(
-                "Unexpected error while trying to send a revision score "
-                "event to EventGate: {}".format(e)
-            )
-            raise tornado.web.HTTPError(
-                status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
-                reason=(
-                    "An unexpected error has occurred while trying "
-                    "to send the revision-score event to Eventgate. "
-                    "Please contact the ML team for more info."
-                ),
-            )
+        return events.generate_revision_score_event(
+            rev_create_event,
+            self.EVENTGATE_STREAM,
+            self.model.version,
+            self.prediction_results,
+            model_name,
+        )
 
     async def predict(self, request: Dict) -> Dict:
         feature_values = request.get(self.FEATURE_VAL_KEY)
@@ -315,7 +259,16 @@ class EditQualityModel(kserve.Model):
         # Send a revision-score event to EventGate, generated from
         # the revision-create event passed as input.
         if self.revision_create_event:
-            await self.send_event(self.revision_create_event)
+            revision_score_event = self.get_revision_score_event(
+                self.revision_create_event
+            )
+            await events.send_event(
+                revision_score_event,
+                self.EVENTGATE_URL,
+                self.TLS_CERT_BUNDLE_PATH,
+                self.CUSTOM_UA,
+                self._http_client,
+            )
         return output
 
 

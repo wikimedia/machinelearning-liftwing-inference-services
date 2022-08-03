@@ -1,6 +1,5 @@
 pipelines:
   editquality:
-    directory: revscoring/editquality
     stages:
       - name: run-test
         build: test
@@ -9,35 +8,13 @@ pipelines:
         build: production
 
   editquality-publish:
-    blubberfile: editquality/blubber.yaml
-    directory: revscoring/editquality
+    blubberfile: revscoring/editquality/blubber.yaml
     stages:
       - name: publish
         build: production
         publish:
           image:
             name: '${setup.project}-editquality'
-            tags: [stable]
-
-  editquality-transformer:
-    blubberfile: editquality/transformer.yaml
-    directory: revscoring/editquality
-    stages:
-      - name: run-test
-        build: test
-        run: true
-      - name: production
-        build: production
-
-  editquality-transformer-publish:
-    blubberfile: editquality/transformer.yaml
-    directory: revscoring/editquality
-    stages:
-      - name: publish
-        build: production
-        publish:
-          image:
-            name: '${setup.project}-editquality-transformer'
             tags: [stable]
 
   articlequality:
