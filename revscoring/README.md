@@ -14,7 +14,7 @@ This is how we serve [revscoring](https://github.com/wikimedia/revscoring) ( [ar
 To build the Docker image, [Blubber](https://wikitech.wikimedia.org/wiki/Blubber) is needed:
 
 ```
-blubber ../../.pipeline/editquality/blubber.yaml production | docker build --tag SOME-DOCKER-TAG-THAT-YOU-LIKE --file - .
+blubber .pipeline/editquality/blubber.yaml production | docker build --tag SOME-DOCKER-TAG-THAT-YOU-LIKE --file - .
 ```
 
 See also the Wikitech [Kserve](https://wikitech.wikimedia.org/wiki/Machine_Learning/LiftWing/KServe) documentation for more info about local testing with Docker.

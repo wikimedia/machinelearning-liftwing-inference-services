@@ -14,9 +14,9 @@ Custom KServe model running the Outlinks (fastText) topic model
 To build the Docker image, [Blubber](https://wikitech.wikimedia.org/wiki/Blubber) is needed:
 
 ```
-blubber ../../.pipeline/outlink/blubber.yaml production | docker build --tag SOME-DOCKER-TAG-THAT-YOU-LIKE --file - .
+blubber .pipeline/outlink/blubber.yaml production | docker build --tag SOME-DOCKER-TAG-THAT-YOU-LIKE --file - .
 
-blubber ../../.pipeline/outlink/transformer.yaml production | docker build --tag SOME-DOCKER-TAG-THAT-YOU-LIKE --file - .
+blubber .pipeline/outlink/transformer.yaml production | docker build --tag SOME-DOCKER-TAG-THAT-YOU-LIKE --file - .
 ```
 
 See also the Wikitech [Kserve](https://wikitech.wikimedia.org/wiki/Machine_Learning/LiftWing/KServe) documentation for more info about local testing with Docker.
