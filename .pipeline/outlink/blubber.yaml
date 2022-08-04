@@ -10,7 +10,7 @@ variants:
   build:
     python:
       version: python3
-      requirements: [model-server/requirements.txt]
+      requirements: [outlink-topic-model/model-server/requirements.txt]
     apt:
       packages:
         - build-essential
@@ -25,7 +25,7 @@ variants:
   production:
     copies:
       - from: local
-        source: model-server
+        source: outlink-topic-model/model-server
         destination: model-server
       - from: build
         source: /opt/lib/python/site-packages
@@ -45,10 +45,10 @@ variants:
         - python3-setuptools
     copies:
       - from: local
-        source: model-server
+        source: outlink-topic-model/model-server
         destination: model-server
     entrypoint: ["tox", "-c", "model-server/tox.ini"]
     python:
       version: python3
-      requirements: [model-server/requirements-test.txt]
+      requirements: [outlink-topic-model/model-server/requirements-test.txt]
       use-system-flag: false

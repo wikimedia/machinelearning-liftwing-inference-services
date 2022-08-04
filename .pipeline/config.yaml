@@ -73,7 +73,6 @@ pipelines:
 
   outlink:
     blubberfile: outlink/blubber.yaml
-    directory: outlink-topic-model
     stages:
       - name: run-test
         build: test
@@ -83,7 +82,6 @@ pipelines:
 
   outlink-publish:
     blubberfile: outlink/blubber.yaml
-    directory: outlink-topic-model
     stages:
       - name: publish
         build: production
@@ -94,7 +92,6 @@ pipelines:
 
   outlink-transformer:
     blubberfile: outlink/transformer.yaml
-    directory: outlink-topic-model
     stages:
       - name: run-test
         build: test
@@ -104,7 +101,6 @@ pipelines:
 
   outlink-transformer-publish:
     blubberfile: outlink/transformer.yaml
-    directory: outlink-topic-model
     stages:
       - name: publish
         build: production
