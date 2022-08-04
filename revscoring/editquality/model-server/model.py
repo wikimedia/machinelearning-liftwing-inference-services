@@ -25,6 +25,7 @@ from mwapi.errors import (
 )
 
 import events
+import preprocess_utils
 
 logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
 
@@ -51,10 +52,12 @@ class EditQualityModel(kserve.Model):
     async def preprocess(self, inputs: Dict) -> Dict:
         """Use MW API session and Revscoring API to extract feature values
         of edit text based on its revision id"""
-        rev_id = self._get_rev_id(inputs)
+        rev_id = preprocess_utils.get_rev_id(inputs, self.REVISION_CREATE_EVENT_KEY)
         # The postprocess() function needs to parse the revision_create_event
         # given as input (if any).
-        self.revision_create_event = self._get_revision_event(inputs)
+        self.revision_create_event = preprocess_utils.get_revision_event(
+            inputs, self.REVISION_CREATE_EVENT_KEY
+        )
         extended_output = inputs.get("extended_output", False)
         wiki_url = os.environ.get("WIKI_URL")
         wiki_host = os.environ.get("WIKI_HOST")
@@ -185,33 +188,6 @@ class EditQualityModel(kserve.Model):
                     )
                 }
             return inputs
-
-    def _get_revision_event(self, inputs: Dict) -> Optional[str]:
-        try:
-            return inputs[self.REVISION_CREATE_EVENT_KEY]
-        except KeyError:
-            return None
-
-    def _get_rev_id(self, inputs: Dict) -> Dict:
-        try:
-            # If a revision create event is passed as input,
-            # its rev-id is considerate the one to score.
-            # Otherwise, we look for a specific "rev_id" input.
-            if self.REVISION_CREATE_EVENT_KEY in inputs.keys():
-                rev_id = inputs[self.REVISION_CREATE_EVENT_KEY]["rev_id"]
-            else:
-                rev_id = inputs["rev_id"]
-        except KeyError:
-            raise tornado.web.HTTPError(
-                status_code=HTTPStatus.BAD_REQUEST,
-                reason='Expected "rev_id" in input data.',
-            )
-        if not isinstance(rev_id, int):
-            raise tornado.web.HTTPError(
-                status_code=HTTPStatus.BAD_REQUEST,
-                reason='Expected "rev_id" to be an integer.',
-            )
-        return rev_id
 
     def fetch_editquality_features(self, rev_id: int) -> Dict:
         """Retrieve editquality features."""
