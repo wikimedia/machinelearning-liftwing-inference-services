@@ -8,7 +8,7 @@ pipelines:
         build: production
 
   editquality-publish:
-    blubberfile: revscoring/editquality/blubber.yaml
+    blubberfile: editquality/blubber.yaml
     stages:
       - name: publish
         build: production
