@@ -11,6 +11,9 @@ from revscoring.errors import RevisionNotFound
 from revscoring.extractors import api
 from revscoring.features import trim
 
+import events
+import preprocess_utils
+
 
 class DrafttopicModel(kserve.Model):
     def __init__(self, name: str):
@@ -19,6 +22,12 @@ class DrafttopicModel(kserve.Model):
         self.ready = False
         self.FEATURE_VAL_KEY = "feature_values"
         self.EXTENDED_OUTPUT_KEY = "extended_output"
+        self.REVISION_CREATE_EVENT_KEY = "revision_create_event"
+        self.EVENTGATE_URL = os.environ.get("EVENTGATE_URL")
+        self.EVENTGATE_STREAM = os.environ.get("EVENTGATE_STREAM")
+        self.CUSTOM_UA = "WMF ML Team topic model"
+        # Deployed via the wmf-certificates package
+        self.TLS_CERT_BUNDLE_PATH = "/etc/ssl/certs/wmf-ca-certificates.crt"
 
     def load(self):
         with open("/mnt/models/model.bin") as f:
@@ -28,7 +37,12 @@ class DrafttopicModel(kserve.Model):
     def preprocess(self, inputs: Dict) -> Dict:
         """Use MW API session and Revscoring API to extract feature values
         of edit text based on its revision id"""
-        rev_id = self._get_rev_id(inputs)
+        rev_id = preprocess_utils.get_rev_id(inputs, self.REVISION_CREATE_EVENT_KEY)
+        # The predict() function needs to parse the revision_create_event
+        # given as input (if any).
+        self.revision_create_event = preprocess_utils.get_revision_event(
+            inputs, self.REVISION_CREATE_EVENT_KEY
+        )
         extended_output = inputs.get("extended_output", False)
         wiki_url = os.environ.get("WIKI_URL")
         wiki_host = os.environ.get("WIKI_HOST")
@@ -38,7 +52,7 @@ class DrafttopicModel(kserve.Model):
         else:
             s = None
         self.extractor = api.Extractor(
-            mwapi.Session(wiki_url, user_agent="WMF ML Team topic model", session=s)
+            mwapi.Session(wiki_url, user_agent=self.CUSTOM_UA, session=s)
         )
         inputs[self.FEATURE_VAL_KEY] = self._fetch_topic_features(rev_id)
         if extended_output:
@@ -51,33 +65,42 @@ class DrafttopicModel(kserve.Model):
             }
         return inputs
 
-    def predict(self, request: Dict) -> Dict:
+    async def predict(self, request: Dict) -> Dict:
         feature_values = request.get(self.FEATURE_VAL_KEY)
         extended_output = request.get(self.EXTENDED_OUTPUT_KEY)
-        results = self.model.score(feature_values)
+        self.prediction_results = self.model.score(feature_values)
         if extended_output:
             # add extended output to reach feature parity with ORES, like:
             # https://ores.wikimedia.org/v3/scores/enwiki/1083325118/articletopic?features
             # If only rev_id is given in input.json, only the prediction results
             # will be present in the response. If the extended_output flag is true,
             # features output will be included in the response.
-            return {"predictions": results, "features": extended_output}
-        return {"predictions": results}
-
-    def _get_rev_id(self, inputs: Dict) -> Dict:
-        try:
-            rev_id = inputs["rev_id"]
-        except KeyError:
-            raise tornado.web.HTTPError(
-                status_code=HTTPStatus.BAD_REQUEST,
-                reason='Expected "rev_id" in input data.',
+            output = {
+                "predictions": self.prediction_results,
+                "features": extended_output,
+            }
+        else:
+            output = {
+                "predictions": self.prediction_results,
+            }
+        # Send a revision-score event to EventGate, generated from
+        # the revision-create event passed as input.
+        if self.revision_create_event:
+            revision_score_event = events.generate_revision_score_event(
+                self.revision_create_event,
+                self.EVENTGATE_STREAM,
+                self.model.version,
+                self.prediction_results,
+                "drafttopic",
             )
-        if not isinstance(rev_id, int):
-            raise tornado.web.HTTPError(
-                status_code=HTTPStatus.BAD_REQUEST,
-                reason='Expected "rev_id" to be an integer.',
+            await events.send_event(
+                revision_score_event,
+                self.EVENTGATE_URL,
+                self.TLS_CERT_BUNDLE_PATH,
+                self.CUSTOM_UA,
+                self._http_client,
             )
-        return rev_id
+        return output
 
     def _fetch_topic_features(self, rev_id: int) -> Dict:
         """Retrieve topic features."""

@@ -10,7 +10,7 @@ variants:
   build:
     python:
       version: python3
-      requirements: [model-server/requirements.txt]
+      requirements: [revscoring/topic/model-server/requirements.txt, python/requirements.txt]
     apt:
       packages:
         - python3-pip
@@ -32,8 +32,11 @@ variants:
   production:
     copies:
       - from: local
-        source: model-server
-        destination: .
+        source: revscoring/topic/model-server
+        destination: model-server
+      - from: local
+        source: python/*.py
+        destination: model-server/
       - from: build
         source: /opt/lib/python/site-packages
         destination: /opt/lib/python/site-packages
@@ -90,12 +93,12 @@ variants:
         - voikko-fi
         - wget
         - wmf-certificates
-    entrypoint: ["python3",  "model.py"]
+    entrypoint: ["python3",  "model-server/model.py"]
     builder:
       command: [./topic-prerequisites.sh]
       requirements:
         - from: local
-          source: model-server/topic-prerequisites.sh
+          source: revscoring/topic/model-server/topic-prerequisites.sh
           destination: topic-prerequisites.sh
   test:
     apt:
@@ -104,10 +107,10 @@ variants:
         - python3-setuptools
     copies:
       - from: local
-        source: model-server
+        source: revscoring/topic/model-server
         destination: model-server
     entrypoint: ["tox", "-c", "model-server/tox.ini"]
     python:
       version: python3
-      requirements: [model-server/requirements-test.txt]
+      requirements: [revscoring/topic/model-server/requirements-test.txt]
       use-system-flag: false
