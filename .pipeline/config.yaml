@@ -18,7 +18,6 @@ pipelines:
             tags: [stable]
 
   articlequality:
-    directory: revscoring/articlequality
     stages:
       - name: run-test
         build: test
@@ -28,7 +27,6 @@ pipelines:
 
   articlequality-publish:
     blubberfile: articlequality/blubber.yaml
-    directory: revscoring/articlequality
     stages:
       - name: publish
         build: production
