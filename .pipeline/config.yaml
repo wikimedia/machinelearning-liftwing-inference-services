@@ -36,7 +36,6 @@ pipelines:
             tags: [stable]
 
   draftquality:
-    directory: revscoring/draftquality
     stages:
       - name: run-test
         build: test
@@ -46,7 +45,6 @@ pipelines:
 
   draftquality-publish:
     blubberfile: draftquality/blubber.yaml
-    directory: revscoring/draftquality
     stages:
       - name: publish
         build: production
