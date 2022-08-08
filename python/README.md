@@ -13,3 +13,23 @@ will be added in the same directory as the target `model.py` file.
 The `python` directory contains a `requirements.txt` file that is evaluated
 by Blubber when building the Dockerfile. In this way we can list dependencies
 needed for the shared code as well.
+
+# What Docker images are rebuilt when a Python module in this directory is changed?
+
+In the [integration/config](https://gerrit.wikimedia.org/r/admin/repos/integration/config)
+repository there is a config file called `zuul/layout.yaml`, it contains all
+the instructions to rebuild Docker images when specific files are changed/merged.
+
+For example:
+
+```
+- name: ^trigger-inference-services-pipeline-editquality
+  files:
+      - '.pipeline/editquality/blubber.yaml'
+      - '.pipeline/config.yaml'
+      - 'revscoring/editquality/model-server/.*'
+      - 'python/.*\.py$'
+```
+
+So any change in this directory's Python files will trigger a complete image
+rebuild.
