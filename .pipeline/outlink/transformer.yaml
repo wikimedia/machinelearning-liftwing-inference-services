@@ -34,6 +34,9 @@ variants:
       - from: local
         source: outlink-topic-model/transformer/setup.py
         destination: .
+      - from: local
+        source: python/*.py
+        destination: ./
       - from: build
         source: /opt/lib/python/site-packages
         destination: /opt/lib/python/site-packages

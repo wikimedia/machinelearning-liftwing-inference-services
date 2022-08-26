@@ -1,5 +1,7 @@
 import os
 import logging
+import asyncio
+import atexit
 from typing import Dict, Set
 from http import HTTPStatus
 
@@ -8,27 +10,50 @@ import mwapi
 import tornado.web
 import aiohttp
 
+import preprocess_utils
 
 logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
 
 
-async def get_outlinks(title: str, lang: str, limit=1000) -> Set:
-    """Gather set of up to `limit` outlinks for an article."""
-    wiki_url = os.environ.get("WIKI_URL")
-    if wiki_url is None:
-        # other domains like wikibooks etc are not supported.
-        wiki_url = "https://{0}.wikipedia.org".format(lang)
-    async with aiohttp.ClientSession() as s:
+class OutlinkTransformer(kserve.Model):
+    def __init__(self, name: str, predictor_host: str):
+        super().__init__(name)
+        self.predictor_host = predictor_host
+        self.REVISION_CREATE_EVENT_KEY = "revision_create_event"
+        self.CUSTOM_UA = "WMF ML Team outlink-topic-model svc"
+        self._http_client_session = aiohttp.ClientSession()
+        atexit.register(self._shutdown)
+
+    @property
+    def http_client_session(self):
+        if self._http_client_session.closed:
+            logging.info("Asyncio session closed, opening a new one.")
+            self._http_client_session = aiohttp.ClientSession()
+        return self._http_client_session
+
+    def _shutdown(self):
+        if not self._http_client_session.closed:
+            logging.info("Closing asyncio session")
+            asyncio.run(self._http_client_session.close())
+
+    async def get_outlinks(self, title: str, lang: str, limit=1000) -> Set:
+        """Gather set of up to `limit` outlinks for an article."""
+        wiki_url = os.environ.get("WIKI_URL")
+        if wiki_url is None:
+            # other domains like wikibooks etc are not supported.
+            wiki_url = "https://{0}.wikipedia.org".format(lang)
         if wiki_url.endswith("wmnet"):
             # accessing MediaWiki API from within internal networks
             # is to use https://api-ro.discovery.wmnet and set the
             # HTTP Host header to the domain of the site you want
             # to access.
-            s.headers.update({"Host": "{0}.wikipedia.org".format(lang)})
+            self.http_client_session.headers.update(
+                {"Host": "{0}.wikipedia.org".format(lang)}
+            )
         session = mwapi.AsyncSession(
             wiki_url,
-            user_agent=os.environ.get("CUSTOM_UA"),
-            session=s,
+            user_agent=self.CUSTOM_UA,
+            session=self.http_client_session,
         )
         # generate list of all outlinks (to namespace 0) from
         # the article and their associated Wikidata IDs
@@ -57,28 +82,11 @@ async def get_outlinks(title: str, lang: str, limit=1000) -> Set:
                 break
         return outlink_qids
 
-
-class OutlinkTransformer(kserve.Model):
-    def __init__(self, name: str, predictor_host: str):
-        super().__init__(name)
-        self.predictor_host = predictor_host
-
     async def preprocess(self, inputs: Dict) -> Dict:
-        """Get outlinks and features_str. Returns dict."""
-        try:
-            lang = inputs["lang"]
-        except KeyError:
-            raise tornado.web.HTTPError(
-                status_code=HTTPStatus.BAD_REQUEST,
-                reason='Missing "lang" in input data.',
-            )
-        try:
-            page_title = inputs["page_title"]
-        except KeyError:
-            raise tornado.web.HTTPError(
-                status_code=HTTPStatus.BAD_REQUEST,
-                reason='Missing "page_title" in input data.',
-            )
+        lang = preprocess_utils.get_lang(inputs, self.REVISION_CREATE_EVENT_KEY)
+        page_title = preprocess_utils.get_page_title(
+            inputs, self.REVISION_CREATE_EVENT_KEY
+        )
         threshold = inputs.get("threshold", 0.5)
         if not isinstance(threshold, float):
             raise tornado.web.HTTPError(
@@ -95,7 +103,7 @@ class OutlinkTransformer(kserve.Model):
             features_str = inputs["features_str"]
         else:
             try:
-                outlinks = await get_outlinks(page_title, lang)
+                outlinks = await self.get_outlinks(page_title, lang)
             except KeyError:
                 # No matching article or the page has no outlinks
                 raise tornado.web.HTTPError(
@@ -116,13 +124,18 @@ class OutlinkTransformer(kserve.Model):
                     ),
                 )
             features_str = " ".join(outlinks)
-        return {
+        request = {
             "features_str": features_str,
             "page_title": page_title,
             "lang": lang,
             "threshold": threshold,
             "debug": debug,
         }
+        if self.REVISION_CREATE_EVENT_KEY in inputs:
+            request[self.REVISION_CREATE_EVENT_KEY] = inputs[
+                self.REVISION_CREATE_EVENT_KEY
+            ]
+        return request
 
     def postprocess(self, outputs: Dict) -> Dict:
         topics = outputs["topics"]

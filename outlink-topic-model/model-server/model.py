@@ -1,8 +1,13 @@
 import os
+import logging
 from typing import Dict
 
 import kserve
 import fasttext
+
+import events
+
+logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
 
 
 class OutlinksTopicModel(kserve.Model):
@@ -10,12 +15,19 @@ class OutlinksTopicModel(kserve.Model):
         super().__init__(name)
         self.name = name
         self.ready = False
+        self.REVISION_CREATE_EVENT_KEY = "revision_create_event"
+        self.EVENTGATE_URL = os.environ.get("EVENTGATE_URL")
+        self.EVENTGATE_STREAM = os.environ.get("EVENTGATE_STREAM")
+        # Deployed via the wmf-certificates package
+        self.TLS_CERT_BUNDLE_PATH = "/etc/ssl/certs/wmf-ca-certificates.crt"
+        self.CUSTOM_UA = "WMF ML Team outlink-topic-model svc"
+        self.MODEL_VERSION = os.environ.get("MODEL_VERSION")
 
     def load(self):
         self.model = fasttext.load_model("/mnt/models/model.bin")
         self.ready = True
 
-    def predict(self, request: Dict) -> Dict:
+    async def predict(self, request: Dict) -> Dict:
         features_str = request["features_str"]
         page_title = request["page_title"]
         lang = request["lang"]
@@ -42,7 +54,27 @@ class OutlinksTopicModel(kserve.Model):
                     sorted_res[0][0], sorted_res[0][1], sorted_res[0][2]
                 )
             )
-
+        self.prediction_results = {
+            "prediction": lbls_above_threshold,
+            "probability": {r[0]: r[1] for r in sorted_res},
+        }
+        # Send a revision-score event to EventGate, generated from
+        # the revision-create event passed as input.
+        if self.REVISION_CREATE_EVENT_KEY in request:
+            revision_score_event = events.generate_revision_score_event(
+                request[self.REVISION_CREATE_EVENT_KEY],
+                self.EVENTGATE_STREAM,
+                self.MODEL_VERSION,
+                self.prediction_results,
+                "outlink",
+            )
+            await events.send_event(
+                revision_score_event,
+                self.EVENTGATE_URL,
+                self.TLS_CERT_BUNDLE_PATH,
+                self.CUSTOM_UA,
+                self._http_client,
+            )
         return {"topics": above_threshold, "lang": lang, "page_title": page_title}
 
 
