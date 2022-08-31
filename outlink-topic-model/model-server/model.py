@@ -1,7 +1,8 @@
-import kserve
-import fasttext
 import os
 from typing import Dict
+
+import kserve
+import fasttext
 
 
 class OutlinksTopicModel(kserve.Model):
@@ -16,11 +17,10 @@ class OutlinksTopicModel(kserve.Model):
 
     def predict(self, request: Dict) -> Dict:
         features_str = request["features_str"]
-        # outlinks = request["outlinks"]
-        threshold = request.get("threshold", 0.5)
-        debug = request.get("debug")
-        lang = request.get("lang")
-        page_title = request.get("page_title")
+        page_title = request["page_title"]
+        lang = request["lang"]
+        threshold = request["threshold"]
+        debug = request["debug"]
         lbls, scores = self.model.predict(features_str, k=-1)
         results = {lb: s for lb, s in zip(lbls, scores)}
         sorted_res = [

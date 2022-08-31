@@ -1,11 +1,12 @@
-import kserve
-from typing import Dict, Set
-import logging
-import mwapi
 import os
-import tornado.web
-from http import HTTPStatus
+import logging
 import asyncio
+from typing import Dict, Set
+from http import HTTPStatus
+
+import kserve
+import mwapi
+import tornado.web
 import aiohttp
 
 logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
@@ -92,25 +93,28 @@ class OutlinkTransformer(kserve.Model):
             # predicted topics, so it sets the threshold to 0
             debug = True
             threshold = 0.0
-        try:
-            outlinks = await get_outlinks(page_title, lang)
-        except KeyError:
-            # No matching article or the page has no outlinks
-            raise tornado.web.HTTPError(
-                status_code=HTTPStatus.BAD_REQUEST,
-                reason="No matching article or the page has no outlinks",
-            )
-        except RuntimeError:
-            logging.error(
-                "MediaWiki returned an error."
-                " lang - {}, title - {}".format(lang, page_title),
-                exc_info=True,
-            )
-            raise tornado.web.HTTPError(
-                status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
-                reason="An internal error encountered. Please contact the WMF ML team.",
-            )
-        features_str = " ".join(outlinks)
+        if "features_str" in inputs:
+            features_str = inputs["features_str"]
+        else:
+            try:
+                outlinks = await get_outlinks(page_title, lang)
+            except KeyError:
+                # No matching article or the page has no outlinks
+                raise tornado.web.HTTPError(
+                    status_code=HTTPStatus.BAD_REQUEST,
+                    reason="No matching article or the page has no outlinks",
+                )
+            except RuntimeError:
+                logging.error(
+                    "MediaWiki returned an error."
+                    " lang - {}, title - {}".format(lang, page_title),
+                    exc_info=True,
+                )
+                raise tornado.web.HTTPError(
+                    status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+                    reason="An internal error encountered. Please contact the WMF ML team.",
+                )
+            features_str = " ".join(outlinks)
         return {
             "features_str": features_str,
             "page_title": page_title,
