@@ -4,9 +4,15 @@ The `python` directory is used in the Blubber config (see the `.pipeline` direct
 to share code between model server implementations (the `model.py` files).
 There is a glob `*.py` in various Blubber configs that copies all Python modules
 defined in this directory to the model-server one (created and added in
-the Docker images). Please note that there is still no configuration to copy
+the Docker images). Please note that there is still no general configuration to copy
 .py files created in subdirectories. All .py files copied from this directory
 will be added in the same directory as the target `model.py` file.
+
+There is only one exception to the above rule, namely the `revscoring`
+subdirectory. It has its own set of .py modules and a requirements.txt file.
+The idea is to have a single place where all the revscoring-related code is
+added, in order to avoid carrying the `revscoring` dependency over to models
+that don't come from ORES or that are not revscoring-based.
 
 # How are dependencies handled?
 

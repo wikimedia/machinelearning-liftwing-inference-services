@@ -14,18 +14,11 @@ import tornado.httpclient
 from revscoring import Model
 from revscoring.errors import RevisionNotFound
 from revscoring.extractors import api
-from revscoring.extractors.api import MWAPICache
 from revscoring.features import trim
-from mwapi.errors import (
-    APIError,
-    ConnectionError,
-    RequestError,
-    TimeoutError,
-    TooManyRedirectsError,
-)
 
 import events
 import preprocess_utils
+import extractor_utils
 
 logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
 
@@ -63,118 +56,19 @@ class EditQualityModel(kserve.Model):
         wiki_host = os.environ.get("WIKI_HOST")
 
         async with aiohttp.ClientSession() as s:
-            if wiki_host:
-                s.headers.update({"Host": wiki_host})
-
-            session = mwapi.AsyncSession(wiki_url, user_agent=self.CUSTOM_UA, session=s)
-
-            # Get all info from MediaWiki API.
-            # The revscoring API extractor can automatically fetch
-            # data from the MW API as well, but sadly only with blocking
-            # IO (namely, using Session from the mwapi package).
-            # Since KServe works with Tornado and asyncio, we prefer
-            # to use mwapi's AsyncSession and pass the data (as MWAPICache)
-            # to revscoring.
-            # From tests in T309623, the API extractor fetches:
-            # - info related to the rev-id
-            # - user and parent-rev-id data as well
-            # The total is 3 MW API calls.
-            params = {
-                "rvprop": {
-                    "content",
-                    "userid",
-                    "size",
-                    "contentmodel",
-                    "ids",
-                    "user",
-                    "comment",
-                    "timestamp",
-                }
-            }
-            try:
-                rev_id_doc = await asyncio.create_task(
-                    session.get(
-                        action="query",
-                        prop="revisions",
-                        revids=[rev_id],
-                        rvslots="main",
-                        **params
-                    )
-                )
-
-                # The output returned by the MW API is a little
-                # convoluted and probably meant for batches of rev-ids.
-                # In our case we fetch only one rev-id at the time,
-                # so we can use assumptions about how many elements
-                # there will be in the results.
-                try:
-                    revision_info = list(rev_id_doc.get("query").get("pages").values())[
-                        0
-                    ]["revisions"][0]
-                except Exception as e:
-                    logger.error(
-                        "The rev-id doc retrieved from the MW API "
-                        "does not contain all the data needed "
-                        "to extract features properly. "
-                        "The error is {} and the document is: {}".format(e, rev_id_doc)
-                    )
-                    raise tornado.web.HTTPError(
-                        status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
-                        reason=(
-                            "The rev-id doc retrieved from the MW API "
-                            "does not contain all the data needed "
-                            "to extract features properly. Please contact the ML-Team if the issue persists."
-                        ),
-                    )
-
-                parent_rev_id = revision_info.get("parentid")
-                user = revision_info.get("user")
-                user_params = {
-                    "usprop": {"groups", "registration", "editcount", "gender"}
-                }
-
-                parent_rev_id_doc, user_doc = await asyncio.gather(
-                    session.get(
-                        action="query",
-                        prop="revisions",
-                        revids=[parent_rev_id],
-                        rvslots="main",
-                        **params
-                    ),
-                    session.get(
-                        action="query", list="users", ususers=[user], **user_params
-                    ),
-                )
-            except (
-                APIError,
-                ConnectionError,
-                RequestError,
-                TimeoutError,
-                TooManyRedirectsError,
-            ) as e:
-                logging.error(
-                    "An error has occurred while fetching feature "
-                    "values from the MW API: {}".format(e)
-                )
-                raise tornado.web.HTTPError(
-                    status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
-                    reason=(
-                        "An error happened while fetching feature values from "
-                        "the MediaWiki API, please contact the ML-Team "
-                        "if the issue persists."
-                    ),
-                )
-
-            # Populate the MWAPICache
-            http_cache = MWAPICache()
-            http_cache.add_revisions_batch_doc([rev_id], rev_id_doc)
-            http_cache.add_revisions_batch_doc([parent_rev_id], parent_rev_id_doc)
-            http_cache.add_users_batch_doc([user], user_doc)
+            mw_http_cache = await extractor_utils.get_revscoring_extractor_cache(
+                rev_id,
+                self.CUSTOM_UA,
+                s,
+                wiki_url=wiki_url,
+                wiki_host=wiki_host,
+                fetch_extra_info=True,
+            )
 
             # Call the extractor with the MWAPICache
             self.extractor = api.Extractor(
-                mwapi.Session(wiki_url, user_agent=self.CUSTOM_UA, session=s),
-                http_cache=http_cache,
+                mwapi.Session(wiki_url, user_agent=self.CUSTOM_UA),
+                http_cache=mw_http_cache,
             )
             inputs[self.FEATURE_VAL_KEY] = self.fetch_editquality_features(rev_id)
             if extended_output:

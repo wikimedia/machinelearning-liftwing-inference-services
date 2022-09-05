@@ -10,7 +10,10 @@ variants:
   build:
     python:
       version: python3.7
-      requirements: [revscoring/editquality/model-server/requirements.txt, python/requirements.txt]
+      requirements:
+        - revscoring/editquality/model-server/requirements.txt
+        - python/requirements.txt
+        - python/revscoring/requirements.txt
     apt:
       packages:
         - python3-pip
@@ -34,6 +37,9 @@ variants:
         destination: model-server
       - from: local
         source: python/*.py
+        destination: model-server/
+      - from: local
+        source: python/revscoring/*.py
         destination: model-server/
       - from: build
         source: /home/somebody/nltk_data
