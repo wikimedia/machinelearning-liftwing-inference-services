@@ -3,6 +3,7 @@ import os
 from http import HTTPStatus
 from typing import Dict
 
+import aiohttp
 import kserve
 import mwapi
 import requests
@@ -14,6 +15,7 @@ from revscoring.features import trim
 
 import events
 import preprocess_utils
+import extractor_utils
 
 
 class DraftqualityModel(kserve.Model):
@@ -35,7 +37,7 @@ class DraftqualityModel(kserve.Model):
             self.model = Model.load(f)
         self.ready = True
 
-    def preprocess(self, inputs: Dict) -> Dict:
+    async def preprocess(self, inputs: Dict) -> Dict:
         """Retrieve features from mediawiki."""
         rev_id = preprocess_utils.get_rev_id(inputs, self.REVISION_CREATE_EVENT_KEY)
         # The predict() function needs to parse the revision_create_event
@@ -46,25 +48,33 @@ class DraftqualityModel(kserve.Model):
         extended_output = inputs.get("extended_output", False)
         wiki_url = os.environ.get("WIKI_URL")
         wiki_host = os.environ.get("WIKI_HOST")
-        if wiki_host:
-            s = requests.Session()
-            s.headers.update({"Host": wiki_host})
-        else:
-            s = None
-        ua = self.CUSTOM_UA
-        self.extractor = api.Extractor(
-            mwapi.Session(wiki_url, user_agent=ua, session=s)
-        )
-        inputs[self.FEATURE_VAL_KEY] = self._fetch_draftquality_features(rev_id)
-        if extended_output:
-            base_feature_values = self.extractor.extract(
-                rev_id, list(trim(self.model.features))
+
+        async with aiohttp.ClientSession() as s:
+            mw_http_cache = await extractor_utils.get_revscoring_extractor_cache(
+                rev_id,
+                self.CUSTOM_UA,
+                s,
+                wiki_url=wiki_url,
+                wiki_host=wiki_host,
+                fetch_extra_info=True,
             )
-            inputs[self.EXTENDED_OUTPUT_KEY] = {
-                str(f): v
-                for f, v in zip(list(trim(self.model.features)), base_feature_values)
-            }
-        return inputs
+
+            self.extractor = api.Extractor(
+                mwapi.Session(wiki_url, user_agent=self.CUSTOM_UA),
+                http_cache=mw_http_cache,
+            )
+            inputs[self.FEATURE_VAL_KEY] = self._fetch_draftquality_features(rev_id)
+            if extended_output:
+                base_feature_values = self.extractor.extract(
+                    rev_id, list(trim(self.model.features))
+                )
+                inputs[self.EXTENDED_OUTPUT_KEY] = {
+                    str(f): v
+                    for f, v in zip(
+                        list(trim(self.model.features)), base_feature_values
+                    )
+                }
+            return inputs
 
     async def predict(self, request: Dict) -> Dict:
         feature_values = request.get(self.FEATURE_VAL_KEY)

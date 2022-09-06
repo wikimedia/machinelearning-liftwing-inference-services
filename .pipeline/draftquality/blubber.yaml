@@ -35,6 +35,9 @@ variants:
       - from: local
         source: python/*.py
         destination: model-server/
+      - from: local
+        source: python/revscoring/*.py
+        destination: model-server/
       - from: build
         source: /home/somebody/nltk_data
         destination: /home/somebody/nltk_data
