@@ -1,5 +1,4 @@
 import aiohttp
-import asyncio
 import articlequality
 import kserve
 import os
@@ -12,18 +11,11 @@ import tornado.web
 
 from http import HTTPStatus
 from revscoring.extractors import api
-from revscoring.extractors.api import MWAPICache
 from revscoring.features import trim
-from mwapi.errors import (
-    APIError,
-    ConnectionError,
-    RequestError,
-    TimeoutError,
-    TooManyRedirectsError,
-)
 
 import events
 import preprocess_utils
+import extractor_utils
 
 
 class ArticlequalityModel(kserve.Model):
@@ -58,80 +50,23 @@ class ArticlequalityModel(kserve.Model):
         wiki_host = os.environ.get("WIKI_HOST")
 
         async with aiohttp.ClientSession() as s:
-            if wiki_host:
-                s.headers.update({"Host": wiki_host})
-
+            # Since we need the mwapi AsyncSession in multiple parts of the code,
+            # we create one at the beginning and pass it along.
             session = mwapi.AsyncSession(wiki_url, user_agent=self.CUSTOM_UA, session=s)
 
-            # Get all info from MediaWiki API.
-            # The revscoring API extractor can automatically fetch
-            # data from the MW API as well, but sadly only with blocking
-            # IO (namely, using Session from the mwapi package).
-            # Since KServe works with Tornado and asyncio, we prefer
-            # to use mwapi's AsyncSession and pass the data (as MWAPICache)
-            # to revscoring.
-            # From tests in T309623, the API extractor fetches:
-            # - info related to the rev-id
-            # - user and parent-rev-id data as well
-            # The total is 3 MW API calls.
-            params = {
-                "rvprop": {
-                    "comment",
-                    "contentmodel",
-                    "timestamp",
-                    "content",
-                    "size",
-                    "userid",
-                    "ids",
-                    "user",
-                }
-            }
-            try:
-                rev_id_doc = await asyncio.create_task(
-                    session.get(
-                        action="query",
-                        prop="revisions",
-                        revids=[rev_id],
-                        rvslots="main",
-                        **params
-                    )
-                )
-            except (
-                APIError,
-                ConnectionError,
-                RequestError,
-                TimeoutError,
-                TooManyRedirectsError,
-            ) as e:
-                logging.error(
-                    "An error has occurred while fetching feature "
-                    "values from the MW API: {}".format(e)
-                )
-                raise tornado.web.HTTPError(
-                    status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
-                    reason=(
-                        "An error happened while fetching feature values from "
-                        "the MediaWiki API, please contact the ML-Team "
-                        "if the issue persists."
-                    ),
-                )
+            mw_http_cache = await extractor_utils.get_revscoring_extractor_cache(
+                rev_id,
+                self.CUSTOM_UA,
+                s,
+                wiki_url=wiki_url,
+                wiki_host=wiki_host,
+                fetch_extra_info=False,
+                mwapi_session=session,
+            )
 
-            # Populate the MWAPICache
-            http_cache = MWAPICache()
-            http_cache.add_revisions_batch_doc([rev_id], rev_id_doc)
-
-            # Get all info from MediaWiki API.
-            # The revscoring API extractor can automatically fetch
-            # data from the MW API as well, but sadly only with blocking
-            # IO (namely, using Session from the mwapi package).
-            # Since KServe works with Tornado and asyncio, we prefer
-            # to use mwapi's AsyncSession and pass the data (as MWAPICache)
-            # to revscoring.
-            # From manual tests, the API extractor fetches only info related
-            # to the rev-id, so a total of 1 MW API calls.
             self.extractor = api.Extractor(
-                mwapi.Session(wiki_url, user_agent=self.CUSTOM_UA, session=s),
-                http_cache=http_cache,
+                mwapi.Session(wiki_url, user_agent=self.CUSTOM_UA),
+                http_cache=mw_http_cache,
             )
             inputs[self.FEATURE_VAL_KEY] = await self._fetch_articlequality_text(
                 session, rev_id
@@ -189,15 +124,13 @@ class ArticlequalityModel(kserve.Model):
         self, http_session: mwapi.AsyncSession, rev_id: int
     ) -> Dict:
         """Retrieve article text features."""
-        doc = await asyncio.create_task(
-            http_session.get(
-                action="query",
-                prop="revisions",
-                revids=[rev_id],
-                rvprop=["ids", "content"],
-                rvslots=["main"],
-                formatversion=2,
-            )
+        doc = await http_session.get(
+            action="query",
+            prop="revisions",
+            revids=[rev_id],
+            rvprop=["ids", "content"],
+            rvslots=["main"],
+            formatversion=2,
         )
         try:
             rev_doc = doc["query"]["pages"][0]["revisions"][0]
