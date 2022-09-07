@@ -55,7 +55,7 @@ async def get_revscoring_extractor_cache(
             The revscoring api extractor's MWAPICache fetched via async HTTP calls.
     """
     if wiki_host:
-        s.headers.update({"Host": wiki_host})
+        client_session.headers.update({"Host": wiki_host})
 
     if mwapi_session:
         session = mwapi_session
