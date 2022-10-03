@@ -1,6 +1,5 @@
 import os
 import logging
-import asyncio
 from typing import Dict, Set
 from http import HTTPStatus
 
@@ -8,6 +7,7 @@ import kserve
 import mwapi
 import tornado.web
 import aiohttp
+
 
 logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
 
@@ -32,20 +32,18 @@ async def get_outlinks(title: str, lang: str, limit=1000) -> Set:
         )
         # generate list of all outlinks (to namespace 0) from
         # the article and their associated Wikidata IDs
-        result = await asyncio.create_task(
-            session.get(
-                action="query",
-                generator="links",
-                titles=title,
-                redirects="",
-                prop="pageprops",
-                ppprop="wikibase_item",
-                gplnamespace=0,
-                gpllimit=50,
-                format="json",
-                formatversion=2,
-                continuation=True,
-            )
+        result = await session.get(
+            action="query",
+            generator="links",
+            titles=title,
+            redirects="",
+            prop="pageprops",
+            ppprop="wikibase_item",
+            gplnamespace=0,
+            gpllimit=500,
+            format="json",
+            formatversion=2,
+            continuation=True,
         )
         outlink_qids = set()
         async for r in result:
@@ -104,15 +102,18 @@ class OutlinkTransformer(kserve.Model):
                     status_code=HTTPStatus.BAD_REQUEST,
                     reason="No matching article or the page has no outlinks",
                 )
-            except RuntimeError:
+            except Exception as e:
                 logging.error(
-                    "MediaWiki returned an error."
-                    " lang - {}, title - {}".format(lang, page_title),
-                    exc_info=True,
+                    "Unexpected error while trying to get outlinks "
+                    "from MW API: {}".format(e)
                 )
                 raise tornado.web.HTTPError(
                     status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
-                    reason="An internal error encountered. Please contact the WMF ML team.",
+                    reason=(
+                        "An unexpected error has occurred while trying "
+                        "to get outlinks from MW API. "
+                        "Please contact the ML team for more info."
+                    ),
                 )
             features_str = " ".join(outlinks)
         return {
