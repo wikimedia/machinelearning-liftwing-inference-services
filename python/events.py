@@ -16,7 +16,7 @@ def generate_revision_score_event(
     """Generates a revision-score event, tailored for a given model,
     from a revision-create event.
     """
-    return {
+    revision_score_event = {
         "$schema": "/mediawiki/revision/score/2.0.0",
         "meta": {
             "stream": eventgate_stream,
@@ -26,16 +26,26 @@ def generate_revision_score_event(
         "page_title": rev_create_event["page_title"],
         "page_namespace": rev_create_event["page_namespace"],
         "page_is_redirect": rev_create_event["page_is_redirect"],
-        "performer": rev_create_event["performer"],
         "rev_id": rev_create_event["rev_id"],
-        "rev_parent_id": rev_create_event["rev_parent_id"],
         "rev_timestamp": rev_create_event["rev_timestamp"],
-        model_name: {
-            "model_name": model_name,
-            "model_version": model_version,
-            "predictions": predictions,
+        "scores": {
+            model_name: {
+                "model_name": model_name,
+                "model_version": model_version,
+                "prediction": [str(predictions["prediction"])],
+                "probability": predictions["probability"],
+            }
         },
     }
+
+    # The following fields are not mandatory in a mediawiki.revision-create
+    # event, so we optionally add it to the final revision-score event as well.
+    if "performer" in rev_create_event:
+        revision_score_event["performer"] = rev_create_event["performer"]
+    if "rev_parent_id" in rev_create_event:
+        revision_score_event["rev_parent_id"] = rev_create_event["rev_parent_id"]
+
+    return revision_score_event
 
 
 async def send_event(
