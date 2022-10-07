@@ -96,7 +96,7 @@ async def get_revscoring_extractor_cache(
                 "revisions"
             ][0]
         except Exception as e:
-            logger.error(
+            logging.error(
                 "The rev-id doc retrieved from the MW API "
                 "does not contain all the data needed "
                 "to extract features properly. "
