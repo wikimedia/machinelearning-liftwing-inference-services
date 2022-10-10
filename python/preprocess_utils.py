@@ -1,6 +1,7 @@
 import tornado
 from typing import Dict, Optional
 
+from http import HTTPStatus
 
 def get_revision_event(inputs: Dict, event_input_key) -> Optional[str]:
     try:

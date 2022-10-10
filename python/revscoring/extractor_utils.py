@@ -4,6 +4,8 @@ import logging
 import mwapi
 import tornado
 
+from http import HTTPStatus
+
 from mwapi.errors import (
     APIError,
     ConnectionError,
