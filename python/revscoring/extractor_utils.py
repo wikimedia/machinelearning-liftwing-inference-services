@@ -88,6 +88,24 @@ async def get_revscoring_extractor_cache(
             action="query", prop="revisions", revids=[rev_id], rvslots="main", **params
         )
 
+        # If 'badrevids' is returned by the MW API then there is something wrong
+        # with the revision id provided.
+        if "query" in rev_id_doc and "badrevids" in rev_id_doc["query"]:
+            logging.error(
+                "Received a badrevids error from the MW API for rev-id {}. "
+                "Complete response: {}".format(rev_id, rev_id_doc)
+            )
+            raise tornado.web.HTTPError(
+                status_code=HTTPStatus.BAD_REQUEST,
+                reason=(
+                    "The MW API does not have any info related to the rev-id "
+                    "provided as input ({}), therefore it is not possible to "
+                    "extract features properly. One possible cause is the deletion "
+                    "of the page related to the revision id. "
+                    "Please contact the ML-Team if you need more info.".format(rev_id)
+                ),
+            )
+
         # The output returned by the MW API is a little
         # convoluted and probably meant for batches of rev-ids.
         # In our case we fetch only one rev-id at the time,
@@ -109,7 +127,8 @@ async def get_revscoring_extractor_cache(
                 reason=(
                     "The rev-id doc retrieved from the MW API "
                     "does not contain all the data needed "
-                    "to extract features properly. Please contact the ML-Team if the issue persists."
+                    "to extract features properly. "
+                    "Please contact the ML-Team if the issue persists."
                 ),
             )
 
