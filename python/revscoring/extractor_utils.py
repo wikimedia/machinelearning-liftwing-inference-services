@@ -5,6 +5,7 @@ import mwapi
 import tornado
 
 from http import HTTPStatus
+from typing import Dict
 
 from mwapi.errors import (
     APIError,
@@ -13,7 +14,8 @@ from mwapi.errors import (
     TimeoutError,
     TooManyRedirectsError,
 )
-from revscoring.extractors.api import MWAPICache
+from revscoring.extractors.api import MWAPICache, Extractor
+from revscoring.errors import MissingResource
 
 
 async def get_revscoring_extractor_cache(
@@ -177,3 +179,25 @@ async def get_revscoring_extractor_cache(
         http_cache.add_users_batch_doc([user], user_doc)
 
     return http_cache
+
+
+def fetch_features(rev_id: int, model_features: tuple, extractor: Extractor) -> Dict:
+    """Retrieve model features using a Revscoring extractor provided
+    as input.
+     Parameters:
+         rev_id: The MediaWiki revision id to check.
+         model_features: The tuple representing the Revscoring model's features.
+         extractor: The Revscoring extractor instance to use.
+
+     Returns:
+         The feature values computed by the Revscoring extractor.
+    """
+    try:
+        feature_values = list(extractor.extract(rev_id, model_features))
+    except MissingResource as e:
+        raise tornado.web.HTTPError(
+            status_code=HTTPStatus.BAD_REQUEST,
+            reason="Missing resource for rev-id {}: {}".format(rev_id, e),
+        )
+
+    return feature_values
