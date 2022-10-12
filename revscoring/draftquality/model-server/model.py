@@ -9,7 +9,6 @@ import mwapi
 import requests
 import tornado.web
 from revscoring import Model
-from revscoring.errors import RevisionNotFound
 from revscoring.extractors import api
 from revscoring.features import trim
 
@@ -63,10 +62,12 @@ class DraftqualityModel(kserve.Model):
                 mwapi.Session(wiki_url, user_agent=self.CUSTOM_UA),
                 http_cache=mw_http_cache,
             )
-            inputs[self.FEATURE_VAL_KEY] = self._fetch_draftquality_features(rev_id)
+            inputs[self.FEATURE_VAL_KEY] = extractor_utils.fetch_features(
+                rev_id, self.model.features, self.extractor
+            )
             if extended_output:
-                base_feature_values = self.extractor.extract(
-                    rev_id, list(trim(self.model.features))
+                base_feature_values = extractor_utils.fetch_features(
+                    rev_id, list(trim(self.model.features)), self.extractor
                 )
                 inputs[self.EXTENDED_OUTPUT_KEY] = {
                     str(f): v
@@ -112,17 +113,6 @@ class DraftqualityModel(kserve.Model):
                 self._http_client,
             )
         return output
-
-    def _fetch_draftquality_features(self, rev_id: int) -> Dict:
-        """Retrieve draftquality features."""
-        try:
-            feature_values = list(self.extractor.extract(rev_id, self.model.features))
-        except RevisionNotFound:
-            raise tornado.web.HTTPError(
-                status_code=HTTPStatus.BAD_REQUEST,
-                reason="Revision {} not found".format(rev_id),
-            )
-        return feature_values
 
 
 if __name__ == "__main__":
