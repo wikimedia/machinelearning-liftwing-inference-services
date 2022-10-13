@@ -199,5 +199,16 @@ def fetch_features(rev_id: int, model_features: tuple, extractor: Extractor) -> 
             status_code=HTTPStatus.BAD_REQUEST,
             reason="Missing resource for rev-id {}: {}".format(rev_id, e),
         )
+    except UnexpectedContentType as e:
+        raise tornado.web.HTTPError(
+            status_code=HTTPStatus.BAD_REQUEST,
+            reason="Unexpected content type for rev-id {}: {}".format(rev_id, e),
+        )
+    except Exception as e:
+        raise tornado.web.HTTPError(
+            status_code=HTTPStatus.BAD_REQUEST,
+            reason="Generic error while extracting features "
+            "for rev-id {}: {}".format(rev_id, e),
+        )
 
     return feature_values
