@@ -16,6 +16,16 @@ def generate_revision_score_event(
     """Generates a revision-score event, tailored for a given model,
     from a revision-create event.
     """
+    # revision-score event schema has a prediction field of array type,
+    # see https://github.com/wikimedia/mediawiki-event-schemas/blob/master/jsonschema/mediawiki/revision/score/current.yaml#L36,
+    # so we convert the prediction field to array type accordingly.
+    p = predictions["prediction"]
+    if isinstance(p, bool):
+        prediction = [str(p).lower()]
+    elif isinstance(p, list):
+        prediction = p
+    else:
+        prediction = [p]
     revision_score_event = {
         "$schema": "/mediawiki/revision/score/2.0.0",
         "meta": {
@@ -32,7 +42,7 @@ def generate_revision_score_event(
             model_name: {
                 "model_name": model_name,
                 "model_version": model_version,
-                "prediction": [str(predictions["prediction"])],
+                "prediction": prediction,
                 "probability": predictions["probability"],
             }
         },
