@@ -5,8 +5,6 @@ from typing import Dict
 import aiohttp
 import kserve
 import mwapi
-import requests
-import tornado.web
 from revscoring import Model
 from revscoring.extractors import api
 from revscoring.features import trim
@@ -44,6 +42,8 @@ class DrafttopicModel(kserve.Model):
         self.revision_create_event = preprocess_utils.get_revision_event(
             inputs, self.REVISION_CREATE_EVENT_KEY
         )
+        if self.revision_create_event:
+            inputs["rev_id"] = rev_id
         extended_output = inputs.get("extended_output", False)
         wiki_url = os.environ.get("WIKI_URL")
         wiki_host = os.environ.get("WIKI_HOST")
@@ -80,20 +80,21 @@ class DrafttopicModel(kserve.Model):
         feature_values = request.get(self.FEATURE_VAL_KEY)
         extended_output = request.get(self.EXTENDED_OUTPUT_KEY)
         self.prediction_results = self.model.score(feature_values)
+        wiki_db, model_name = self.name.split("-")
+        rev_id = request.get("rev_id")
+        output = {
+            wiki_db: {
+                "models": {model_name: {"version": self.model.version}},
+                "scores": {rev_id: {model_name: {"score": self.prediction_results}}},
+            }
+        }
         if extended_output:
             # add extended output to reach feature parity with ORES, like:
             # https://ores.wikimedia.org/v3/scores/enwiki/1083325118/articletopic?features
             # If only rev_id is given in input.json, only the prediction results
             # will be present in the response. If the extended_output flag is true,
             # features output will be included in the response.
-            output = {
-                "predictions": self.prediction_results,
-                "features": extended_output,
-            }
-        else:
-            output = {
-                "predictions": self.prediction_results,
-            }
+            output[wiki_db]["scores"][rev_id][model_name]["features"] = extended_output
         # Send a revision-score event to EventGate, generated from
         # the revision-create event passed as input.
         if self.revision_create_event:
