@@ -15,7 +15,7 @@ from mwapi.errors import (
     TooManyRedirectsError,
 )
 from revscoring.extractors.api import MWAPICache, Extractor
-from revscoring.errors import MissingResource
+from revscoring.errors import MissingResource, UnexpectedContentType
 
 
 async def get_revscoring_extractor_cache(
