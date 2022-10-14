@@ -1,12 +1,9 @@
 import os
-from http import HTTPStatus
 from typing import Dict
 
 import aiohttp
 import kserve
 import mwapi
-import tornado.web
-import articlequality
 from revscoring import Model
 from revscoring.extractors import api
 from revscoring.features import trim
@@ -67,12 +64,12 @@ class ArticlequalityModel(kserve.Model):
                 mwapi.Session(wiki_url, user_agent=self.CUSTOM_UA),
                 http_cache=mw_http_cache,
             )
-            inputs[self.FEATURE_VAL_KEY] = await self._fetch_articlequality_text(
-                session, rev_id
+            inputs[self.FEATURE_VAL_KEY] = extractor_utils.fetch_features(
+                rev_id, self.model.features, self.extractor
             )
             if extended_output:
-                base_feature_values = self.extractor.extract(
-                    rev_id, list(trim(self.model.features))
+                base_feature_values = extractor_utils.fetch_features(
+                    rev_id, list(trim(self.model.features)), self.extractor
                 )
                 inputs[self.EXTENDED_OUTPUT_KEY] = {
                     str(f): v
@@ -85,7 +82,7 @@ class ArticlequalityModel(kserve.Model):
     async def predict(self, request: Dict) -> Dict:
         feature_values = request.get(self.FEATURE_VAL_KEY)
         extended_output = request.get(self.EXTENDED_OUTPUT_KEY)
-        self.prediction_results = articlequality.score(self.model, feature_values)
+        self.prediction_results = self.model.score(feature_values)
         wiki_db, model_name = self.name.split("-")
         rev_id = request.get("rev_id")
         output = {
@@ -119,28 +116,6 @@ class ArticlequalityModel(kserve.Model):
                 self._http_client,
             )
         return output
-
-    async def _fetch_articlequality_text(
-        self, http_session: mwapi.AsyncSession, rev_id: int
-    ) -> Dict:
-        """Retrieve article text features."""
-        doc = await http_session.get(
-            action="query",
-            prop="revisions",
-            revids=[rev_id],
-            rvprop=["ids", "content"],
-            rvslots=["main"],
-            formatversion=2,
-        )
-        try:
-            rev_doc = doc["query"]["pages"][0]["revisions"][0]
-        except (KeyError, IndexError) as e:
-            raise tornado.web.HTTPError(
-                status_code=HTTPStatus.BAD_REQUEST,
-                reason="Revision {} not found.".format(rev_id),
-            )
-        content = rev_doc["slots"]["main"].get("content")
-        return content
 
 
 if __name__ == "__main__":
