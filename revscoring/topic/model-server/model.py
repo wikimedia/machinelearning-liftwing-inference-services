@@ -1,3 +1,7 @@
+import aiohttp
+import asyncio
+import atexit
+import logging
 import os
 from http import HTTPStatus
 from typing import Dict
@@ -27,6 +31,20 @@ class DrafttopicModel(kserve.Model):
         self.CUSTOM_UA = "WMF ML Team topic model"
         # Deployed via the wmf-certificates package
         self.TLS_CERT_BUNDLE_PATH = "/etc/ssl/certs/wmf-ca-certificates.crt"
+        self._http_client_session = aiohttp.ClientSession()
+        atexit.register(self._shutdown)
+
+    @property
+    def http_client_session(self):
+        if self._http_client_session.closed:
+            logging.info("Asyncio session closed, opening a new one.")
+            self._http_client_session = aiohttp.ClientSession()
+        return self._http_client_session
+
+    def _shutdown(self):
+        if not self._http_client_session.closed:
+            logging.info("Closing asyncio session")
+            asyncio.run(self._http_client_session.close())
 
     def load(self):
         with open("/mnt/models/model.bin") as f:
@@ -48,33 +66,30 @@ class DrafttopicModel(kserve.Model):
         wiki_url = os.environ.get("WIKI_URL")
         wiki_host = os.environ.get("WIKI_HOST")
 
-        async with aiohttp.ClientSession() as s:
-            mw_http_cache = await extractor_utils.get_revscoring_extractor_cache(
-                rev_id,
-                self.CUSTOM_UA,
-                s,
-                wiki_url=wiki_url,
-                wiki_host=wiki_host,
-                fetch_extra_info=False,
+        mw_http_cache = await extractor_utils.get_revscoring_extractor_cache(
+            rev_id,
+            self.CUSTOM_UA,
+            self.http_client_session,
+            wiki_url=wiki_url,
+            wiki_host=wiki_host,
+            fetch_extra_info=False,
+        )
+        self.extractor = api.Extractor(
+            mwapi.Session(wiki_url, user_agent=self.CUSTOM_UA),
+            http_cache=mw_http_cache,
+        )
+        inputs[self.FEATURE_VAL_KEY] = extractor_utils.fetch_features(
+            rev_id, self.model.features, self.extractor
+        )
+        if extended_output:
+            base_feature_values = extractor_utils.fetch_features(
+                rev_id, list(trim(self.model.features)), self.extractor
             )
-            self.extractor = api.Extractor(
-                mwapi.Session(wiki_url, user_agent=self.CUSTOM_UA),
-                http_cache=mw_http_cache,
-            )
-            inputs[self.FEATURE_VAL_KEY] = extractor_utils.fetch_features(
-                rev_id, self.model.features, self.extractor
-            )
-            if extended_output:
-                base_feature_values = extractor_utils.fetch_features(
-                    rev_id, list(trim(self.model.features)), self.extractor
-                )
-                inputs[self.EXTENDED_OUTPUT_KEY] = {
-                    str(f): v
-                    for f, v in zip(
-                        list(trim(self.model.features)), base_feature_values
-                    )
-                }
-            return inputs
+            inputs[self.EXTENDED_OUTPUT_KEY] = {
+                str(f): v
+                for f, v in zip(list(trim(self.model.features)), base_feature_values)
+            }
+        return inputs
 
     async def predict(self, request: Dict) -> Dict:
         feature_values = request.get(self.FEATURE_VAL_KEY)
