@@ -1,5 +1,6 @@
 import asyncio
 import atexit
+import concurrent.futures
 import logging
 import os
 from typing import Dict
@@ -7,6 +8,7 @@ from typing import Dict
 import aiohttp
 import kserve
 import mwapi
+from kserve import utils as kserve_utils
 from revscoring import Model
 from revscoring.extractors import api
 from revscoring.features import trim
@@ -29,18 +31,36 @@ class ArticlequalityModel(kserve.Model):
         self.CUSTOM_UA = "WMF ML team articlequality"
         # Deployed via the wmf-certificates package
         self.TLS_CERT_BUNDLE_PATH = "/etc/ssl/certs/wmf-ca-certificates.crt"
-        self._http_client_session = aiohttp.ClientSession()
+        self._http_client_session = None
         atexit.register(self._shutdown)
+        # The default thread pool executor set by Kserve in [1] is meant
+        # for blocking I/O calls. In our cose we run async HTTP calls only,
+        # and we need separate processes to run blocking CPU-bound code
+        # to score revision ids.
+        # [1]: https://github.com/kserve/kserve/blob/release-0.8/python/kserve/kserve/model_server.py#L129-L130
+        asyncio_aux_workers = os.environ.get("ASYNCIO_AUX_WORKERS")
+        if asyncio_aux_workers is None:
+            asyncio_aux_workers = min(32, kserve_utils.cpu_count() + 4)
+        else:
+            asyncio_aux_workers = int(asyncio_aux_workers)
+
+        logging.info(
+            "Create a process pool of {} workers to support "
+            "model scoring blocking code.".format(asyncio_aux_workers)
+        )
+        self.process_pool = concurrent.futures.ProcessPoolExecutor(
+            max_workers=asyncio_aux_workers
+        )
 
     @property
     def http_client_session(self):
-        if self._http_client_session.closed:
-            logging.info("Asyncio session closed, opening a new one.")
+        if self._http_client_session is None or self._http_client_session.closed:
+            logging.info("Opening a new Asyncio session.")
             self._http_client_session = aiohttp.ClientSession()
         return self._http_client_session
 
     def _shutdown(self):
-        if not self._http_client_session.closed:
+        if self._http_client_session and not self._http_client_session.closed:
             logging.info("Closing asyncio session")
             asyncio.run(self._http_client_session.close())
 
@@ -91,7 +111,13 @@ class ArticlequalityModel(kserve.Model):
     async def predict(self, request: Dict) -> Dict:
         feature_values = request.get(self.FEATURE_VAL_KEY)
         extended_output = request.get(self.EXTENDED_OUTPUT_KEY)
-        self.prediction_results = self.model.score(feature_values)
+        # The score method is blocking code,
+        # so we try to offload it to the asyncio's processpool
+        # executor that is sets while the model server bootstraps.
+        loop = asyncio.get_event_loop()
+        self.prediction_results = await loop.run_in_executor(
+            self.process_pool, self.model.score, feature_values
+        )
         wiki_db, model_name = self.name.split("-")
         rev_id = request.get("rev_id")
         output = {
