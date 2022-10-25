@@ -9,7 +9,6 @@ from typing import Dict
 import aiohttp
 import kserve
 import mwapi
-import tornado.web
 from kserve import utils as kserve_utils
 from revscoring import Model
 from revscoring.extractors import api
@@ -35,7 +34,7 @@ class EditQualityModel(kserve.Model):
         self.CUSTOM_UA = "WMF ML Team editquality model svc"
         # Deployed via the wmf-certificates package
         self.TLS_CERT_BUNDLE_PATH = "/etc/ssl/certs/wmf-ca-certificates.crt"
-        self._http_client_session = aiohttp.ClientSession()
+        self._http_client_session = None
         atexit.register(self._shutdown)
         # The default thread pool executor set by Kserve in [1] is meant
         # for blocking I/O calls. In our cose we run async HTTP calls only,
@@ -58,13 +57,13 @@ class EditQualityModel(kserve.Model):
 
     @property
     def http_client_session(self):
-        if self._http_client_session.closed:
-            logging.info("Asyncio session closed, opening a new one.")
+        if self._http_client_session is None or self._http_client_session.closed:
+            logging.info("Opening a new Asyncio session.")
             self._http_client_session = aiohttp.ClientSession()
         return self._http_client_session
 
     def _shutdown(self):
-        if not self._http_client_session.closed:
+        if self._http_client_session and not self._http_client_session.closed:
             logging.info("Closing asyncio session")
             asyncio.run(self._http_client_session.close())
 
