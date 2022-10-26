@@ -1,0 +1,53 @@
+version: v4
+base: docker-registry.wikimedia.org/buster:20221023
+runs:
+  insecurely: true
+
+lives:
+  in: /srv/revert-risk-model
+
+variants:
+  build:
+    python:
+      version: python3
+      requirements: [revert-risk-model/model-server/requirements.txt]
+    apt:
+      packages:
+        - build-essential
+        - python3-pip
+        - python3-dev
+        - python3-setuptools
+        - git
+    builder:
+      command: ["rm -rf /var/cache/apk/*"]
+
+  production:
+    copies:
+      - from: local
+        source: revert-risk-model/model-server
+        destination: model-server
+      - from: build
+        source: /opt/lib/python/site-packages
+        destination: /opt/lib/python/site-packages
+    apt:
+      packages:
+        - python3
+        - wmf-certificates
+    python:
+      version: python3
+      use-system-flag: false
+    entrypoint: ["python3",  "model-server/model.py"]
+
+  test:
+    apt:
+      packages:
+        - python3-pip
+    copies:
+      - from: local
+        source: revert-risk-model/model-server
+        destination: model-server
+    entrypoint: ["tox", "-c", "model-server/tox.ini"]
+    python:
+      version: python3
+      use-system-flag: false
+      requirements: [revert-risk-model/model-server/requirements-test.txt]

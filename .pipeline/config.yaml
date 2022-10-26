@@ -126,3 +126,21 @@ pipelines:
           image:
             name: '${setup.project}-nsfw'
             tags: [stable]
+
+  revertrisk:
+    stages:
+      - name: run-test
+        build: test
+        run: true
+      - name: production
+        build: production
+
+  revertrisk-publish:
+    blubberfile: revertrisk/blubber.yaml
+    stages:
+      - name: publish
+        build: production
+        publish:
+          image:
+            name: '${setup.project}-revertrisk'
+            tags: [stable]
