@@ -1,3 +1,4 @@
+import os
 import asyncio
 import atexit
 import logging
@@ -21,6 +22,7 @@ class RevisionRevertRiskModel(kserve.Model):
         self.name = name
         self.ready = False
         self._http_client_session = None
+        self.WIKI_URL = os.environ.get("WIKI_URL")
         atexit.register(self._shutdown)
 
     @property
@@ -57,8 +59,14 @@ class RevisionRevertRiskModel(kserve.Model):
                 status_code=HTTPStatus.BAD_REQUEST,
                 reason="The parameter rev_id is required.",
             )
+        if self.WIKI_URL is None:
+            self.WIKI_URL = f"https://{lang}.wikipedia.org"
+        elif self.WIKI_URL.endswith("wmnet"):
+            # access MediaWiki API from internal networks
+            # e.g. https://api-ro.discovery.wmnet
+            self.http_client_session.headers.update({"Host": f"{lang}.wikipedia.org"})
         session = mwapi.AsyncSession(
-            f"https://{lang}.wikipedia.org",
+            self.WIKI_URL,
             user_agent="WMF ML Team revert-risk-model isvc",
             session=self.http_client_session,
         )

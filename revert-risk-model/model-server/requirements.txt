@@ -46,7 +46,7 @@ isodate==0.6.1
 jmespath==0.10.0
 joblib==1.2.0
 jsonschema==4.16.0
-git+https://gitlab.wikimedia.org/repos/research/knowledge_integrity.git
+git+https://gitlab.wikimedia.org/repos/research/knowledge_integrity.git@v0.1.0
 kserve==0.8.0
 kubernetes==17.17.0
 minio==6.0.2
