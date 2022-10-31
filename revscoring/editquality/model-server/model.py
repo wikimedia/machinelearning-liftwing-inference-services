@@ -1,22 +1,22 @@
 import asyncio
 import atexit
-import concurrent.futures
 import logging
 import os
+from concurrent.futures.process import BrokenProcessPool
 from http import HTTPStatus
 from typing import Dict
 
 import aiohttp
 import kserve
 import mwapi
-from kserve import utils as kserve_utils
 from revscoring import Model
 from revscoring.extractors import api
 from revscoring.features import trim
 
 import events
-import preprocess_utils
 import extractor_utils
+import preprocess_utils
+import process_utils
 
 logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
 
@@ -36,24 +36,13 @@ class EditQualityModel(kserve.Model):
         self.TLS_CERT_BUNDLE_PATH = "/etc/ssl/certs/wmf-ca-certificates.crt"
         self._http_client_session = None
         atexit.register(self._shutdown)
-        # The default thread pool executor set by Kserve in [1] is meant
-        # for blocking I/O calls. In our cose we run async HTTP calls only,
-        # and we need separate processes to run blocking CPU-bound code
-        # to score revision ids.
-        # [1]: https://github.com/kserve/kserve/blob/release-0.8/python/kserve/kserve/model_server.py#L129-L130
-        asyncio_aux_workers = os.environ.get("ASYNCIO_AUX_WORKERS")
-        if asyncio_aux_workers is None:
-            asyncio_aux_workers = min(32, kserve_utils.cpu_count() + 4)
-        else:
-            asyncio_aux_workers = int(asyncio_aux_workers)
-
-        logging.info(
-            "Create a process pool of {} workers to support "
-            "model scoring blocking code.".format(asyncio_aux_workers)
-        )
-        self.process_pool = concurrent.futures.ProcessPoolExecutor(
-            max_workers=asyncio_aux_workers
-        )
+        self.run_in_process_pool = False
+        if os.environ.get("ASYNCIO_USE_PROCESS_POOL"):
+            self.run_in_process_pool = True
+            self.asyncio_aux_workers = os.environ.get("ASYNCIO_AUX_WORKERS")
+            self.process_pool = process_utils.create_process_pool(
+                self.asyncio_aux_workers
+            )
 
     @property
     def http_client_session(self):
@@ -132,14 +121,25 @@ class EditQualityModel(kserve.Model):
     async def predict(self, request: Dict) -> Dict:
         feature_values = request.get(self.FEATURE_VAL_KEY)
         extended_output = request.get(self.EXTENDED_OUTPUT_KEY)
-        # The score method is blocking code,
-        # so we try to offload it to the asyncio's processpool
-        # executor that KServe sets while bootstrapping
-        # the model server.
-        loop = asyncio.get_event_loop()
-        self.prediction_results = await loop.run_in_executor(
-            self.process_pool, self.model.score, feature_values
-        )
+        if self.run_in_process_pool:
+            loop = asyncio.get_event_loop()
+            try:
+                self.prediction_results = await process_utils.run_in_process_pool(
+                    self.process_pool, self.model.score, feature_values
+                )
+            except BrokenProcessPool as e:
+                logging.error(
+                    "BrokenProcessPool exeption raised by "
+                    "the process pool. Re-creation of a newer process pool "
+                    "before proceeding."
+                )
+                self.process_pool.shutdown()
+                self.process_pool = process_utils.create_process_pool(
+                    self.asyncio_aux_workers
+                )
+
+        else:
+            self.prediction_results = self.model.score(feature_values)
         wiki_db, model_name = self.name.split("-")
         rev_id = request.get("rev_id")
         output = {
