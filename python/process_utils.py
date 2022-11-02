@@ -36,6 +36,14 @@ def create_process_pool(asyncio_aux_workers=None) -> ProcessPoolExecutor:
     return ProcessPoolExecutor(max_workers=asyncio_aux_workers)
 
 
+def refresh_process_pool(process_pool: ProcessPoolExecutor, asyncio_aux_workers: int):
+    """Shutdown and re-create a process pool. Useful when exeptions like
+    BrokenProcessPool are raised (the pool is unusable after that).
+    """
+    process_pool.shutdown()
+    return create_process_pool(asyncio_aux_workers)
+
+
 @elapsed_time_async
 async def run_in_process_pool(
     process_pool: ProcessPoolExecutor, function, *function_args
@@ -54,5 +62,5 @@ async def run_in_process_pool(
         the return data is passed as-is.
     """
     return await asyncio.get_event_loop().run_in_executor(
-        process_pool, function, function_args
+        process_pool, function, *function_args
     )

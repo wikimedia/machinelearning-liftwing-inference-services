@@ -12,6 +12,7 @@ from revscoring.extractors import api
 from revscoring.features import trim
 
 import events
+import logging_utils
 import preprocess_utils
 import extractor_utils
 
@@ -31,6 +32,10 @@ class ArticlequalityModel(kserve.Model):
         self.TLS_CERT_BUNDLE_PATH = "/etc/ssl/certs/wmf-ca-certificates.crt"
         self._http_client_session = None
         atexit.register(self._shutdown)
+        # FIXME: this may not be needed, in theory we could simply rely on
+        # kserve.constants.KSERVE_LOGLEVEL (passing KSERVE_LOGLEVEL as env var)
+        # but it doesn't seem to work.
+        logging_utils.set_log_level()
 
     @property
     def http_client_session(self):

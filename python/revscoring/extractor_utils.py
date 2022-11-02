@@ -16,8 +16,10 @@ from mwapi.errors import (
 )
 from revscoring.extractors.api import MWAPICache, Extractor
 from revscoring.errors import MissingResource, UnexpectedContentType
+from decorators import elapsed_time_async, elapsed_time
 
 
+@elapsed_time_async
 async def get_revscoring_extractor_cache(
     rev_id: int,
     user_agent: str,
@@ -181,6 +183,7 @@ async def get_revscoring_extractor_cache(
     return http_cache
 
 
+@elapsed_time
 def fetch_features(rev_id: int, model_features: tuple, extractor: Extractor) -> Dict:
     """Retrieve model features using a Revscoring extractor provided
     as input.

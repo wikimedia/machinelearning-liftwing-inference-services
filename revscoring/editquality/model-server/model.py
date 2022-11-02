@@ -9,12 +9,15 @@ from typing import Dict
 import aiohttp
 import kserve
 import mwapi
+import tornado
+
 from revscoring import Model
 from revscoring.extractors import api
 from revscoring.features import trim
 
 import events
 import extractor_utils
+import logging_utils
 import preprocess_utils
 import process_utils
 
@@ -43,6 +46,10 @@ class EditQualityModel(kserve.Model):
             self.process_pool = process_utils.create_process_pool(
                 self.asyncio_aux_workers
             )
+        # FIXME: this may not be needed, in theory we could simply rely on
+        # kserve.constants.KSERVE_LOGLEVEL (passing KSERVE_LOGLEVEL as env var)
+        # but it doesn't seem to work.
+        logging_utils.set_log_level()
 
     @property
     def http_client_session(self):
@@ -90,9 +97,37 @@ class EditQualityModel(kserve.Model):
             mwapi.Session(wiki_url, user_agent=self.CUSTOM_UA),
             http_cache=mw_http_cache,
         )
-        inputs[self.FEATURE_VAL_KEY] = extractor_utils.fetch_features(
-            rev_id, self.model.features, self.extractor
-        )
+        if self.run_in_process_pool:
+            try:
+                inputs[self.FEATURE_VAL_KEY] = await process_utils.run_in_process_pool(
+                    self.process_pool,
+                    extractor_utils.fetch_features,
+                    rev_id,
+                    self.model.features,
+                    self.extractor,
+                )
+            except BrokenProcessPool as e:
+                logging.error(
+                    "BrokenProcessPool exeption raised by "
+                    "the process pool. Re-creation of a newer process pool "
+                    "before proceeding."
+                )
+                self.process_pool = process_utils.refresh_process_pool(
+                    self.process_pool, self.asyncio_aux_workers
+                )
+                raise tornado.web.HTTPError(
+                    status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+                    reason=(
+                        "An error happened while fetching feature values from "
+                        "the MediaWiki API, please contact the ML-Team "
+                        "if the issue persists."
+                    ),
+                )
+
+        else:
+            inputs[self.FEATURE_VAL_KEY] = extractor_utils.fetch_features(
+                rev_id, self.model.features, self.extractor
+            )
         if extended_output:
             base_feature_values = extractor_utils.fetch_features(
                 rev_id, list(trim(self.model.features)), self.extractor
@@ -122,7 +157,6 @@ class EditQualityModel(kserve.Model):
         feature_values = request.get(self.FEATURE_VAL_KEY)
         extended_output = request.get(self.EXTENDED_OUTPUT_KEY)
         if self.run_in_process_pool:
-            loop = asyncio.get_event_loop()
             try:
                 self.prediction_results = await process_utils.run_in_process_pool(
                     self.process_pool, self.model.score, feature_values
@@ -133,9 +167,15 @@ class EditQualityModel(kserve.Model):
                     "the process pool. Re-creation of a newer process pool "
                     "before proceeding."
                 )
-                self.process_pool.shutdown()
-                self.process_pool = process_utils.create_process_pool(
-                    self.asyncio_aux_workers
+                self.process_pool = process_utils.refresh_process_pool(
+                    self.process_pool, self.asyncio_aux_workers
+                )
+                raise tornado.web.HTTPError(
+                    status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+                    reason=(
+                        "An error happened while scoring the revision-id, please "
+                        "contact the ML-Team if the issue persists."
+                    ),
                 )
 
         else:
