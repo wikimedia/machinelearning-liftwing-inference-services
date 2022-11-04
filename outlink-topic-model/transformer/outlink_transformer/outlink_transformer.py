@@ -89,9 +89,10 @@ class OutlinkTransformer(kserve.Model):
         )
         threshold = inputs.get("threshold", 0.5)
         if not isinstance(threshold, float):
+            logging.error("Expected threshold to be a float")
             raise tornado.web.HTTPError(
                 status_code=HTTPStatus.BAD_REQUEST,
-                reason="Threshold value provided not a float",
+                reason='Expected "threshold" to be a float',
             )
         debug = inputs.get("debug", False)
         if debug:
@@ -104,16 +105,18 @@ class OutlinkTransformer(kserve.Model):
         else:
             try:
                 outlinks = await self.get_outlinks(page_title, lang)
-            except KeyError:
-                # No matching article or the page has no outlinks
+            except KeyError as e:
+                logging.error(
+                    "No matching article or the page has no outlinks "
+                    f"for {page_title} ({lang}). Reason: {e}"
+                )
                 raise tornado.web.HTTPError(
                     status_code=HTTPStatus.BAD_REQUEST,
                     reason="No matching article or the page has no outlinks",
                 )
             except Exception as e:
                 logging.error(
-                    "Unexpected error while trying to get outlinks "
-                    "from MW API: {}".format(e)
+                    f"Unexpected error while trying to get outlinks from MW API: {e}"
                 )
                 raise tornado.web.HTTPError(
                     status_code=HTTPStatus.INTERNAL_SERVER_ERROR,

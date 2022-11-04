@@ -1,4 +1,5 @@
 import re
+import logging
 
 import tornado
 from typing import Dict, Optional
@@ -26,11 +27,13 @@ def get_rev_id(inputs: Dict, event_input_key) -> Dict:
         else:
             rev_id = inputs["rev_id"]
     except KeyError:
+        logging.error("Missing rev_id in input data.")
         raise tornado.web.HTTPError(
             status_code=HTTPStatus.BAD_REQUEST,
             reason='Expected "rev_id" in input data.',
         )
     if not isinstance(rev_id, int):
+        logging.error("Expected rev_id to be an integer.")
         raise tornado.web.HTTPError(
             status_code=HTTPStatus.BAD_REQUEST,
             reason='Expected "rev_id" to be an integer.',
@@ -45,6 +48,7 @@ def get_lang(inputs: Dict, event_input_key) -> Dict:
         else:
             lang = inputs["lang"]
     except KeyError:
+        logging.error("Missing lang in input data.")
         raise tornado.web.HTTPError(
             status_code=HTTPStatus.BAD_REQUEST,
             reason='Missing "lang" in input data.',
@@ -59,6 +63,7 @@ def get_page_title(inputs: Dict, event_input_key) -> Dict:
         else:
             page_title = inputs["page_title"]
     except KeyError:
+        logging.error("Missing page_title in input data.")
         raise tornado.web.HTTPError(
             status_code=HTTPStatus.BAD_REQUEST,
             reason='Missing "page_title" in input data.',

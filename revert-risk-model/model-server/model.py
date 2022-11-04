@@ -1,4 +1,5 @@
 import os
+import logging
 import asyncio
 import atexit
 import logging
@@ -45,16 +46,19 @@ class RevisionRevertRiskModel(kserve.Model):
         lang = inputs.get("lang")
         rev_id = inputs.get("rev_id")
         if lang is None:
+            logging.error("Missing lang in input data.")
             raise tornado.web.HTTPError(
                 status_code=HTTPStatus.BAD_REQUEST,
                 reason="The parameter lang is required.",
             )
         if lang not in self.model.supported_wikis:
+            logging.error(f"Unsupported lang: {lang}.")
             raise tornado.web.HTTPError(
                 status_code=HTTPStatus.BAD_REQUEST,
                 reason=f"Unsupported lang: {lang}.",
             )
         if rev_id is None:
+            logging.error("Missing rev_id in input data.")
             raise tornado.web.HTTPError(
                 status_code=HTTPStatus.BAD_REQUEST,
                 reason="The parameter rev_id is required.",
@@ -72,14 +76,6 @@ class RevisionRevertRiskModel(kserve.Model):
         )
         try:
             rev = await get_current_revision(session, rev_id, lang)
-            if rev is None:
-                raise tornado.web.HTTPError(
-                    status_code=HTTPStatus.BAD_REQUEST,
-                    reason=(
-                        f"Revision with lang: {lang} rev_id: {rev_id} "
-                        "missing information required for inference."
-                    ),
-                )
         except Exception as e:
             logging.error(
                 "An error has occurred while fetching info for revision: "
@@ -91,6 +87,18 @@ class RevisionRevertRiskModel(kserve.Model):
                     "An error happened while fetching info for revision "
                     "from the MediaWiki API, please contact the ML-Team "
                     "if the issue persists."
+                ),
+            )
+        if rev is None:
+            logging.error(
+                "get_current_revision returned empty results "
+                f"for revision {rev_id} ({lang})"
+            )
+            raise tornado.web.HTTPError(
+                status_code=HTTPStatus.BAD_REQUEST,
+                reason=(
+                    f"Revision with lang: {lang} rev_id: {rev_id} "
+                    "missing information required for inference."
                 ),
             )
         inputs["revision"] = rev
