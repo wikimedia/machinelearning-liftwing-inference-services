@@ -10,6 +10,7 @@ import mwapi
 import tornado.web
 import aiohttp
 
+import logging_utils
 import preprocess_utils
 
 logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
@@ -23,6 +24,10 @@ class OutlinkTransformer(kserve.Model):
         self.CUSTOM_UA = "WMF ML Team outlink-topic-model svc"
         self._http_client_session = aiohttp.ClientSession()
         atexit.register(self._shutdown)
+        # FIXME: this may not be needed, in theory we could simply rely on
+        # kserve.constants.KSERVE_LOGLEVEL (passing KSERVE_LOGLEVEL as env var)
+        # but it doesn't seem to work.
+        logging_utils.set_log_level()
 
     @property
     def http_client_session(self):
@@ -71,15 +76,22 @@ class OutlinkTransformer(kserve.Model):
             continuation=True,
         )
         outlink_qids = set()
-        async for r in result:
-            for outlink in r["query"]["pages"]:
-                # namespace 0 and not a red link
-                if outlink["ns"] == 0 and "missing" not in outlink:
-                    qid = outlink.get("pageprops", {}).get("wikibase_item", None)
-                    if qid is not None:
-                        outlink_qids.add(qid)
-            if len(outlink_qids) > limit:
-                break
+        try:
+            async for r in result:
+                for outlink in r["query"]["pages"]:
+                    # namespace 0 and not a red link
+                    if outlink["ns"] == 0 and "missing" not in outlink:
+                        qid = outlink.get("pageprops", {}).get("wikibase_item", None)
+                        if qid is not None:
+                            outlink_qids.add(qid)
+                if len(outlink_qids) > limit:
+                    break
+        except KeyError as e:
+            logging.error(
+                f"KeyError occurs for {title} ({lang}). Reason: {e}. "
+                f"MW API returns: {r}"
+            )
+        logging.debug(f"{lang} {title} fetched {len(outlink_qids)} outlinks")
         return outlink_qids
 
     async def preprocess(self, inputs: Dict) -> Dict:
@@ -105,15 +117,6 @@ class OutlinkTransformer(kserve.Model):
         else:
             try:
                 outlinks = await self.get_outlinks(page_title, lang)
-            except KeyError as e:
-                logging.error(
-                    "No matching article or the page has no outlinks "
-                    f"for {page_title} ({lang}). Reason: {e}"
-                )
-                raise tornado.web.HTTPError(
-                    status_code=HTTPStatus.BAD_REQUEST,
-                    reason="No matching article or the page has no outlinks",
-                )
             except Exception as e:
                 logging.error(
                     f"Unexpected error while trying to get outlinks from MW API: {e}"
