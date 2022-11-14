@@ -1,3 +1,4 @@
+# syntax=docker-registry.wikimedia.org/repos/releng/blubber/buildkit:v0.15.0
 version: v4
 base: docker-registry.wikimedia.org/buster:20220724
 runs:
