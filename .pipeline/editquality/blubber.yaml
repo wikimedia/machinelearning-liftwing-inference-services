@@ -14,7 +14,6 @@ variants:
       requirements:
         - revscoring/editquality/model-server/requirements.txt
         - python/requirements.txt
-        - python/revscoring/requirements.txt
     apt:
       packages:
         - python3-pip

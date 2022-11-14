@@ -9,10 +9,20 @@ the Docker images). Please note that there is still no general configuration to 
 will be added in the same directory as the target `model.py` file.
 
 There is only one exception to the above rule, namely the `revscoring`
-subdirectory. It has its own set of .py modules and a requirements.txt file.
+subdirectory. It has its own set of .py modules but not a requirements.txt file.
 The idea is to have a single place where all the revscoring-related code is
 added, in order to avoid carrying the `revscoring` dependency over to models
 that don't come from ORES or that are not revscoring-based.
+
+## Why don't we have a dedicated revscoring requirements.txt file?
+
+Historically solving dependencies for revscoring and related libraries
+like `{draft,article,edit,topic}quality` has been particularly challenging
+and the time dedicated to it was a lot. Since we are planning to deprecate
+the revscoring model-servers, for the moment it seems wiser to keep it simple
+and track/duplicate the dependency list on the model-server's requirements.txt
+file. We are not going to do it for the new model servers of course, this is
+an exception only for revscoring-based ones.
 
 # How are dependencies handled?
 
