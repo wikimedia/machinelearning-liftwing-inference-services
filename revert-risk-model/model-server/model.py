@@ -94,25 +94,30 @@ class RevisionRevertRiskModel(kserve.Model):
                 "get_current_revision returned empty results "
                 f"for revision {rev_id} ({lang})"
             )
-            raise tornado.web.HTTPError(
-                status_code=HTTPStatus.BAD_REQUEST,
-                reason=(
-                    f"Revision with lang: {lang} rev_id: {rev_id} "
-                    "missing information required for inference."
-                ),
-            )
         inputs["revision"] = rev
         return inputs
 
     def predict(self, request: Dict[str, Any]) -> Dict[str, Any]:
-        result = classify(self.model, request["revision"])
-        return {
-            "prediction": result.prediction,
-            "probability": {
-                "true": result.probability,
-                "false": 1 - result.probability,
-            },
-        }
+        if request["revision"] is not None:
+            result = classify(self.model, request["revision"])
+            return {
+                "lang": request.get("lang"),
+                "rev_id": request.get("rev_id"),
+                "score": {
+                    "prediction": result.prediction,
+                    "probability": {
+                        "true": result.probability,
+                        "false": 1 - result.probability,
+                    },
+                },
+            }
+        else:
+            # return empty score if missing revision required for inference
+            return {
+                "lang": request.get("lang"),
+                "rev_id": request.get("rev_id"),
+                "score": {},
+            }
 
 
 if __name__ == "__main__":
