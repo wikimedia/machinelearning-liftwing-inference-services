@@ -1,6 +1,6 @@
 # syntax=docker-registry.wikimedia.org/repos/releng/blubber/buildkit:v0.15.0
 version: v4
-base: docker-registry.wikimedia.org/buster:20221023
+base: docker-registry.wikimedia.org/buster:20221211
 runs:
   insecurely: true
 
@@ -19,8 +19,6 @@ variants:
         - python3-dev
         - python3-setuptools
         - git
-    builder:
-      command: ["rm -rf /var/cache/apk/*"]
 
   production:
     copies:

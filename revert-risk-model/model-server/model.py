@@ -11,7 +11,7 @@ import kserve
 import mwapi
 import tornado.web
 
-from knowledge_integrity.models.revertrisk import load_model, classify
+from knowledge_integrity.models.revertrisk_multilingual import load_model, classify
 from knowledge_integrity.revision import get_current_revision
 
 logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
