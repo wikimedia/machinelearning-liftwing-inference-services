@@ -8,7 +8,7 @@ from decorators import elapsed_time_async
 from kserve import utils as kserve_utils
 
 
-def create_process_pool(asyncio_aux_workers=None) -> ProcessPoolExecutor:
+def create_process_pool(asyncio_aux_workers: int = None) -> ProcessPoolExecutor:
     """Create a Python Process pool to offload blocking/long cpu-bound code
     that can potentially block/stall the main asyncio loop thread.
     The default thread pool executor set by Kserve in [1] is meant
@@ -26,8 +26,6 @@ def create_process_pool(asyncio_aux_workers=None) -> ProcessPoolExecutor:
     """
     if asyncio_aux_workers is None:
         asyncio_aux_workers = min(32, kserve_utils.cpu_count() + 4)
-    else:
-        asyncio_aux_workers = int(asyncio_aux_workers)
 
     logging.info(
         "Create a process pool of {} workers to support "

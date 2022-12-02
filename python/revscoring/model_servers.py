@@ -55,7 +55,7 @@ class RevscoringModel(kserve.Model):
         self.run_in_process_pool = False
         if os.environ.get("ASYNCIO_USE_PROCESS_POOL", "False") == "True":
             self.run_in_process_pool = True
-            self.asyncio_aux_workers = os.environ.get("ASYNCIO_AUX_WORKERS")
+            self.asyncio_aux_workers = int(os.environ.get("ASYNCIO_AUX_WORKERS"))
             self.process_pool = process_utils.create_process_pool(
                 self.asyncio_aux_workers
             )
