@@ -25,6 +25,7 @@ class RevisionRevertRiskModel(kserve.Model):
         self._http_client_session = None
         self.WIKI_URL = os.environ.get("WIKI_URL")
         atexit.register(self._shutdown)
+        self.load()
 
     @property
     def http_client_session(self):
@@ -63,17 +64,12 @@ class RevisionRevertRiskModel(kserve.Model):
                 status_code=HTTPStatus.BAD_REQUEST,
                 reason="The parameter rev_id is required.",
             )
-        if self.WIKI_URL is None:
-            self.WIKI_URL = f"https://{lang}.wikipedia.org"
-        elif self.WIKI_URL.endswith("wmnet"):
-            # access MediaWiki API from internal networks
-            # e.g. https://api-ro.discovery.wmnet
-            self.http_client_session.headers.update({"Host": f"{lang}.wikipedia.org"})
         session = mwapi.AsyncSession(
-            self.WIKI_URL,
+            host=self.WIKI_URL or f"https://{lang}.wikipedia.org",
             user_agent="WMF ML Team revert-risk-model isvc",
             session=self.http_client_session,
         )
+        session.headers["Host"] = f"{lang}.wikipedia.org"
         try:
             rev = await get_current_revision(session, rev_id, lang)
         except Exception as e:
@@ -98,29 +94,27 @@ class RevisionRevertRiskModel(kserve.Model):
         return inputs
 
     def predict(self, request: Dict[str, Any]) -> Dict[str, Any]:
-        if request["revision"] is not None:
-            result = classify(self.model, request["revision"])
-            return {
-                "lang": request.get("lang"),
-                "rev_id": request.get("rev_id"),
-                "score": {
-                    "prediction": result.prediction,
-                    "probability": {
-                        "true": result.probability,
-                        "false": 1 - result.probability,
-                    },
-                },
-            }
-        else:
-            # return empty score if missing revision required for inference
+        if request["revision"] is None:
+            # return empty score if missing revision required
             return {
                 "lang": request.get("lang"),
                 "rev_id": request.get("rev_id"),
                 "score": {},
             }
+        result = classify(self.model, request["revision"])
+        return {
+            "lang": request.get("lang"),
+            "rev_id": request.get("rev_id"),
+            "score": {
+                "prediction": result.prediction,
+                "probability": {
+                    "true": result.probability,
+                    "false": 1 - result.probability,
+                },
+            },
+        }
 
 
 if __name__ == "__main__":
     model = RevisionRevertRiskModel("revert-risk-model")
-    model.load()
     kserve.ModelServer(workers=1).start([model])
