@@ -27,13 +27,26 @@ logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
 
 
 class RevscoringModelType(Enum):
-    EDITQUALITY = "editquality"
-    DRAFTQUALITY = "draftquality"
-    ITEMQUALITY = "itemquality"
-    ARTICLETOPIC = "articletopic"
-    ITEMTOPIC = "itemtopic"
-    DRAFTTOPIC = "drafttopic"
     ARTICLEQUALITY = "articlequality"
+    ARTICLETOPIC = "articletopic"
+    DRAFTQUALITY = "draftquality"
+    DRAFTTOPIC = "drafttopic"
+    EDITQUALITY_DAMAGING = "damaging"
+    EDITQUALITY_GOODFAITH = "goodfaith"
+    EDITQUALITY_REVERTED = "reverted"
+    ITEMQUALITY = "itemquality"
+    ITEMTOPIC = "itemtopic"
+
+    @classmethod
+    def get_model_type(cls, inference_name: str):
+        """
+        Lookup function that searches for the model type value in the inference service name.
+        e.g. searches for 'articlequality` in `enwiki-articlequality`
+        """
+        for _, model in cls.__members__.items():
+            if model.value in inference_name:
+                return model
+        raise LookupError(f"INFERENCE_NAME '{inference_name}' could not be matched to a revscoring model type.")
 
 
 class RevscoringModel(kserve.Model):
@@ -60,7 +73,9 @@ class RevscoringModel(kserve.Model):
                 self.asyncio_aux_workers
             )
         if model_kind in [
-            RevscoringModelType.EDITQUALITY,
+            RevscoringModelType.EDITQUALITY_DAMAGING,
+            RevscoringModelType.EDITQUALITY_GOODFAITH,
+            RevscoringModelType.EDITQUALITY_REVERTED,
             RevscoringModelType.DRAFTQUALITY,
         ]:
             self.extra_mw_api_calls = True
@@ -180,21 +195,12 @@ class RevscoringModel(kserve.Model):
         return inputs
 
     def get_revision_score_event(self, rev_create_event) -> Dict:
-        if self.model_kind == RevscoringModelType.EDITQUALITY:
-            if "goodfaith" in self.name:
-                model_name = "goodfaith"
-            elif "damaging" in self.name:
-                model_name = "damaging"
-            else:
-                model_name = "reverted"
-        else:
-            model_name = self.model_kind.value
         return events.generate_revision_score_event(
             rev_create_event,
             self.EVENTGATE_STREAM,
             self.model.version,
             self.prediction_results,
-            model_name,
+            self.model_kind.value,
         )
 
     async def _run_in_process_pool(self, *args):

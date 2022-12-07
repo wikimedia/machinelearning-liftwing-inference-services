@@ -144,3 +144,21 @@ pipelines:
           image:
             name: '${setup.project}-revertrisk'
             tags: [stable]
+
+  revscoring:
+    stages:
+      - name: run-test
+        build: test
+        run: true
+      - name: production
+        build: production
+
+  revscoring-publish:
+    blubberfile: revscoring/blubber.yaml
+    stages:
+      - name: publish
+        build: production
+        publish:
+          image:
+            name: '${setup.project}-revscoring'
+            tags: [stable]
