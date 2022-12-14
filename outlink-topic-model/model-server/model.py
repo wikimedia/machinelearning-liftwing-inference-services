@@ -22,6 +22,7 @@ class OutlinksTopicModel(kserve.Model):
         self.TLS_CERT_BUNDLE_PATH = "/etc/ssl/certs/wmf-ca-certificates.crt"
         self.CUSTOM_UA = "WMF ML Team outlink-topic-model svc"
         self.MODEL_VERSION = os.environ.get("MODEL_VERSION")
+        self.load()
 
     def load(self):
         self.model = fasttext.load_model("/mnt/models/model.bin")
@@ -80,5 +81,4 @@ class OutlinksTopicModel(kserve.Model):
 
 if __name__ == "__main__":
     model = OutlinksTopicModel("outlink-topic-model")
-    model.load()
     kserve.ModelServer(workers=1).start([model])

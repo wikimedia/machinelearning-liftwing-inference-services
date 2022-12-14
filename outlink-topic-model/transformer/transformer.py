@@ -2,6 +2,7 @@ import os
 import logging
 import asyncio
 import atexit
+import argparse
 from typing import Dict, Set
 from http import HTTPStatus
 
@@ -21,7 +22,7 @@ class OutlinkTransformer(kserve.Model):
         super().__init__(name)
         self.predictor_host = predictor_host
         self.REVISION_CREATE_EVENT_KEY = "revision_create_event"
-        self.CUSTOM_UA = "WMF ML Team outlink-topic-model svc"
+        self.WIKI_URL = os.environ.get("WIKI_URL")
         self._http_client_session = aiohttp.ClientSession()
         atexit.register(self._shutdown)
         # FIXME: this may not be needed, in theory we could simply rely on
@@ -43,23 +44,12 @@ class OutlinkTransformer(kserve.Model):
 
     async def get_outlinks(self, title: str, lang: str, limit=1000) -> Set:
         """Gather set of up to `limit` outlinks for an article."""
-        wiki_url = os.environ.get("WIKI_URL")
-        if wiki_url is None:
-            # other domains like wikibooks etc are not supported.
-            wiki_url = "https://{0}.wikipedia.org".format(lang)
-        if wiki_url.endswith("wmnet"):
-            # accessing MediaWiki API from within internal networks
-            # is to use https://api-ro.discovery.wmnet and set the
-            # HTTP Host header to the domain of the site you want
-            # to access.
-            self.http_client_session.headers.update(
-                {"Host": "{0}.wikipedia.org".format(lang)}
-            )
         session = mwapi.AsyncSession(
-            wiki_url,
-            user_agent=self.CUSTOM_UA,
+            host=self.WIKI_URL or f"https://{lang}.wikipedia.org",
+            user_agent="WMF ML Team outlink-topic-model svc",
             session=self.http_client_session,
         )
+        session.headers["Host"] = f"{lang}.wikipedia.org"
         # generate list of all outlinks (to namespace 0) from
         # the article and their associated Wikidata IDs
         result = await session.get(
@@ -87,11 +77,9 @@ class OutlinkTransformer(kserve.Model):
                 if len(outlink_qids) > limit:
                     break
         except KeyError as e:
-            logging.error(
-                f"KeyError occurs for {title} ({lang}). Reason: {e}. "
-                f"MW API returns: {r}"
-            )
-        logging.debug(f"{lang} {title} fetched {len(outlink_qids)} outlinks")
+            logging.error("KeyError occurs for %s (%s). Reason: %r.", title, lang, e)
+            logging.error("MW API returns: %r", r)
+        logging.debug("%s (%s) fetched %d outlinks", title, lang, len(outlink_qids))
         return outlink_qids
 
     async def preprocess(self, inputs: Dict) -> Dict:
@@ -118,8 +106,8 @@ class OutlinkTransformer(kserve.Model):
             try:
                 outlinks = await self.get_outlinks(page_title, lang)
             except Exception as e:
-                logging.error(
-                    f"Unexpected error while trying to get outlinks from MW API: {e}"
+                logging.exception(
+                    "Unexpected error while trying to get outlinks from MW API"
                 )
                 raise tornado.web.HTTPError(
                     status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
@@ -148,7 +136,26 @@ class OutlinkTransformer(kserve.Model):
         lang = outputs["lang"]
         page_title = outputs["page_title"]
         result = {
-            "article": "https://{0}.wikipedia.org/wiki/{1}".format(lang, page_title),
+            "article": f"https://{lang}.wikipedia.org/wiki/{page_title}",
             "results": [{"topic": t[0], "score": t[1]} for t in topics],
         }
         return {"prediction": result}
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(parents=[kserve.model_server.parser])
+    parser.add_argument(
+        "--model_name",
+        help="The name that the model is served under.",
+    )
+    parser.add_argument(
+        "--predictor_host", help="The URL for the model predict function", required=True
+    )
+
+    args, _ = parser.parse_known_args()
+
+    transformer = OutlinkTransformer(
+        args.model_name, predictor_host=args.predictor_host
+    )
+    kserver = kserve.ModelServer()
+    kserver.start(models=[transformer])

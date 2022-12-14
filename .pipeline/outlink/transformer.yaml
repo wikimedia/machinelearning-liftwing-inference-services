@@ -1,6 +1,6 @@
 # syntax=docker-registry.wikimedia.org/repos/releng/blubber/buildkit:v0.15.0
 version: v4
-base: docker-registry.wikimedia.org/buster:20220724
+base: docker-registry.wikimedia.org/buster:20221211
 runs:
   insecurely: true
 
@@ -17,27 +17,15 @@ variants:
         - python3-pip
         - python3-dev
         - build-essential
-    builder:
-      # FIXME: path hack - see: https://phabricator.wikimedia.org/T267685
-      command: ["PYTHONPATH=/opt/lib/python/site-packages", "python3",
-        "-m", "pip", "install", "--target",
-        "/opt/lib/python/site-packages","."]
-      requirements:
-        - from: local
-          source: outlink-topic-model/transformer/setup.py
-          destination: .
 
   production:
     copies:
       - from: local
-        source: outlink-topic-model/transformer/outlink_transformer
-        destination: outlink_transformer
-      - from: local
-        source: outlink-topic-model/transformer/setup.py
-        destination: .
+        source: outlink-topic-model/transformer
+        destination: transformer
       - from: local
         source: python/*.py
-        destination: ./
+        destination: transformer/
       - from: build
         source: /opt/lib/python/site-packages
         destination: /opt/lib/python/site-packages
@@ -48,7 +36,7 @@ variants:
     python:
       version: python3
       use-system-flag: false
-    entrypoint: ["python3",  "-m", "outlink_transformer"]
+    entrypoint: ["python3",  "transformer/transformer.py"]
 
   test:
     apt:

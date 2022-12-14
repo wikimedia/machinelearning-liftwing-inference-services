@@ -1,6 +1,5 @@
 import pytest
-
-from outlink_transformer.outlink_transformer import get_outlinks
+from transformer import OutlinkTransformer
 
 
 @pytest.mark.parametrize(
@@ -142,5 +141,6 @@ from outlink_transformer.outlink_transformer import get_outlinks
 )
 @pytest.mark.asyncio
 async def test_get_outlinks(title, lang, expected):
-    outlink_qids = await get_outlinks(title, lang, 100)
+    outlink_transformer = OutlinkTransformer()
+    outlink_qids = await outlink_transformer.get_outlinks(title, lang, 100)
     assert outlink_qids == expected
