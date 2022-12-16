@@ -53,7 +53,7 @@ jmespath==0.10.0
 joblib==1.2.0
 jsonschema==4.17.3
 kiwisolver==1.4.4
-git+https://gitlab.wikimedia.org/repos/research/knowledge_integrity.git@v0.2.0
+git+https://gitlab.wikimedia.org/elukey/knowledge_integrity.git@eabf0011303baa92c9904fb3c013c442a19cdb1e
 kserve==0.8.0
 kubernetes==17.17.0
 Levenshtein==0.20.8
@@ -111,7 +111,6 @@ starlette==0.22.0
 table-logger==0.3.6
 tenacity==8.1.0
 tokenizers==0.12.1
-torch==1.10.1
 tornado==6.2
 tqdm==4.64.1
 transformers==4.21.2
