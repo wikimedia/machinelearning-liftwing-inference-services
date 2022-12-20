@@ -68,7 +68,6 @@ mwapi==0.6.1
 mwedittypes==1.2.1
 mwparserfromhell==0.6.4
 numpy==1.19.5
-nvidia-ml-py==11.495.46
 oauthlib==3.2.2
 opencensus==0.11.0
 opencensus-context==0.1.3
