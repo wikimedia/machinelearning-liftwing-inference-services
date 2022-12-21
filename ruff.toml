@@ -1,4 +1,4 @@
-exclude = [".tox"]
+exclude = [".tox", "*pyenchant_utils.py"]
 ignore = ["E501"]
 line-length = 120
 select = [

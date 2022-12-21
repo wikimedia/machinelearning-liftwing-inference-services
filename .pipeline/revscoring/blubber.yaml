@@ -1,6 +1,6 @@
 # syntax=docker-registry.wikimedia.org/repos/releng/blubber/buildkit:v0.15.0
 version: v4
-base: docker-registry.wikimedia.org/buster:20221204
+base: docker-registry.wikimedia.org/bullseye:20221218
 runs:
   insecurely: true
 
@@ -13,7 +13,6 @@ variants:
       packages:
         - python3-pip
         - python3-dev
-        - python-dev
         - build-essential
         - python3-enchant
         - g++
@@ -21,11 +20,11 @@ variants:
         - git
         - liblapack-dev
         - libopenblas-dev
-        - libenchant1c2a
+        - libenchant-2-2
         - wget
     builders:
       - python:
-          version: python3.7
+          version: python3.9
           requirements: [ revscoring/requirements.txt, python/requirements.txt ]
       - custom:
           command: ["python3", "-m", "nltk.downloader", "omw", "sentiwordnet", "stopwords", "wordnet"]
@@ -57,7 +56,7 @@ variants:
         source: /srv/rev/word2vec/*
         destination: word2vec/
     python:
-      version: python3.7
+      version: python3.9
       use-system-flag: false
     apt:
       packages:
@@ -66,8 +65,8 @@ variants:
         - build-essential
         - liblapack3
         - libopenblas-base
-        - libenchant1c2a
-        - aspell-ar
+        - libenchant-2-2
+        - hunspell-ar
         - aspell-bn
         - aspell-el
         - hunspell-id
@@ -78,24 +77,24 @@ variants:
         - aspell-sv
         - aspell-ta
         - aspell-uk
-        - myspell-cs
-        - myspell-de-at
-        - myspell-de-ch
-        - myspell-de-de
-        - myspell-es
-        - myspell-et
+        - hunspell-cs
+        - hunspell-de-at
+        - hunspell-de-ch
+        - hunspell-de-de
+        - hunspell-es
+        - hunspell-et
         - myspell-fa
-        - myspell-fr
-        - myspell-he
-        - myspell-hr
+        - hunspell-fr
+        - hunspell-he
+        - hunspell-hr
         - myspell-hu
-        - myspell-lv
+        - hunspell-lv
         - myspell-nb
-        - myspell-nl
-        - myspell-pt-pt
-        - myspell-pt-br
-        - myspell-ru
-        - myspell-hr
+        - hunspell-nl
+        - hunspell-pt-pt
+        - hunspell-pt-br
+        - hunspell-ru
+        - hunspell-hr
         - hunspell-bs
         - hunspell-ca
         - hunspell-en-au
