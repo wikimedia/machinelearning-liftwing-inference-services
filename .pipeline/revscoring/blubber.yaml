@@ -62,6 +62,7 @@ variants:
     apt:
       packages:
         - python3
+        - python3-distutils
         - build-essential
         - liblapack3
         - libopenblas-base
