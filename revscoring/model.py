@@ -1,9 +1,9 @@
 import os
+from distutils.util import strtobool
 
 import kserve
-from model_servers import RevscoringModelType, RevscoringModel
 from model_server_mp import RevscoringModelMP
-from distutils.util import strtobool
+from model_servers import RevscoringModel, RevscoringModelType
 
 if __name__ == "__main__":
     inference_name = os.environ.get("INFERENCE_NAME")
