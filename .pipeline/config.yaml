@@ -71,6 +71,7 @@ pipelines:
         publish:
           image:
             name: '${setup.project}-revertrisk'
+            tag: ${setup.timestamp}-language-agnostic
             tags: [stable]
 
   revscoring:
