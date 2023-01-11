@@ -1,4 +1,5 @@
-knowledge_integrity[revertrisk] @ git+https://gitlab.wikimedia.org/repos/research/knowledge_integrity.git
+--extra-index-url https://download.pytorch.org/whl/cpu
+knowledge_integrity[revertrisk-multilingual] @ git+https://gitlab.wikimedia.org/repos/research/knowledge_integrity.git
 kserve==0.8.0
 kubernetes==17.17.0
 protobuf==3.19.1
