@@ -9,7 +9,7 @@ import aiohttp
 import kserve
 import mwapi
 
-from knowledge_integrity.models.revertrisk import load_model, classify
+from knowledge_integrity.models.revertrisk_multilingual import load_model, classify
 from knowledge_integrity.revision import get_current_revision
 from tornado.web import HTTPError
 
