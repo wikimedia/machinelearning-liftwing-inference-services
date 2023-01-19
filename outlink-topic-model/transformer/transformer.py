@@ -105,7 +105,7 @@ class OutlinkTransformer(kserve.Model):
         else:
             try:
                 outlinks = await self.get_outlinks(page_title, lang)
-            except Exception as e:
+            except Exception:
                 logging.exception(
                     "Unexpected error while trying to get outlinks from MW API"
                 )

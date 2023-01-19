@@ -67,7 +67,7 @@ async def send_event(
 ) -> None:
     """Sends a revision-score-event to EventGate."""
     try:
-        response = await aio_http_client.fetch(
+        await aio_http_client.fetch(
             eventgate_url,
             method="POST",
             ca_certs=tls_bundle_path,

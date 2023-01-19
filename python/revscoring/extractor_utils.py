@@ -147,7 +147,7 @@ async def get_revscoring_extractor_cache(
                     prop="revisions",
                     revids=[parent_rev_id],
                     rvslots="main",
-                    **params
+                    **params,
                 ),
                 session.get(
                     action="query", list="users", ususers=[user], **user_params
@@ -204,12 +204,12 @@ def fetch_features(
     except MissingResource as e:
         raise tornado.web.HTTPError(
             status_code=HTTPStatus.BAD_REQUEST,
-            reason="Missing resource for rev-id {}: {}".format(rev_id, e),
+            reason=f"Missing resource for rev-id {rev_id}: {e}",
         )
     except UnexpectedContentType as e:
         raise tornado.web.HTTPError(
             status_code=HTTPStatus.BAD_REQUEST,
-            reason="Unexpected content type for rev-id {}: {}".format(rev_id, e),
+            reason=f"Unexpected content type for rev-id {rev_id}: {e}",
         )
     except Exception as e:
         raise tornado.web.HTTPError(

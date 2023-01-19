@@ -43,7 +43,9 @@ class RevscoringModelType(Enum):
         for _, model in cls.__members__.items():
             if model.value in inference_name:
                 return model
-        raise LookupError(f"INFERENCE_NAME '{inference_name}' could not be matched to a revscoring model type.")
+        raise LookupError(
+            f"INFERENCE_NAME '{inference_name}' could not be matched to a revscoring model type."
+        )
 
 
 class RevscoringModel(kserve.Model):
@@ -83,9 +85,7 @@ class RevscoringModel(kserve.Model):
         return self.model.score(feature_values)
 
     def fetch_features(self, rev_id, features, extractor, cache):
-        return extractor_utils.fetch_features(
-        rev_id, features, extractor, cache
-    )
+        return extractor_utils.fetch_features(rev_id, features, extractor, cache)
 
     @property
     def http_client_session(self):
@@ -136,6 +136,7 @@ class RevscoringModel(kserve.Model):
             mwapi.Session(wiki_url, user_agent=self.CUSTOM_UA),
             http_cache=mw_http_cache,
         )
+
     async def preprocess(self, inputs: Dict) -> Dict:
         """Use MW API session and Revscoring API to extract feature values
         of edit text based on its revision id"""
@@ -157,11 +158,15 @@ class RevscoringModel(kserve.Model):
         # and using a process pool will mean recomputing fetch_features.
         cache = {}
 
-        inputs[self.FEATURE_VAL_KEY] = self.fetch_features(rev_id, self.model.features, self.extractor, cache)
+        inputs[self.FEATURE_VAL_KEY] = self.fetch_features(
+            rev_id, self.model.features, self.extractor, cache
+        )
 
         if extended_output:
             bare_model_features = list(trim(self.model.features))
-            base_feature_values = self.fetch_features(rev_id, bare_model_features, self.extractor, cache)
+            base_feature_values = self.fetch_features(
+                rev_id, bare_model_features, self.extractor, cache
+            )
             inputs[self.EXTENDED_OUTPUT_KEY] = {
                 str(f): v for f, v in zip(bare_model_features, base_feature_values)
             }

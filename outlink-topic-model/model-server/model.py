@@ -45,13 +45,13 @@ class OutlinksTopicModel(kserve.Model):
         if above_threshold:
             for res in above_threshold:
                 if debug:
-                    print("{0}: {1:.3f}".format(*res))
+                    print("{}: {:.3f}".format(*res))
                 if res[1] > threshold:
                     lbls_above_threshold.append(res[0])
         elif debug:
-            print("No label above {0} threshold.".format(threshold))
+            print(f"No label above {threshold} threshold.")
             print(
-                "Top result: {0} ({1:.3f}) -- {2}".format(
+                "Top result: {} ({:.3f}) -- {}".format(
                     sorted_res[0][0], sorted_res[0][1], sorted_res[0][2]
                 )
             )
