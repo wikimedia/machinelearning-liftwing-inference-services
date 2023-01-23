@@ -41,11 +41,25 @@ variants:
     apt:
       packages:
         - python3-pip
+        - python3-setuptools
+        - git
     copies:
       - from: local
         source: revert-risk-model/model-server
         destination: model-server
-    entrypoint: ["tox", "-c", "model-server/tox.ini"]
+      - from: local
+        source: tox.ini
+        destination: model-server
+      - from: local
+        source: .pre-commit-config.yaml
+        destination: .
+      - from: local
+        source: entrypoint.sh
+        destination: .
+      - from: local
+        source: ruff.toml
+        destination: .
+    entrypoint: ["./entrypoint.sh", "model-server"]
     python:
       version: python3
       use-system-flag: false

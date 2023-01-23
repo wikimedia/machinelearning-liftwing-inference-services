@@ -132,7 +132,7 @@ variants:
       - from: local
         source: ruff.toml
         destination: .
-    entrypoint: ["./entrypoint.sh"]
+    entrypoint: ["./entrypoint.sh", "model-server"]
     python:
       version: python3
       requirements: [revscoring/requirements-test.txt]

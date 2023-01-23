@@ -43,11 +43,24 @@ variants:
       packages:
         - python3-pip
         - python3-setuptools
+        - git
     copies:
       - from: local
         source: outlink-topic-model/transformer
         destination: transformer
-    entrypoint: ["tox", "-c", "transformer/tox.ini"]
+      - from: local
+        source: tox.ini
+        destination: transformer
+      - from: local
+        source: .pre-commit-config.yaml
+        destination: .
+      - from: local
+        source: entrypoint.sh
+        destination: .
+      - from: local
+        source: ruff.toml
+        destination: .
+    entrypoint: ["./entrypoint.sh", "transformer"]
     python:
       version: python3
       requirements: [outlink-topic-model/transformer/requirements.txt, outlink-topic-model/transformer/requirements-test.txt]
