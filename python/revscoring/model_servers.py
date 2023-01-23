@@ -137,7 +137,7 @@ class RevscoringModel(kserve.Model):
             http_cache=mw_http_cache,
         )
 
-    async def preprocess(self, inputs: Dict) -> Dict:
+    async def preprocess(self, inputs: Dict, headers: Dict[str, str] = None) -> Dict:
         """Use MW API session and Revscoring API to extract feature values
         of edit text based on its revision id"""
         rev_id = preprocess_utils.get_rev_id(inputs, self.REVISION_CREATE_EVENT_KEY)
@@ -214,7 +214,7 @@ class RevscoringModel(kserve.Model):
                 self._http_client,
             )
 
-    async def predict(self, request: Dict) -> Dict:
+    async def predict(self, request: Dict, headers: Dict[str, str] = None) -> Dict:
         feature_values = request.get(self.FEATURE_VAL_KEY)
         extended_output = request.get(self.EXTENDED_OUTPUT_KEY)
         self.prediction_results = self.score(feature_values)
