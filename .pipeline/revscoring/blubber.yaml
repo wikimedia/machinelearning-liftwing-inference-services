@@ -27,7 +27,7 @@ variants:
           version: python3.9
           requirements: [ revscoring/requirements.txt, python/requirements.txt ]
       - custom:
-          command: ["python3", "-m", "nltk.downloader", "omw", "sentiwordnet", "stopwords", "wordnet"]
+          command: ["python3", "-m", "nltk.downloader", "omw", "sentiwordnet", "stopwords", "wordnet", "omw-1.4"]
       - custom:
           command: [ ./get_embeddings.sh ]
           requirements:
