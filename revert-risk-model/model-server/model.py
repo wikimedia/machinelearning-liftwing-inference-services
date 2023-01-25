@@ -8,10 +8,10 @@ from http import HTTPStatus
 import aiohttp
 import kserve
 import mwapi
-import tornado.web
 
 from knowledge_integrity.models.revertrisk import load_model, classify
 from knowledge_integrity.revision import get_current_revision
+from tornado.web import HTTPError
 
 logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
 
@@ -47,19 +47,19 @@ class RevisionRevertRiskModel(kserve.Model):
         rev_id = inputs.get("rev_id")
         if lang is None:
             logging.error("Missing lang in input data.")
-            raise tornado.web.HTTPError(
+            raise HTTPError(
                 status_code=HTTPStatus.BAD_REQUEST,
                 reason="The parameter lang is required.",
             )
         if lang not in self.model.supported_wikis:
             logging.error(f"Unsupported lang: {lang}.")
-            raise tornado.web.HTTPError(
+            raise HTTPError(
                 status_code=HTTPStatus.BAD_REQUEST,
                 reason=f"Unsupported lang: {lang}.",
             )
         if rev_id is None:
             logging.error("Missing rev_id in input data.")
-            raise tornado.web.HTTPError(
+            raise HTTPError(
                 status_code=HTTPStatus.BAD_REQUEST,
                 reason="The parameter rev_id is required.",
             )
@@ -76,7 +76,7 @@ class RevisionRevertRiskModel(kserve.Model):
                 "An error has occurred while fetching info for revision: "
                 f" {rev_id} ({lang}). Reason: {e}"
             )
-            raise tornado.web.HTTPError(
+            raise HTTPError(
                 status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
                 reason=(
                     "An error happened while fetching info for revision "

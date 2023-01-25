@@ -8,11 +8,12 @@ from http import HTTPStatus
 
 import kserve
 import mwapi
-import tornado.web
 import aiohttp
 
 import logging_utils
 import preprocess_utils
+
+from tornado.web import HTTPError
 
 logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
 
@@ -90,7 +91,7 @@ class OutlinkTransformer(kserve.Model):
         threshold = inputs.get("threshold", 0.5)
         if not isinstance(threshold, float):
             logging.error("Expected threshold to be a float")
-            raise tornado.web.HTTPError(
+            raise HTTPError(
                 status_code=HTTPStatus.BAD_REQUEST,
                 reason='Expected "threshold" to be a float',
             )
@@ -109,7 +110,7 @@ class OutlinkTransformer(kserve.Model):
                 logging.exception(
                     "Unexpected error while trying to get outlinks from MW API"
                 )
-                raise tornado.web.HTTPError(
+                raise HTTPError(
                     status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
                     reason=(
                         "An unexpected error has occurred while trying "

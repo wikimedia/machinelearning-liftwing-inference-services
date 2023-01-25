@@ -1,9 +1,9 @@
+import aiohttp
 import json
 import logging
-import tornado
+import ssl
 
 from typing import Dict, Any
-from http import HTTPStatus
 
 
 def generate_revision_score_event(
@@ -67,42 +67,55 @@ async def send_event(
 ) -> None:
     """Sends a revision-score-event to EventGate."""
     try:
-        await aio_http_client.fetch(
+        sslcontext = ssl.create_default_context(cafile=tls_bundle_path)
+        await aio_http_client.post(
             eventgate_url,
-            method="POST",
-            ca_certs=tls_bundle_path,
-            body=json.dumps(revision_score_event),
-            headers={"Content-type": "application/json"},
-            user_agent=user_agent,
+            ssl=sslcontext,
+            json=json.dumps(revision_score_event),
+            headers={
+                "Content-type": "application/json",
+                "UserAgent": user_agent,
+            },
         )
         logging.debug(
             "Successfully sent the following event to "
             "EventGate: {}".format(revision_score_event)
         )
-    except tornado.httpclient.HTTPError as e:
-        logging.error(
-            "The revision score event has been rejected by EventGate, "
-            "that returned a non-200 HTTP return code "
-            "with the following error: {}".format(e)
+    except aiohttp.ClientError as e:
+        logging.error(f"Connection error while sending an event to EventGate: {e}")
+        # FIXME: after all model-servers are migrated to KServe 0.10,
+        # this RuntimeError should probably become kserve.errors.InferenceError
+        # We don't want to leak internal error info from aiohttp to the external
+        # client, this is why the logging msg is richer in content.
+        raise RuntimeError(
+            "Connection error while trying to post the event to EventGate. "
+            "Please contact the ML team if the issue persists."
         )
-        raise tornado.web.HTTPError(
-            status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
-            reason=(
-                "Eventgate rejected the revision-score event "
-                "(a non-HTTP-200 response was returned). "
-                "Please contact the ML team for more info."
-            ),
+    except aiohttp.ClientResponseError as e:
+        logging.error(
+            "The event has been rejected by EventGate, "
+            "that returned a HTTP {} with the following error: {}".format(
+                e.status, e.message
+            )
+        )
+        # FIXME: after all model-servers are migrated to KServe 0.10,
+        # this RuntimeError should probably become kserve.errors.InferenceError
+        # We don't want to leak internal error info from aiohttp to the external
+        # client, this is why the logging msg is richer in content.
+        raise RuntimeError(
+            "The event posted to EventGate has been rejected, "
+            "please contact the ML team if the issue persists."
         )
     except Exception as e:
         logging.error(
-            "Unexpected error while trying to send a revision score "
-            "event to EventGate: {}".format(e)
+            f"Unexpected error while trying to send an event to EventGate: {e}"
         )
-        raise tornado.web.HTTPError(
-            status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
-            reason=(
-                "An unexpected error has occurred while trying "
-                "to send the revision-score event to Eventgate. "
-                "Please contact the ML team for more info."
-            ),
+        # FIXME: after all model-servers are migrated to KServe 0.10,
+        # this RuntimeError should probably become kserve.errors.InferenceError
+        # We don't want to leak internal error info from aiohttp to the external
+        # client, this is why the logging msg is richer in content.
+        raise RuntimeError(
+            "Unexpected error happened while the event was posted to EventGate, "
+            "there is the possibility that it never reached it. "
+            "Please contact the ML team if the issue persists."
         )

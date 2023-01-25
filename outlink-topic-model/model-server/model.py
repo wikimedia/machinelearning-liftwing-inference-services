@@ -1,11 +1,17 @@
+import atexit
+import asyncio
+import aiohttp
 import os
 import logging
 from typing import Dict
+from http import HTTPStatus
 
 import kserve
 import fasttext
 
 import events
+
+from tornado.web import HTTPError
 
 logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
 
@@ -21,8 +27,24 @@ class OutlinksTopicModel(kserve.Model):
         # Deployed via the wmf-certificates package
         self.TLS_CERT_BUNDLE_PATH = "/etc/ssl/certs/wmf-ca-certificates.crt"
         self.CUSTOM_UA = "WMF ML Team outlink-topic-model svc"
+        self.AIOHTTP_CLIENT_TIMEOUT = os.environ.get("AIOHTTP_CLIENT_TIMEOUT", 5)
         self.MODEL_VERSION = os.environ.get("MODEL_VERSION")
+        self._http_client_session = None
+        atexit.register(self._shutdown)
         self.load()
+
+    @property
+    def http_client_session(self):
+        timeout = aiohttp.ClientTimeout(total=self.AIOHTTP_CLIENT_TIMEOUT)
+        if self._http_client_session is None or self._http_client_session.closed:
+            logging.info("Opening a new Asyncio session.")
+            self._http_client_session = aiohttp.ClientSession(timeout=timeout)
+        return self._http_client_session
+
+    def _shutdown(self):
+        if self._http_client_session and not self._http_client_session.closed:
+            logging.info("Closing asyncio session")
+            asyncio.run(self._http_client_session.close())
 
     def load(self):
         self.model = fasttext.load_model("/mnt/models/model.bin")
@@ -69,13 +91,24 @@ class OutlinksTopicModel(kserve.Model):
                 self.prediction_results,
                 "outlink",
             )
-            await events.send_event(
-                revision_score_event,
-                self.EVENTGATE_URL,
-                self.TLS_CERT_BUNDLE_PATH,
-                self.CUSTOM_UA,
-                self._http_client,
-            )
+            try:
+                await events.send_event(
+                    revision_score_event,
+                    self.EVENTGATE_URL,
+                    self.TLS_CERT_BUNDLE_PATH,
+                    self.CUSTOM_UA,
+                    self.http_client_session,
+                )
+            except RuntimeError:
+                # FIXME: move to FastAPI when migrating to KServe 0.10
+                raise HTTPError(
+                    status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+                    reason=(
+                        "An error happened when trying to send the event to "
+                        "Eventgate (it may never have reached it). "
+                        "Please contact the ML-Team if the issue persists."
+                    ),
+                )
         return {"topics": above_threshold, "lang": lang, "page_title": page_title}
 
 

@@ -4,13 +4,14 @@ import bz2
 import logging
 import os
 
-from typing import Dict
+from typing import Dict, Optional
 from enum import Enum
 
 import aiohttp
 import kserve
 import mwapi
 
+from kserve.errors import InvalidInput
 from revscoring import Model
 from revscoring.extractors import api
 from revscoring.features import trim
@@ -18,7 +19,6 @@ from revscoring.features import trim
 import events
 import extractor_utils
 import logging_utils
-import preprocess_utils
 
 logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
 
@@ -59,6 +59,7 @@ class RevscoringModel(kserve.Model):
         self.REVISION_CREATE_EVENT_KEY = "revision_create_event"
         self.EVENTGATE_URL = os.environ.get("EVENTGATE_URL")
         self.EVENTGATE_STREAM = os.environ.get("EVENTGATE_STREAM")
+        self.AIOHTTP_CLIENT_TIMEOUT = os.environ.get("AIOHTTP_CLIENT_TIMEOUT", 5)
         self.CUSTOM_UA = f"WMF ML Team {model_kind} model svc"
         # Deployed via the wmf-certificates package
         self.TLS_CERT_BUNDLE_PATH = "/etc/ssl/certs/wmf-ca-certificates.crt"
@@ -89,9 +90,10 @@ class RevscoringModel(kserve.Model):
 
     @property
     def http_client_session(self):
+        timeout = aiohttp.ClientTimeout(total=self.AIOHTTP_CLIENT_TIMEOUT)
         if self._http_client_session is None or self._http_client_session.closed:
             logging.info("Opening a new Asyncio session.")
-            self._http_client_session = aiohttp.ClientSession()
+            self._http_client_session = aiohttp.ClientSession(timeout=timeout)
         return self._http_client_session
 
     def _shutdown(self):
@@ -110,7 +112,7 @@ class RevscoringModel(kserve.Model):
     async def set_extractor(self, inputs, rev_id):
         # The postprocess() function needs to parse the revision_create_event
         # given as input (if any).
-        self.revision_create_event = preprocess_utils.get_revision_event(
+        self.revision_create_event = self.get_revision_event(
             inputs, self.REVISION_CREATE_EVENT_KEY
         )
         if self.revision_create_event:
@@ -140,7 +142,7 @@ class RevscoringModel(kserve.Model):
     async def preprocess(self, inputs: Dict, headers: Dict[str, str] = None) -> Dict:
         """Use MW API session and Revscoring API to extract feature values
         of edit text based on its revision id"""
-        rev_id = preprocess_utils.get_rev_id(inputs, self.REVISION_CREATE_EVENT_KEY)
+        rev_id = self.get_rev_id(inputs, self.REVISION_CREATE_EVENT_KEY)
         extended_output = inputs.get("extended_output", False)
         await self.set_extractor(inputs, rev_id)
 
@@ -211,8 +213,35 @@ class RevscoringModel(kserve.Model):
                 self.EVENTGATE_URL,
                 self.TLS_CERT_BUNDLE_PATH,
                 self.CUSTOM_UA,
-                self._http_client,
+                self.http_client_session,
             )
+
+    def get_revision_event(self, inputs: Dict, event_input_key) -> Optional[str]:
+        try:
+            return inputs[event_input_key]
+        except KeyError:
+            return None
+
+    def get_rev_id(self, inputs: Dict, event_input_key) -> Dict:
+        """Get a revision id from the inputs provided.
+        The revision id can be contained into an event dict
+        or passed directly as value.
+        """
+        try:
+            # If a revision create event is passed as input,
+            # its rev-id is considerate the one to score.
+            # Otherwise, we look for a specific "rev_id" input.
+            if event_input_key in inputs:
+                rev_id = inputs[event_input_key]["rev_id"]
+            else:
+                rev_id = inputs["rev_id"]
+        except KeyError:
+            logging.error("Missing rev_id in input data.")
+            raise InvalidInput('Expected "rev_id" in input data.')
+        if not isinstance(rev_id, int):
+            logging.error("Expected rev_id to be an integer.")
+            raise InvalidInput('Expected "rev_id" to be an integer.')
+        return rev_id
 
     async def predict(self, request: Dict, headers: Dict[str, str] = None) -> Dict:
         feature_values = request.get(self.FEATURE_VAL_KEY)

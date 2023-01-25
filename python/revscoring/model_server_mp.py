@@ -3,8 +3,7 @@ from distutils.util import strtobool
 from model_servers import RevscoringModel, RevscoringModelType
 import process_utils
 from concurrent.futures.process import BrokenProcessPool
-from http import HTTPStatus
-import tornado
+from kserve.errors import InferenceError
 import logging
 import extractor_utils
 import preprocess_utils
@@ -28,12 +27,9 @@ class RevscoringModelMP(RevscoringModel):
             self.process_pool = process_utils.refresh_process_pool(
                 self.process_pool, self.asyncio_aux_workers
             )
-            raise tornado.web.HTTPError(
-                status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
-                reason=(
-                    "An error happened while scoring the revision-id, please "
-                    "contact the ML-Team if the issue persists."
-                ),
+            raise InferenceError(
+                "An error happened while scoring the revision-id, please "
+                "contact the ML-Team if the issue persists."
             )
 
     async def score(self, feature_values):
@@ -65,7 +61,7 @@ class RevscoringModelMP(RevscoringModel):
 
         # The fetch_features function can be heavily cpu-bound, it depends
         # on the complexity of the rev-id to process. Running cpu-bound
-        # code inside the asyncio/tornado eventloop will block the thread
+        # code inside the asyncio eventloop will block the thread
         # and cause processing delays, so we use a process pool instead
         # (still enabled/disabled as opt-in).
         # See: https://docs.python.org/3/library/asyncio-eventloop.html#executing-code-in-thread-or-process-pools

@@ -2,9 +2,9 @@ import aiohttp
 import asyncio
 import logging
 import mwapi
-import tornado
 
-from http import HTTPStatus
+
+from kserve.errors import InvalidInput, InferenceError
 from typing import Dict, Optional
 
 from mwapi.errors import (
@@ -32,7 +32,7 @@ async def get_revscoring_extractor_cache(
     """Build a revscoring extractor HTTP cache using async HTTP calls.
     The revscoring API extractor can automatically fetch data from
     the MW API as well, but sadly only with blocking IO (namely, using Session
-    from the mwapi package). Since KServe works with Tornado and asyncio,
+    from the mwapi package). Since KServe works asyncio,
     we prefer to use mwapi's AsyncSession and pass the data (as MWAPICache)
     to revscoring.
     From tests in T309623, the API extractor fetches:
@@ -99,9 +99,8 @@ async def get_revscoring_extractor_cache(
                 "Received a badrevids error from the MW API for rev-id {}. "
                 "Complete response: {}".format(rev_id, rev_id_doc)
             )
-            raise tornado.web.HTTPError(
-                status_code=HTTPStatus.BAD_REQUEST,
-                reason=(
+            raise InvalidInput(
+                (
                     "The MW API does not have any info related to the rev-id "
                     "provided as input ({}), therefore it is not possible to "
                     "extract features properly. One possible cause is the deletion "
@@ -126,14 +125,11 @@ async def get_revscoring_extractor_cache(
                 "to extract features properly. "
                 "The error is {} and the document is: {}".format(e, rev_id_doc)
             )
-            raise tornado.web.HTTPError(
-                status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
-                reason=(
-                    "The rev-id doc retrieved from the MW API "
-                    "does not contain all the data needed "
-                    "to extract features properly. "
-                    "Please contact the ML-Team if the issue persists."
-                ),
+            raise InferenceError(
+                "The rev-id doc retrieved from the MW API "
+                "does not contain all the data needed "
+                "to extract features properly. "
+                "Please contact the ML-Team if the issue persists."
             )
 
         if fetch_extra_info:
@@ -164,9 +160,8 @@ async def get_revscoring_extractor_cache(
             "An error has occurred while fetching feature "
             "values from the MW API: {}".format(e)
         )
-        raise tornado.web.HTTPError(
-            status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
-            reason=(
+        raise InferenceError(
+            (
                 "An error happened while fetching feature values from "
                 "the MediaWiki API, please contact the ML-Team "
                 "if the issue persists."
@@ -202,20 +197,17 @@ def fetch_features(
     try:
         feature_values = list(extractor.extract(rev_id, model_features, cache=cache))
     except MissingResource as e:
-        raise tornado.web.HTTPError(
-            status_code=HTTPStatus.BAD_REQUEST,
-            reason=f"Missing resource for rev-id {rev_id}: {e}",
+        raise InvalidInput(
+            f"Missing resource for rev-id {rev_id}: {e}",
         )
-    except UnexpectedContentType as e:
-        raise tornado.web.HTTPError(
-            status_code=HTTPStatus.BAD_REQUEST,
-            reason=f"Unexpected content type for rev-id {rev_id}: {e}",
+    except UnexpectedContentType:
+        raise InvalidInput(
+            "Unexpected content type for rev-id {rev_id}: {e}",
         )
     except Exception as e:
-        raise tornado.web.HTTPError(
-            status_code=HTTPStatus.BAD_REQUEST,
-            reason="Generic error while extracting features "
-            "for rev-id {}: {}".format(rev_id, e),
+        raise InvalidInput(
+            "Generic error while extracting features "
+            "for rev-id {}: {}".format(rev_id, e)
         )
 
     return feature_values
