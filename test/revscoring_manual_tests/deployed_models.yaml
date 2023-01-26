@@ -1,0 +1,182 @@
+staging:
+  - model_name: articlequality
+    hostname: revscoring-articlequality
+    deployed_models:
+      - "en"
+      - "ru"
+
+  - model_name: itemquality
+    hostname: revscoring-articlequality
+    deployed_models:
+      - "wikidata"
+
+  - model_name: articletopic
+    hostname: revscoring-articletopic
+    deployed_models:
+      - "ar"
+      - "cs"
+      - "en"
+
+  - model_name: draftquality
+    hostname: revscoring-draftquality
+    deployed_models:
+      - "en"
+
+  - model_name: drafttopic
+    hostname: revscoring-drafttopic
+    deployed_models:
+      - "en"
+
+  - model_name: damaging
+    hostname: revscoring-editquality-damaging
+    deployed_models:
+      - "en"
+      - "eswikiquote"
+      - "wikidata"
+
+  - model_name: goodfaith
+    hostname: revscoring-editquality-goodfaith
+    deployed_models:
+      - "en"
+      - "zh"
+
+  - model_name: reverted
+    hostname: revscoring-editquality-reverted
+    deployed_models:
+      - "vi"
+
+production:
+  - model_name: articlequality
+    hostname: revscoring-articlequality
+    deployed_models:
+      - "en"
+      - "eu"
+      - "fa"
+      - "fr"
+      - "gl"
+      - "nl"
+      - "pt"
+      - "ru"
+      - "sv"
+      - "tr"
+      - "uk"
+
+  - model_name: itemquality
+    hostname: revscoring-articlequality
+    deployed_models:
+      - "wikidata"
+
+  - model_name: articletopic
+    hostname: revscoring-articletopic
+    deployed_models:
+      - "ar"
+      - "cs"
+      - "en"
+      - "eu"
+      - "hu"
+      - "hy"
+      - "ko"
+      - "sr"
+      - "uk"
+      - "vi"
+
+  - model_name: itemtopic
+    hostname: revscoring-articletopic
+    deployed_models:
+      - "wikidata"
+
+  - model_name: draftquality
+    hostname: revscoring-draftquality
+    deployed_models:
+      - "en"
+      - "pt"
+
+  - model_name: drafttopic
+    hostname: revscoring-drafttopic
+    deployed_models:
+      - "en"
+
+  - model_name: damaging
+    hostname: revscoring-editquality-damaging
+    deployed_models:
+      - "ar"
+      - "bs"
+      - "ca"
+      - "cs"
+      - "de"
+      - "en"
+      - "eswikibooks"
+      - "es"
+      - "eswikiquote"
+      - "et"
+      - "fa"
+      - "fi"
+      - "fr"
+      - "he"
+      - "hi"
+      - "hu"
+      - "it"
+      - "ja"
+      - "ko"
+      - "lv"
+      - "nl"
+      - "no"
+      - "pl"
+      - "pt"
+      - "ro"
+      - "ru"
+      - "sq"
+      - "sr"
+      - "sv"
+      - "uk"
+      - "wikidata"
+      - "zh"
+
+  - model_name: goodfaith
+    hostname: revscoring-editquality-goodfaith
+    deployed_models:
+      - "ar"
+      - "bs"
+      - "ca"
+      - "cs"
+      - "de"
+      - "en"
+      - "eswikibooks"
+      - "es"
+      - "eswikiquote"
+      - "et"
+      - "fa"
+      - "fi"
+      - "fr"
+      - "he"
+      - "hi"
+      - "hu"
+      - "it"
+      - "ja"
+      - "ko"
+      - "lv"
+      - "nl"
+      - "no"
+      - "pl"
+      - "pt"
+      - "ro"
+      - "ru"
+      - "sq"
+      - "sr"
+      - "sv"
+      - "uk"
+      - "wikidata"
+      - "zh"
+
+  - model_name: reverted
+    hostname: revscoring-editquality-reverted
+    deployed_models:
+      - "bn"
+      - "el"
+      - "enwiktionary"
+      - "gl"
+      - "hr"
+      - "id"
+      - "is"
+      - "ta"
+      - "vi"
