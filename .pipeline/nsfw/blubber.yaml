@@ -29,6 +29,7 @@ variants:
       packages:
         - python3
         - python3-distutils
+        - wmf-certificates
     python:
       version: python3
       use-system-flag: false

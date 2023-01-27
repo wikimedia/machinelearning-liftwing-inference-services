@@ -37,6 +37,7 @@ variants:
     apt:
       packages:
         - python3
+        - wmf-certificates
     python:
       version: python3
       use-system-flag: false
