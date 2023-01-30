@@ -60,10 +60,10 @@ class RevscoringModel(kserve.Model):
         self.EVENTGATE_URL = os.environ.get("EVENTGATE_URL")
         self.EVENTGATE_STREAM = os.environ.get("EVENTGATE_STREAM")
         self.AIOHTTP_CLIENT_TIMEOUT = os.environ.get("AIOHTTP_CLIENT_TIMEOUT", 5)
-        self.CUSTOM_UA = f"WMF ML Team {model_kind} model svc"
+        self.CUSTOM_UA = f"WMF ML Team {model_kind.value} model svc"
         # Deployed via the wmf-certificates package
         self.TLS_CERT_BUNDLE_PATH = "/etc/ssl/certs/wmf-ca-certificates.crt"
-        self._http_client_session = None
+        self._http_client_session = {}
         atexit.register(self._shutdown)
         if model_kind in [
             RevscoringModelType.EDITQUALITY_DAMAGING,
@@ -88,18 +88,26 @@ class RevscoringModel(kserve.Model):
     def fetch_features(self, rev_id, features, extractor, cache):
         return extractor_utils.fetch_features(rev_id, features, extractor, cache)
 
-    @property
-    def http_client_session(self):
+    def get_http_client_session(self, endpoint):
+        """Returns a aiohttp session for the specific endpoint passed as input.
+        We need to do it since sharing a single session leads to unexpected
+        side effects (like sharing headers, most notably the Host one)."""
         timeout = aiohttp.ClientTimeout(total=self.AIOHTTP_CLIENT_TIMEOUT)
-        if self._http_client_session is None or self._http_client_session.closed:
-            logging.info("Opening a new Asyncio session.")
-            self._http_client_session = aiohttp.ClientSession(timeout=timeout)
-        return self._http_client_session
+        if (
+            self._http_client_session.get(endpoint, None) is None
+            or self._http_client_session[endpoint].closed
+        ):
+            logging.info(f"Opening a new Asyncio session for {endpoint}.")
+            self._http_client_session[endpoint] = aiohttp.ClientSession(
+                timeout=timeout, raise_for_status=True
+            )
+        return self._http_client_session[endpoint]
 
     def _shutdown(self):
-        if self._http_client_session and not self._http_client_session.closed:
-            logging.info("Closing asyncio session")
-            asyncio.run(self._http_client_session.close())
+        for endpoint, session in self._http_client_session.items():
+            if session and not session.closed:
+                logging.info(f"Closing asyncio session for {endpoint}")
+                asyncio.run(session.close())
 
     def load(self):
         if self.model_kind == RevscoringModelType.DRAFTQUALITY:
@@ -127,7 +135,7 @@ class RevscoringModel(kserve.Model):
         mw_http_cache = await extractor_utils.get_revscoring_extractor_cache(
             rev_id,
             self.CUSTOM_UA,
-            self.http_client_session,
+            self.get_http_client_session("mwapi"),
             wiki_url=wiki_url,
             wiki_host=wiki_host,
             fetch_extra_info=self.extra_mw_api_calls,
@@ -213,7 +221,7 @@ class RevscoringModel(kserve.Model):
                 self.EVENTGATE_URL,
                 self.TLS_CERT_BUNDLE_PATH,
                 self.CUSTOM_UA,
-                self.http_client_session,
+                self.get_http_client_session("eventgate"),
             )
 
     def get_revision_event(self, inputs: Dict, event_input_key) -> Optional[str]:

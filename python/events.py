@@ -68,7 +68,7 @@ async def send_event(
     """Sends a revision-score-event to EventGate."""
     try:
         sslcontext = ssl.create_default_context(cafile=tls_bundle_path)
-        await aio_http_client.post(
+        async with aio_http_client.post(
             eventgate_url,
             ssl=sslcontext,
             json=json.dumps(revision_score_event),
@@ -76,11 +76,13 @@ async def send_event(
                 "Content-type": "application/json",
                 "UserAgent": user_agent,
             },
-        )
-        logging.debug(
-            "Successfully sent the following event to "
-            "EventGate: {}".format(revision_score_event)
-        )
+        ) as resp:
+            logging.debug(
+                "Sent the following event to "
+                "EventGate, that returned a HTTP response with status "
+                f"{resp.status} and text '{await resp.text()}'"
+                f":\n{revision_score_event}"
+            )
     except aiohttp.ClientError as e:
         logging.error(f"Connection error while sending an event to EventGate: {e}")
         # FIXME: after all model-servers are migrated to KServe 0.10,
