@@ -24,31 +24,36 @@ class OutlinkTransformer(kserve.Model):
         self.predictor_host = predictor_host
         self.REVISION_CREATE_EVENT_KEY = "revision_create_event"
         self.WIKI_URL = os.environ.get("WIKI_URL")
-        self._http_client_session = aiohttp.ClientSession()
+        self.AIOHTTP_CLIENT_TIMEOUT = os.environ.get("AIOHTTP_CLIENT_TIMEOUT", 5)
+        self._http_client_session = {}
         atexit.register(self._shutdown)
         # FIXME: this may not be needed, in theory we could simply rely on
         # kserve.constants.KSERVE_LOGLEVEL (passing KSERVE_LOGLEVEL as env var)
         # but it doesn't seem to work.
         logging_utils.set_log_level()
 
-    @property
-    def http_client_session(self):
-        if self._http_client_session.closed:
-            logging.info("Asyncio session closed, opening a new one.")
-            self._http_client_session = aiohttp.ClientSession()
-        return self._http_client_session
+    def get_http_client_session(self, endpoint):
+        timeout = aiohttp.ClientTimeout(total=self.AIOHTTP_CLIENT_TIMEOUT)
+        if (
+            self._http_client_session.get(endpoint, None) is None
+            or self._http_client_session[endpoint].closed
+        ):
+            logging.info(f"Opening a new Asyncio session for {endpoint}.")
+            self._http_client_session[endpoint] = aiohttp.ClientSession(timeout=timeout)
+        return self._http_client_session[endpoint]
 
     def _shutdown(self):
-        if not self._http_client_session.closed:
-            logging.info("Closing asyncio session")
-            asyncio.run(self._http_client_session.close())
+        for endpoint, session in self._http_client_session.items():
+            if session and not session.closed:
+                logging.info(f"Closing asyncio session for {endpoint}")
+                asyncio.run(session.close())
 
     async def get_outlinks(self, title: str, lang: str, limit=1000) -> Set:
         """Gather set of up to `limit` outlinks for an article."""
         session = mwapi.AsyncSession(
             host=self.WIKI_URL or f"https://{lang}.wikipedia.org",
             user_agent="WMF ML Team outlink-topic-model svc",
-            session=self.http_client_session,
+            session=self.get_http_client_session("mwapi"),
         )
         session.headers["Host"] = f"{lang}.wikipedia.org"
         # generate list of all outlinks (to namespace 0) from

@@ -21,22 +21,25 @@ class RevisionRevertRiskModel(kserve.Model):
         super().__init__(name)
         self.name = name
         self.ready = False
-        self._http_client_session = None
+        self._http_client_session = {}
         self.WIKI_URL = os.environ.get("WIKI_URL")
         atexit.register(self._shutdown)
         self.load()
 
-    @property
-    def http_client_session(self):
-        if self._http_client_session is None or self._http_client_session.closed:
-            logging.info("Opening a new Asyncio session.")
-            self._http_client_session = aiohttp.ClientSession()
-        return self._http_client_session
+    def get_http_client_session(self, endpoint):
+        if (
+            self._http_client_session.get(endpoint, None) is None
+            or self._http_client_session[endpoint].closed
+        ):
+            logging.info(f"Opening a new Asyncio session for {endpoint}.")
+            self._http_client_session[endpoint] = aiohttp.ClientSession()
+        return self._http_client_session[endpoint]
 
     def _shutdown(self):
-        if self._http_client_session and not self._http_client_session.closed:
-            logging.info("Closing asyncio session")
-            asyncio.run(self._http_client_session.close())
+        for endpoint, session in self._http_client_session.items():
+            if session and not session.closed:
+                logging.info(f"Closing asyncio session for {endpoint}")
+                asyncio.run(session.close())
 
     def load(self) -> None:
         self.model = load_model("/mnt/models/model.pkl")
@@ -66,7 +69,7 @@ class RevisionRevertRiskModel(kserve.Model):
         session = mwapi.AsyncSession(
             host=self.WIKI_URL or f"https://{lang}.wikipedia.org",
             user_agent="WMF ML Team revert-risk-model isvc",
-            session=self.http_client_session,
+            session=self.get_http_client_session("mwapi"),
         )
         session.headers["Host"] = f"{lang}.wikipedia.org"
         try:

@@ -29,22 +29,25 @@ class OutlinksTopicModel(kserve.Model):
         self.CUSTOM_UA = "WMF ML Team outlink-topic-model svc"
         self.AIOHTTP_CLIENT_TIMEOUT = os.environ.get("AIOHTTP_CLIENT_TIMEOUT", 5)
         self.MODEL_VERSION = os.environ.get("MODEL_VERSION")
-        self._http_client_session = None
+        self._http_client_session = {}
         atexit.register(self._shutdown)
         self.load()
 
-    @property
-    def http_client_session(self):
+    def get_http_client_session(self, endpoint):
         timeout = aiohttp.ClientTimeout(total=self.AIOHTTP_CLIENT_TIMEOUT)
-        if self._http_client_session is None or self._http_client_session.closed:
-            logging.info("Opening a new Asyncio session.")
-            self._http_client_session = aiohttp.ClientSession(timeout=timeout)
-        return self._http_client_session
+        if (
+            self._http_client_session.get(endpoint, None) is None
+            or self._http_client_session[endpoint].closed
+        ):
+            logging.info(f"Opening a new Asyncio session for {endpoint}.")
+            self._http_client_session[endpoint] = aiohttp.ClientSession(timeout=timeout)
+        return self._http_client_session[endpoint]
 
     def _shutdown(self):
-        if self._http_client_session and not self._http_client_session.closed:
-            logging.info("Closing asyncio session")
-            asyncio.run(self._http_client_session.close())
+        for endpoint, session in self._http_client_session.items():
+            if session and not session.closed:
+                logging.info(f"Closing asyncio session for {endpoint}")
+                asyncio.run(session.close())
 
     def load(self):
         self.model = fasttext.load_model("/mnt/models/model.bin")
@@ -97,7 +100,7 @@ class OutlinksTopicModel(kserve.Model):
                     self.EVENTGATE_URL,
                     self.TLS_CERT_BUNDLE_PATH,
                     self.CUSTOM_UA,
-                    self.http_client_session,
+                    self.get_http_client_session("eventgate"),
                 )
             except RuntimeError:
                 # FIXME: move to FastAPI when migrating to KServe 0.10
