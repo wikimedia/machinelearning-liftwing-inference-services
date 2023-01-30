@@ -1,5 +1,4 @@
 import aiohttp
-import json
 import logging
 import ssl
 
@@ -71,7 +70,7 @@ async def send_event(
         async with aio_http_client.post(
             eventgate_url,
             ssl=sslcontext,
-            json=json.dumps(revision_score_event),
+            json=revision_score_event,
             headers={
                 "Content-type": "application/json",
                 "UserAgent": user_agent,
