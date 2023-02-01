@@ -12,10 +12,10 @@ attrs==22.1.0
 avro==1.11.1
 azure-core==1.17.0
 azure-identity==1.10.0
-azure-storage-blob==12.8.1
+azure-storage-blob==12.9.0
 blessed==1.19.1
-boto3==1.20.24
-botocore==1.23.54
+boto3==1.21.0
+botocore<1.25.0
 cachetools==4.2.2
 certifi==2021.5.30
 cffi==1.14.6
@@ -54,8 +54,7 @@ jmespath==0.10.0
 jsonschema==4.9.0
 keras==2.7.0
 Keras-Preprocessing==1.1.2
-kserve==0.8.0
-kubernetes==17.17.0
+kserve==0.9.0
 libclang==14.0.6
 Markdown==3.4.1
 MarkupSafe==2.1.1
@@ -65,7 +64,7 @@ msal-extensions==1.0.0
 msgpack==1.0.4
 msrest==0.6.21
 multidict==6.0.2
-numpy==1.19.5
+numpy~=1.21.5
 oauthlib==3.2.0
 opencensus==0.10.0
 opencensus-context==0.1.2
@@ -89,7 +88,7 @@ python-dateutil==2.8.2
 python-rapidjson==1.8
 pytz==2022.1
 PyYAML==6.0
-ray==1.9.0
+ray==1.10.0
 redis==4.3.4
 requests==2.28.1
 requests-oauthlib==1.3.1
@@ -108,7 +107,7 @@ tensorflow-estimator==2.7.0
 tensorflow-io-gcs-filesystem==0.26.0
 termcolor==1.1.0
 tornado==6.2
-tritonclient==2.14.2
+tritonclient==2.18.0
 typing_extensions==4.3.0
 urllib3==1.26.11
 uvicorn==0.18.2
