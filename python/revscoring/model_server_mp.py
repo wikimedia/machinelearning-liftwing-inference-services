@@ -53,7 +53,7 @@ class RevscoringModelMP(RevscoringModel):
     async def preprocess(self, inputs: Dict) -> Dict:
         """Use MW API session and Revscoring API to extract feature values
         of edit text based on its revision id"""
-        rev_id = preprocess_utils.get_rev_id(inputs, self.REVISION_CREATE_EVENT_KEY)
+        rev_id = preprocess_utils.get_rev_id(inputs, self.EVENT_KEY)
         extended_output = inputs.get("extended_output", False)
         await self.set_extractor(inputs, rev_id)
 

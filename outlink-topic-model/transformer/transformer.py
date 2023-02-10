@@ -22,7 +22,7 @@ class OutlinkTransformer(kserve.Model):
     def __init__(self, name: str, predictor_host: str):
         super().__init__(name)
         self.predictor_host = predictor_host
-        self.REVISION_CREATE_EVENT_KEY = "revision_create_event"
+        self.EVENT_KEY = "event"
         self.WIKI_URL = os.environ.get("WIKI_URL")
         self.AIOHTTP_CLIENT_TIMEOUT = os.environ.get("AIOHTTP_CLIENT_TIMEOUT", 5)
         self._http_client_session = {}
@@ -89,10 +89,8 @@ class OutlinkTransformer(kserve.Model):
         return outlink_qids
 
     async def preprocess(self, inputs: Dict) -> Dict:
-        lang = preprocess_utils.get_lang(inputs, self.REVISION_CREATE_EVENT_KEY)
-        page_title = preprocess_utils.get_page_title(
-            inputs, self.REVISION_CREATE_EVENT_KEY
-        )
+        lang = preprocess_utils.get_lang(inputs, self.EVENT_KEY)
+        page_title = preprocess_utils.get_page_title(inputs, self.EVENT_KEY)
         threshold = inputs.get("threshold", 0.5)
         if not isinstance(threshold, float):
             logging.error("Expected threshold to be a float")
@@ -131,10 +129,8 @@ class OutlinkTransformer(kserve.Model):
             "threshold": threshold,
             "debug": debug,
         }
-        if self.REVISION_CREATE_EVENT_KEY in inputs:
-            request[self.REVISION_CREATE_EVENT_KEY] = inputs[
-                self.REVISION_CREATE_EVENT_KEY
-            ]
+        if self.EVENT_KEY in inputs:
+            request[self.EVENT_KEY] = inputs[self.EVENT_KEY]
         return request
 
     def postprocess(self, outputs: Dict) -> Dict:

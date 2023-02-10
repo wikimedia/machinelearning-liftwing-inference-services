@@ -21,7 +21,7 @@ class OutlinksTopicModel(kserve.Model):
         super().__init__(name)
         self.name = name
         self.ready = False
-        self.REVISION_CREATE_EVENT_KEY = "revision_create_event"
+        self.EVENT_KEY = "event"
         self.EVENTGATE_URL = os.environ.get("EVENTGATE_URL")
         self.EVENTGATE_STREAM = os.environ.get("EVENTGATE_STREAM")
         # Deployed via the wmf-certificates package
@@ -86,9 +86,9 @@ class OutlinksTopicModel(kserve.Model):
         }
         # Send a revision-score event to EventGate, generated from
         # the revision-create event passed as input.
-        if self.REVISION_CREATE_EVENT_KEY in request:
+        if self.EVENT_KEY in request:
             revision_score_event = events.generate_revision_score_event(
-                request[self.REVISION_CREATE_EVENT_KEY],
+                request[self.EVENT_KEY],
                 self.EVENTGATE_STREAM,
                 self.MODEL_VERSION,
                 self.prediction_results,

@@ -56,7 +56,7 @@ class RevscoringModel(kserve.Model):
         self.ready = False
         self.FEATURE_VAL_KEY = "feature_values"
         self.EXTENDED_OUTPUT_KEY = "extended_output"
-        self.REVISION_CREATE_EVENT_KEY = "revision_create_event"
+        self.EVENT_KEY = "event"
         self.EVENTGATE_URL = os.environ.get("EVENTGATE_URL")
         self.EVENTGATE_STREAM = os.environ.get("EVENTGATE_STREAM")
         self.AIOHTTP_CLIENT_TIMEOUT = os.environ.get("AIOHTTP_CLIENT_TIMEOUT", 5)
@@ -120,9 +120,7 @@ class RevscoringModel(kserve.Model):
     async def set_extractor(self, inputs, rev_id):
         # The postprocess() function needs to parse the revision_create_event
         # given as input (if any).
-        self.revision_create_event = self.get_revision_event(
-            inputs, self.REVISION_CREATE_EVENT_KEY
-        )
+        self.revision_create_event = self.get_revision_event(inputs, self.EVENT_KEY)
         if self.revision_create_event:
             inputs["rev_id"] = rev_id
         wiki_url = os.environ.get("WIKI_URL")
@@ -150,7 +148,7 @@ class RevscoringModel(kserve.Model):
     async def preprocess(self, inputs: Dict, headers: Dict[str, str] = None) -> Dict:
         """Use MW API session and Revscoring API to extract feature values
         of edit text based on its revision id"""
-        rev_id = self.get_rev_id(inputs, self.REVISION_CREATE_EVENT_KEY)
+        rev_id = self.get_rev_id(inputs, self.EVENT_KEY)
         extended_output = inputs.get("extended_output", False)
         await self.set_extractor(inputs, rev_id)
 
@@ -236,11 +234,24 @@ class RevscoringModel(kserve.Model):
         or passed directly as value.
         """
         try:
-            # If a revision create event is passed as input,
+            # If a revision event is passed as input,
             # its rev-id is considerate the one to score.
             # Otherwise, we look for a specific "rev_id" input.
             if event_input_key in inputs:
-                rev_id = inputs[event_input_key]["rev_id"]
+                if (
+                    inputs[event_input_key]["$schema"]
+                    == "/mediawiki/revision/create/1.1.0"
+                ):
+                    rev_id = inputs[event_input_key]["rev_id"]
+                elif (
+                    inputs[event_input_key]["$schema"] == "/mediawiki/page/change/1.0.0"
+                ):
+                    rev_id = inputs[event_input_key]["revision"]["rev_id"]
+                else:
+                    raise InvalidInput(
+                        f"Unsupported event of schema {inputs[event_input_key]['$schema']}, "
+                        "the rev_id value cannot be determined."
+                    )
             else:
                 rev_id = inputs["rev_id"]
         except KeyError:

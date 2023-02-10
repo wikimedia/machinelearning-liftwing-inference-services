@@ -5,8 +5,80 @@ import ssl
 from typing import Dict, Any
 
 
+def _revision_score_from_revision_create(
+    rev_create_event: Dict[str, Any], eventgate_stream: str
+) -> Dict:
+    """Generates a revision-score event (most of it, excluding the score bits)
+    from a revision-create one's data."""
+    revision_score_event = {
+        "$schema": "/mediawiki/revision/score/2.0.0",
+        "meta": {
+            "stream": eventgate_stream,
+        },
+        "database": rev_create_event["database"],
+        "page_id": rev_create_event["page_id"],
+        "page_title": rev_create_event["page_title"],
+        "page_namespace": rev_create_event["page_namespace"],
+        "page_is_redirect": rev_create_event["page_is_redirect"],
+        "rev_id": rev_create_event["rev_id"],
+        "rev_timestamp": rev_create_event["rev_timestamp"],
+    }
+    # The following fields are not mandatory in a mediawiki.revision-create
+    # event, so we optionally add it to the final revision-score event as well.
+    if "performer" in rev_create_event:
+        revision_score_event["performer"] = rev_create_event["performer"]
+    if "rev_parent_id" in rev_create_event:
+        revision_score_event["rev_parent_id"] = rev_create_event["rev_parent_id"]
+
+    return revision_score_event
+
+
+def _revision_score_from_page_change(
+    page_change_event: Dict[str, Any], eventgate_stream: str
+) -> Dict:
+    """Generates a revision-score event (most of it, excluding the score bits)
+    from a page_change one's data."""
+
+    if (
+        "namespace_id" not in page_change_event["page"]
+        or "is_redirect" not in page_change_event["page"]
+    ):
+        logging.error(
+            "The page_change event provided as input does not carry either "
+            "page namespace_id or is_redirect fields. Event: %s",
+            page_change_event,
+        )
+        raise RuntimeError(
+            "The page_change event provided as input does not carry either "
+            "page namespace_id or is_redirect fields. "
+            "They are mandatory to build a revision-score event so the input "
+            "cannot be processed (and the revision-score event is not emitted)."
+        )
+
+    revision_score_event = {
+        "$schema": "/mediawiki/revision/score/2.0.0",
+        "meta": {
+            "stream": eventgate_stream,
+        },
+        "database": page_change_event["wiki_id"],
+        "page_id": page_change_event["page"]["page_id"],
+        "page_title": page_change_event["page"]["page_title"],
+        "page_namespace": page_change_event["page"]["namespace_id"],
+        "page_is_redirect": page_change_event["page"]["is_redirect"],
+        "rev_id": page_change_event["revision"]["rev_id"],
+        "rev_timestamp": page_change_event["revision"]["rev_dt"],
+        "performer": page_change_event["performer"],
+    }
+    if "rev_parent_id" in page_change_event:
+        revision_score_event["rev_parent_id"] = page_change_event["revision"][
+            "rev_parent_id"
+        ]
+
+    return revision_score_event
+
+
 def generate_revision_score_event(
-    rev_create_event: Dict[str, Any],
+    event: Dict[str, Any],
     eventgate_stream: str,
     model_version: str,
     predictions: Dict,
@@ -25,34 +97,27 @@ def generate_revision_score_event(
         prediction = p
     else:
         prediction = [p]
-    revision_score_event = {
-        "$schema": "/mediawiki/revision/score/2.0.0",
-        "meta": {
-            "stream": eventgate_stream,
-        },
-        "database": rev_create_event["database"],
-        "page_id": rev_create_event["page_id"],
-        "page_title": rev_create_event["page_title"],
-        "page_namespace": rev_create_event["page_namespace"],
-        "page_is_redirect": rev_create_event["page_is_redirect"],
-        "rev_id": rev_create_event["rev_id"],
-        "rev_timestamp": rev_create_event["rev_timestamp"],
-        "scores": {
-            model_name: {
-                "model_name": model_name,
-                "model_version": model_version,
-                "prediction": prediction,
-                "probability": predictions["probability"],
-            }
-        },
-    }
 
-    # The following fields are not mandatory in a mediawiki.revision-create
-    # event, so we optionally add it to the final revision-score event as well.
-    if "performer" in rev_create_event:
-        revision_score_event["performer"] = rev_create_event["performer"]
-    if "rev_parent_id" in rev_create_event:
-        revision_score_event["rev_parent_id"] = rev_create_event["rev_parent_id"]
+    if event["$schema"] == "/mediawiki/revision/create/1.1.0":
+        revision_score_event = _revision_score_from_revision_create(
+            event, eventgate_stream
+        )
+    elif event["$schema"] == "/mediawiki/page/change/1.0.0":
+        revision_score_event = _revision_score_from_page_change(event, eventgate_stream)
+    else:
+        raise RuntimeError(
+            f"Unsupported event of schema {event['$schema']}, please contact "
+            "the ML team."
+        )
+
+    revision_score_event["scores"] = {
+        model_name: {
+            "model_name": model_name,
+            "model_version": model_version,
+            "prediction": prediction,
+            "probability": predictions["probability"],
+        }
+    }
 
     return revision_score_event
 
