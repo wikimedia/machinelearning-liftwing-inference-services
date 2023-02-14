@@ -1,6 +1,6 @@
 # syntax=docker-registry.wikimedia.org/repos/releng/blubber/buildkit:v0.15.0
 version: v4
-base: docker-registry.wikimedia.org/bullseye:20221218
+base: docker-registry.wikimedia.org/buster:20221211
 runs:
   insecurely: true
 
@@ -11,7 +11,7 @@ variants:
   build:
     python:
       version: python3
-      requirements: [revert-risk-model/model-server/requirements.txt]
+      requirements: [revert-risk-model/model-server/multilingual/requirements.txt]
     apt:
       packages:
         - build-essential
@@ -45,7 +45,7 @@ variants:
         - git
     copies:
       - from: local
-        source: revert-risk-model/model-server
+        source: revert-risk-model/model-server/multilingual
         destination: model-server
       - from: local
         source: tox.ini

@@ -9,7 +9,6 @@ import aiohttp
 import kserve
 import mwapi
 
-from knowledge_integrity.models.revertrisk_multilingual import load_model, classify
 from knowledge_integrity.revision import get_current_revision
 from tornado.web import HTTPError
 
@@ -42,7 +41,7 @@ class RevisionRevertRiskModel(kserve.Model):
                 asyncio.run(session.close())
 
     def load(self) -> None:
-        self.model = load_model("/mnt/models/model.pkl")
+        self.model = KI_module.load_model("/mnt/models/model.pkl")
         self.ready = True
 
     async def preprocess(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
@@ -103,7 +102,7 @@ class RevisionRevertRiskModel(kserve.Model):
                 "rev_id": request.get("rev_id"),
                 "score": {},
             }
-        result = classify(self.model, request["revision"])
+        result = KI_module.classify(self.model, request["revision"])
         return {
             "lang": request.get("lang"),
             "rev_id": request.get("rev_id"),
@@ -118,5 +117,10 @@ class RevisionRevertRiskModel(kserve.Model):
 
 
 if __name__ == "__main__":
-    model = RevisionRevertRiskModel("revert-risk-model")
+    model_name = os.environ.get("MODEL_NAME")
+    if model_name == "revertrisk-multilingual":
+        import knowledge_integrity.models.revertrisk_multilingual as KI_module
+    else:
+        import knowledge_integrity.models.revertrisk as KI_module
+    model = RevisionRevertRiskModel(model_name)
     kserve.ModelServer(workers=1).start([model])
