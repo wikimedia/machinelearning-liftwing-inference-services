@@ -1,6 +1,6 @@
 # syntax=docker-registry.wikimedia.org/repos/releng/blubber/buildkit:v0.15.0
 version: v4
-base: docker-registry.wikimedia.org/buster:20221211
+base: docker-registry.wikimedia.org/bullseye:20221218
 runs:
   insecurely: true
 
@@ -60,8 +60,11 @@ variants:
       - from: local
         source: ruff.toml
         destination: .
+      - from: local
+        source: requirements-test.txt
+        destination: .
     entrypoint: ["./entrypoint.sh", "transformer"]
     python:
       version: python3
-      requirements: [outlink-topic-model/transformer/requirements.txt, outlink-topic-model/transformer/requirements-test.txt]
+      requirements: [requirements-test.txt]
       use-system-flag: false

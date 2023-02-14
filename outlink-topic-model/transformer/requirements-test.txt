@@ -1,7 +1,0 @@
-pytest
-pytest-asyncio
-flake8
-pre-commit
-black
-tox
-tox-monorepo
