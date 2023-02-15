@@ -132,8 +132,11 @@ variants:
       - from: local
         source: ruff.toml
         destination: .
+      - from: local
+        source: requirements-test.txt
+        destination: .
     entrypoint: ["./entrypoint.sh", "model-server"]
     python:
       version: python3
-      requirements: [revscoring/requirements-test.txt]
+      requirements: [requirements-test.txt]
       use-system-flag: false
