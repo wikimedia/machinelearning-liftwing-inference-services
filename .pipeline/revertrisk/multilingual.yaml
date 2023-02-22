@@ -1,6 +1,6 @@
 # syntax=docker-registry.wikimedia.org/repos/releng/blubber/buildkit:v0.15.0
 version: v4
-base: docker-registry.wikimedia.org/buster:20221211
+base: docker-registry.wikimedia.org/bullseye:20221218
 runs:
   insecurely: true
 
@@ -45,7 +45,7 @@ variants:
         - git
     copies:
       - from: local
-        source: revert-risk-model/model-server/multilingual
+        source: revert-risk-model/model-server
         destination: model-server
       - from: local
         source: tox.ini
