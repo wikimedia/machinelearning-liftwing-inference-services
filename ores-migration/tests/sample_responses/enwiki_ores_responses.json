@@ -1,0 +1,398 @@
+{
+    "context_rev_id":
+    {
+        "rev_id": 1097728152,
+        "database": "enwiki",
+        "ores_url": "https://ores.wikimedia.org/v3/scores/enwiki/1097728152",
+        "response":
+        {
+            "enwiki":
+            {
+                "models":
+                {
+                    "articlequality":
+                    {
+                        "version": "0.9.2"
+                    },
+                    "articletopic":
+                    {
+                        "version": "1.3.0"
+                    },
+                    "damaging":
+                    {
+                        "version": "0.5.1"
+                    },
+                    "draftquality":
+                    {
+                        "version": "0.2.1"
+                    },
+                    "drafttopic":
+                    {
+                        "version": "1.3.0"
+                    },
+                    "goodfaith":
+                    {
+                        "version": "0.5.1"
+                    },
+                    "wp10":
+                    {
+                        "version": "0.9.2"
+                    }
+                },
+                "scores":
+                {
+                    "1097728152":
+                    {
+                        "articlequality":
+                        {
+                            "score":
+                            {
+                                "prediction": "FA",
+                                "probability":
+                                {
+                                    "B": 0.03953532980650377,
+                                    "C": 0.018616952429843164,
+                                    "FA": 0.7919520955041017,
+                                    "GA": 0.14078329586899324,
+                                    "Start": 0.00652663516944938,
+                                    "Stub": 0.0025856912211088393
+                                }
+                            }
+                        },
+                        "articletopic":
+                        {
+                            "score":
+                            {
+                                "prediction":
+                                [
+                                    "Culture.Biography.Biography*",
+                                    "Geography.Regions.Europe.Europe*",
+                                    "Geography.Regions.Europe.Northern Europe",
+                                    "History and Society.History"
+                                ],
+                                "probability":
+                                {
+                                    "Culture.Biography.Biography*": 0.5807358084221296,
+                                    "Culture.Biography.Women": 0.01560718835672558,
+                                    "Culture.Food and drink": 0.0027180226606837057,
+                                    "Culture.Internet culture": 0.001314049710686345,
+                                    "Culture.Linguistics": 0.003538779085949298,
+                                    "Culture.Literature": 0.12999304463336908,
+                                    "Culture.Media.Books": 0.06337080669536575,
+                                    "Culture.Media.Entertainment": 0.010690211623946897,
+                                    "Culture.Media.Films": 0.0072837009376239634,
+                                    "Culture.Media.Media*": 0.06391868156905729,
+                                    "Culture.Media.Music": 0.009231891146253859,
+                                    "Culture.Media.Radio": 0.0010014660903669647,
+                                    "Culture.Media.Software": 0.0008725590510434357,
+                                    "Culture.Media.Television": 0.0009572205962404975,
+                                    "Culture.Media.Video games": 0.00003305537666146526,
+                                    "Culture.Performing arts": 0.00849287148400772,
+                                    "Culture.Philosophy and religion": 0.4833275761650366,
+                                    "Culture.Sports": 0.0017046486990318376,
+                                    "Culture.Visual arts.Architecture": 0.026521307457036892,
+                                    "Culture.Visual arts.Comics and Anime": 0.00032157441946418396,
+                                    "Culture.Visual arts.Fashion": 0.0007515439090451414,
+                                    "Culture.Visual arts.Visual arts*": 0.08909394898201793,
+                                    "Geography.Geographical": 0.009650458567066809,
+                                    "Geography.Regions.Africa.Africa*": 0.027396331291262108,
+                                    "Geography.Regions.Africa.Central Africa": 0.0003040357992100165,
+                                    "Geography.Regions.Africa.Eastern Africa": 0.000621811271203146,
+                                    "Geography.Regions.Africa.Northern Africa": 0.005715254165241562,
+                                    "Geography.Regions.Africa.Southern Africa": 0.0006762688515142082,
+                                    "Geography.Regions.Africa.Western Africa": 0.0007905498470500623,
+                                    "Geography.Regions.Americas.Central America": 0.006847292502407666,
+                                    "Geography.Regions.Americas.North America": 0.014065882755391286,
+                                    "Geography.Regions.Americas.South America": 0.0009136665317684817,
+                                    "Geography.Regions.Asia.Asia*": 0.015741778814142886,
+                                    "Geography.Regions.Asia.Central Asia": 0.00028617180052507965,
+                                    "Geography.Regions.Asia.East Asia": 0.0015980860626055135,
+                                    "Geography.Regions.Asia.North Asia": 0.001376029528261204,
+                                    "Geography.Regions.Asia.South Asia": 0.002628200202636517,
+                                    "Geography.Regions.Asia.Southeast Asia": 0.0006145413142237016,
+                                    "Geography.Regions.Asia.West Asia": 0.004745814118776919,
+                                    "Geography.Regions.Europe.Eastern Europe": 0.0085751797703079,
+                                    "Geography.Regions.Europe.Europe*": 0.8853395405213316,
+                                    "Geography.Regions.Europe.Northern Europe": 0.8960620264884346,
+                                    "Geography.Regions.Europe.Southern Europe": 0.011967942877198233,
+                                    "Geography.Regions.Europe.Western Europe": 0.07336393113928627,
+                                    "Geography.Regions.Oceania": 0.035332083364215526,
+                                    "History and Society.Business and economics": 0.02349644217831521,
+                                    "History and Society.Education": 0.02426463420491111,
+                                    "History and Society.History": 0.6055018061489661,
+                                    "History and Society.Military and warfare": 0.24583720343840346,
+                                    "History and Society.Politics and government": 0.21374700956112708,
+                                    "History and Society.Society": 0.062462320864514656,
+                                    "History and Society.Transportation": 0.00279205378465035,
+                                    "STEM.Biology": 0.0054711677116517825,
+                                    "STEM.Chemistry": 0.001431449116662079,
+                                    "STEM.Computing": 0.0013842620875032963,
+                                    "STEM.Earth and environment": 0.002706251848458895,
+                                    "STEM.Engineering": 0.002197251462996109,
+                                    "STEM.Libraries & Information": 0.01455529034728899,
+                                    "STEM.Mathematics": 0.0013653174192143909,
+                                    "STEM.Medicine & Health": 0.007073680265336181,
+                                    "STEM.Physics": 0.002900243889464334,
+                                    "STEM.STEM*": 0.05014216452485684,
+                                    "STEM.Space": 0.0001590508413663442,
+                                    "STEM.Technology": 0.005240594511387367
+                                }
+                            }
+                        },
+                        "damaging":
+                        {
+                            "score":
+                            {
+                                "prediction": false,
+                                "probability":
+                                {
+                                    "false": 0.5818192554457859,
+                                    "true": 0.4181807445542141
+                                }
+                            }
+                        },
+                        "draftquality":
+                        {
+                            "score":
+                            {
+                                "prediction": "OK",
+                                "probability":
+                                {
+                                    "OK": 0.8025855389400985,
+                                    "attack": 0.002856244972309572,
+                                    "spam": 0.011815549736191335,
+                                    "vandalism": 0.18274266635140043
+                                }
+                            }
+                        },
+                        "drafttopic":
+                        {
+                            "score":
+                            {
+                                "prediction":
+                                [
+                                    "Geography.Regions.Europe.Europe*",
+                                    "Geography.Regions.Europe.Northern Europe"
+                                ],
+                                "probability":
+                                {
+                                    "Culture.Biography.Biography*": 0.45578807069451277,
+                                    "Culture.Biography.Women": 0.06014439449333961,
+                                    "Culture.Food and drink": 0.005487661101406367,
+                                    "Culture.Internet culture": 0.0024828809585585106,
+                                    "Culture.Linguistics": 0.0022542338531060455,
+                                    "Culture.Literature": 0.18627100526109971,
+                                    "Culture.Media.Books": 0.0557949544556461,
+                                    "Culture.Media.Entertainment": 0.00659854010789703,
+                                    "Culture.Media.Films": 0.0018831821375146244,
+                                    "Culture.Media.Media*": 0.05062380922610228,
+                                    "Culture.Media.Music": 0.003663390355995513,
+                                    "Culture.Media.Radio": 0.000256808426677882,
+                                    "Culture.Media.Software": 0.0025674120555207692,
+                                    "Culture.Media.Television": 0.0025898107984817964,
+                                    "Culture.Media.Video games": 0.0005895445677283746,
+                                    "Culture.Performing arts": 0.0873554133254258,
+                                    "Culture.Philosophy and religion": 0.2713977009125088,
+                                    "Culture.Sports": 0.002534920783988874,
+                                    "Culture.Visual arts.Architecture": 0.02232738589104687,
+                                    "Culture.Visual arts.Comics and Anime": 0.004308338280621073,
+                                    "Culture.Visual arts.Fashion": 0.0032518460648126024,
+                                    "Culture.Visual arts.Visual arts*": 0.07626247914811274,
+                                    "Geography.Geographical": 0.010603766367961887,
+                                    "Geography.Regions.Africa.Africa*": 0.041023910191468185,
+                                    "Geography.Regions.Africa.Central Africa": 0.0013377253728087148,
+                                    "Geography.Regions.Africa.Eastern Africa": 0.009593993210292513,
+                                    "Geography.Regions.Africa.Northern Africa": 0.015843707147680786,
+                                    "Geography.Regions.Africa.Southern Africa": 0.0019299097545500835,
+                                    "Geography.Regions.Africa.Western Africa": 0.0009567942848518245,
+                                    "Geography.Regions.Americas.Central America": 0.015167593798657762,
+                                    "Geography.Regions.Americas.North America": 0.033911745337626115,
+                                    "Geography.Regions.Americas.South America": 0.0029219835014892915,
+                                    "Geography.Regions.Asia.Asia*": 0.014808799452287066,
+                                    "Geography.Regions.Asia.Central Asia": 0.0012105629741339763,
+                                    "Geography.Regions.Asia.East Asia": 0.0020056067814963148,
+                                    "Geography.Regions.Asia.North Asia": 0.002548905082418096,
+                                    "Geography.Regions.Asia.South Asia": 0.004758790975410948,
+                                    "Geography.Regions.Asia.Southeast Asia": 0.001997737886375189,
+                                    "Geography.Regions.Asia.West Asia": 0.0027892027500596296,
+                                    "Geography.Regions.Europe.Eastern Europe": 0.01835677640734677,
+                                    "Geography.Regions.Europe.Europe*": 0.7675288768303201,
+                                    "Geography.Regions.Europe.Northern Europe": 0.6445614070080082,
+                                    "Geography.Regions.Europe.Southern Europe": 0.012310805070944772,
+                                    "Geography.Regions.Europe.Western Europe": 0.04986172456901708,
+                                    "Geography.Regions.Oceania": 0.01340085036355756,
+                                    "History and Society.Business and economics": 0.03300219149058869,
+                                    "History and Society.Education": 0.12486991547985403,
+                                    "History and Society.History": 0.4455620906701766,
+                                    "History and Society.Military and warfare": 0.1369976575556193,
+                                    "History and Society.Politics and government": 0.28134203364241794,
+                                    "History and Society.Society": 0.09745661861819373,
+                                    "History and Society.Transportation": 0.00399550529517256,
+                                    "STEM.Biology": 0.010199165911619547,
+                                    "STEM.Chemistry": 0.002696224425432609,
+                                    "STEM.Computing": 0.002294711796780415,
+                                    "STEM.Earth and environment": 0.0010542453124516445,
+                                    "STEM.Engineering": 0.002654547192582138,
+                                    "STEM.Libraries & Information": 0.008457198645846282,
+                                    "STEM.Mathematics": 0.0031702465368692407,
+                                    "STEM.Medicine & Health": 0.02299294701242559,
+                                    "STEM.Physics": 0.0012033279105438382,
+                                    "STEM.STEM*": 0.06374583732434708,
+                                    "STEM.Space": 0.000441770572901833,
+                                    "STEM.Technology": 0.005743385816423971
+                                }
+                            }
+                        },
+                        "goodfaith":
+                        {
+                            "score":
+                            {
+                                "prediction": true,
+                                "probability":
+                                {
+                                    "false": 0.27632603469337647,
+                                    "true": 0.7236739653066235
+                                }
+                            }
+                        },
+                        "wp10":
+                        {
+                            "score":
+                            {
+                                "prediction": "FA",
+                                "probability":
+                                {
+                                    "B": 0.03953532980650377,
+                                    "C": 0.018616952429843164,
+                                    "FA": 0.7919520955041017,
+                                    "GA": 0.14078329586899324,
+                                    "Start": 0.00652663516944938,
+                                    "Stub": 0.0025856912211088393
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "context_many_rev_ids":
+    {
+        "rev_id": "",
+        "database": "enwiki",
+        "ores_url": "https://ores.wikimedia.org/v3/scores/enwiki?models=articlequality&revids=1097728152|1142286861",
+        "response":
+        {
+            "enwiki":
+            {
+                "models":
+                {
+                    "articlequality":
+                    {
+                        "version": "0.8.2"
+                    }
+                },
+                "scores":
+                {
+                    "1097728152":
+                    {
+                        "articlequality":
+                        {
+                            "score":
+                            {
+                                "prediction": "FA",
+                                "probability":
+                                {
+                                    "B": 0.04372145665289373,
+                                    "C": 0.01633569349835188,
+                                    "FA": 0.8149014959814557,
+                                    "GA": 0.11678253364006724,
+                                    "Start": 0.005824085074702437,
+                                    "Stub": 0.0024347351525289508
+                                }
+                            }
+                        }
+                    },
+                    "1142286861":
+                    {
+                        "articlequality":
+                        {
+                            "score":
+                            {
+                                "prediction": "C",
+                                "probability":
+                                {
+                                    "B": 0.3749954280693714,
+                                    "C": 0.44411113084355147,
+                                    "FA": 0.019887809016123095,
+                                    "GA": 0.1250816841388352,
+                                    "Start": 0.02928104681920741,
+                                    "Stub": 0.006642901112911409
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "context_one_rev_ids_no_models":
+    {
+        "rev_id": "",
+        "database": "enwiki",
+        "ores_url": "https://ores.wikimedia.org/v3/scores/enwiki?revids=1097728152",
+        "response":
+        {
+            "enwiki":
+            {
+                "models":
+                {
+                    "articlequality":
+                    {
+                        "version": "0.8.2"
+                    },
+                    "draftquality":
+                    {
+                        "version": "0.2.1"
+                    }
+                },
+                "scores":
+                {
+                    "1097728152":
+                    {
+                        "articlequality":
+                        {
+                            "score":
+                            {
+                                "prediction": "FA",
+                                "probability":
+                                {
+                                    "B": 0.04372145665289373,
+                                    "C": 0.01633569349835188,
+                                    "FA": 0.8149014959814557,
+                                    "GA": 0.11678253364006724,
+                                    "Start": 0.005824085074702437,
+                                    "Stub": 0.0024347351525289508
+                                }
+                            }
+                        },
+                        "draftquality":
+                        {
+                            "score":
+                            {
+                                "prediction": "OK",
+                                "probability":
+                                {
+                                    "OK": 0.7684335412785391,
+                                    "attack": 0.0028114029207805544,
+                                    "spam": 0.008380313286959536,
+                                    "vandalism": 0.22037474251372077
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

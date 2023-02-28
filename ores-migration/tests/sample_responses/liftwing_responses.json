@@ -1,0 +1,236 @@
+{
+    "responses":
+    {
+        "articlequality":
+        {
+            "enwiki":
+            {
+                "models":
+                {
+                    "articlequality":
+                    {
+                        "version": "0.8.2"
+                    }
+                },
+                "scores":
+                {
+                    "1097728152":
+                    {
+                        "articlequality":
+                        {
+                            "score":
+                            {
+                                "prediction": "FA",
+                                "probability":
+                                {
+                                    "B": 0.04372145665289373,
+                                    "C": 0.01633569349835188,
+                                    "FA": 0.8149014959814557,
+                                    "GA": 0.11678253364006724,
+                                    "Start": 0.005824085074702437,
+                                    "Stub": 0.0024347351525289508
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "articlequality_2":
+        {
+            "enwiki":
+            {
+                "models":
+                {
+                    "articlequality":
+                    {
+                        "version": "0.8.2"
+                    }
+                },
+                "scores":
+                {
+                    "1142286861":
+                    {
+                        "articlequality":
+                        {
+                            "score":
+                            {
+                                "prediction": "C",
+                                "probability":
+                                {
+                                    "B": 0.3749954280693714,
+                                    "C": 0.44411113084355147,
+                                    "FA": 0.019887809016123095,
+                                    "GA": 0.1250816841388352,
+                                    "Start": 0.02928104681920741,
+                                    "Stub": 0.006642901112911409
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "draftquality":
+        {
+            "enwiki":
+            {
+                "models":
+                {
+                    "draftquality":
+                    {
+                        "version": "0.2.1"
+                    }
+                },
+                "scores":
+                {
+                    "1097728152":
+                    {
+                        "draftquality":
+                        {
+                            "score":
+                            {
+                                "prediction": "OK",
+                                "probability":
+                                {
+                                    "OK": 0.7684335412785391,
+                                    "attack": 0.0028114029207805544,
+                                    "spam": 0.008380313286959536,
+                                    "vandalism": 0.22037474251372077
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "damaging":
+        {
+            "enwiki":
+            {
+                "models":
+                {
+                    "damaging":
+                    {
+                        "version": "0.5.1"
+                    }
+                },
+                "scores":
+                {
+                    "1097728152":
+                    {
+                        "damaging":
+                        {
+                            "score":
+                            {
+                                "prediction": false,
+                                "probability":
+                                {
+                                    "false": 0.5818192554457859,
+                                    "true": 0.4181807445542141
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "goodfaith":
+        {
+            "enwiki":
+            {
+                "models":
+                {
+                    "goodfaith":
+                    {
+                        "version": "0.5.1"
+                    }
+                },
+                "scores":
+                {
+                    "1097728152":
+                    {
+                        "goodfaith":
+                        {
+                            "score":
+                            {
+                                "prediction": true,
+                                "probability":
+                                {
+                                    "false": 0.27562984924084544,
+                                    "true": 0.7243701507591546
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "reverted":
+        {
+            "enwiki":
+            {
+                "models":
+                {
+                    "reverted":
+                    {
+                        "version": "0.5.1"
+                    }
+                },
+                "scores":
+                {
+                    "1097728152":
+                    {
+                        "reverted":
+                        {
+                            "score":
+                            {
+                                "prediction": false,
+                                "probability":
+                                {
+                                    "false": 0.9999999999999999,
+                                    "true": 1.1102230246251565E-16
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "drafttopic":
+        {
+            "enwiki":
+            {
+                "models":
+                {
+                    "drafttopic":
+                    {
+                        "version": "0.3.0"
+                    }
+                },
+                "scores":
+                {
+                    "1097728152":
+                    {
+                        "drafttopic":
+                        {
+                            "score":
+                            {
+                                "prediction": "Culture",
+                                "probability":
+                                {
+                                    "Culture": 0.9999999999999999,
+                                    "Geography": 1.1102230246251565E-16,
+                                    "History": 1.1102230246251565E-16,
+                                    "Science": 1.1102230246251565E-16,
+                                    "Society": 1.1102230246251565E-16,
+                                    "STEM": 1.1102230246251565E-16
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

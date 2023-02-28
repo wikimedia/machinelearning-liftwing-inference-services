@@ -110,3 +110,22 @@ pipelines:
           image:
             name: '${setup.project}-revscoring'
             tags: [stable]
+
+  ores-migration:
+    blubberfile: ores-migration/blubber.yaml
+    stages:
+      - name: run-test
+        build: test
+        run: true
+      - name: production
+        build: production
+
+  ores-migration-publish:
+    blubberfile: ores-migration/blubber.yaml
+    stages:
+      - name: publish
+        build: production
+        publish:
+          image:
+            name: '${setup.project}-ores-migration'
+            tags: [stable]

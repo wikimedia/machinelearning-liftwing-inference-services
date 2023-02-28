@@ -1,0 +1,55 @@
+from fastapi import HTTPException, status
+from collections import defaultdict
+from typing import List
+import yaml
+
+with open("app/config/available_models.yaml") as f:
+    available_models = yaml.safe_load(f)
+
+
+def get_check_models(context, models=None):
+    try:
+        models_in_context = available_models[context]
+    except KeyError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={
+                "error": {
+                    "code": "not found",
+                    "message": f"No scorers available for {context}",
+                }
+            },
+        )
+    if not models:
+        models_list = models_in_context["models"]
+    else:
+        models_list = models.split("|")
+    for model in models_list:
+        if model not in models_in_context["models"]:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "error": {
+                        "code": "not found",
+                        "message": f"Models ('{model}',) not available for {context}",
+                    }
+                },
+            )
+    return models_list, models_in_context
+
+
+def merge_liftwing_responses(context, responses: List[str]) -> defaultdict:
+    result = defaultdict(lambda: defaultdict(lambda: defaultdict()))
+    for d in responses:
+        if not d:
+            continue
+        for k, v in d[context].items():
+            if isinstance(v, dict) and k == "scores":
+                for rev_id, scores in v.items():
+                    if rev_id in result[context][k]:
+                        result[context][k][rev_id].update(scores)
+                    else:
+                        result[context][k][rev_id] = scores
+            else:
+                result[context][k].update(v)
+    return result
