@@ -1,16 +1,13 @@
 import os
-import asyncio
-import atexit
 import logging
 from typing import Any, Dict
-from http import HTTPStatus
 
 import aiohttp
 import kserve
 import mwapi
 
 from knowledge_integrity.revision import get_current_revision
-from tornado.web import HTTPError
+from kserve.errors import InvalidInput, InferenceError
 
 logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
 
@@ -22,23 +19,24 @@ class RevisionRevertRiskModel(kserve.Model):
         self.ready = False
         self._http_client_session = {}
         self.WIKI_URL = os.environ.get("WIKI_URL")
-        atexit.register(self._shutdown)
+        self.AIOHTTP_CLIENT_TIMEOUT = os.environ.get("AIOHTTP_CLIENT_TIMEOUT", 5)
+        self._http_client_session = {}
         self.load()
 
     def get_http_client_session(self, endpoint):
+        """Returns a aiohttp session for the specific endpoint passed as input.
+        We need to do it since sharing a single session leads to unexpected
+        side effects (like sharing headers, most notably the Host one)."""
+        timeout = aiohttp.ClientTimeout(total=self.AIOHTTP_CLIENT_TIMEOUT)
         if (
             self._http_client_session.get(endpoint, None) is None
             or self._http_client_session[endpoint].closed
         ):
             logging.info(f"Opening a new Asyncio session for {endpoint}.")
-            self._http_client_session[endpoint] = aiohttp.ClientSession()
+            self._http_client_session[endpoint] = aiohttp.ClientSession(
+                timeout=timeout, raise_for_status=True
+            )
         return self._http_client_session[endpoint]
-
-    def _shutdown(self):
-        for endpoint, session in self._http_client_session.items():
-            if session and not session.closed:
-                logging.info(f"Closing asyncio session for {endpoint}")
-                asyncio.run(session.close())
 
     def load(self) -> None:
         self.model = KI_module.load_model("/mnt/models/model.pkl")
@@ -49,22 +47,13 @@ class RevisionRevertRiskModel(kserve.Model):
         rev_id = inputs.get("rev_id")
         if lang is None:
             logging.error("Missing lang in input data.")
-            raise HTTPError(
-                status_code=HTTPStatus.BAD_REQUEST,
-                reason="The parameter lang is required.",
-            )
+            raise InvalidInput("The parameter lang is required.")
         if lang not in self.model.supported_wikis:
             logging.error(f"Unsupported lang: {lang}.")
-            raise HTTPError(
-                status_code=HTTPStatus.BAD_REQUEST,
-                reason=f"Unsupported lang: {lang}.",
-            )
+            raise InvalidInput(f"Unsupported lang: {lang}.")
         if rev_id is None:
             logging.error("Missing rev_id in input data.")
-            raise HTTPError(
-                status_code=HTTPStatus.BAD_REQUEST,
-                reason="The parameter rev_id is required.",
-            )
+            raise InvalidInput("The parameter rev_id is required.")
         session = mwapi.AsyncSession(
             host=self.WIKI_URL or f"https://{lang}.wikipedia.org",
             user_agent="WMF ML Team revert-risk-model isvc",
@@ -78,13 +67,10 @@ class RevisionRevertRiskModel(kserve.Model):
                 "An error has occurred while fetching info for revision: "
                 f" {rev_id} ({lang}). Reason: {e}"
             )
-            raise HTTPError(
-                status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
-                reason=(
-                    "An error happened while fetching info for revision "
-                    "from the MediaWiki API, please contact the ML-Team "
-                    "if the issue persists."
-                ),
+            raise InferenceError(
+                "An error happened while fetching info for revision "
+                "from the MediaWiki API, please contact the ML-Team "
+                "if the issue persists."
             )
         if rev is None:
             logging.error(
