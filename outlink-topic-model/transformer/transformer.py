@@ -1,10 +1,7 @@
 import os
 import logging
-import asyncio
-import atexit
 import argparse
 from typing import Dict, Set
-from http import HTTPStatus
 
 import kserve
 import mwapi
@@ -13,7 +10,7 @@ import aiohttp
 import logging_utils
 import preprocess_utils
 
-from tornado.web import HTTPError
+from kserve.errors import InferenceError, InvalidInput
 
 logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
 
@@ -26,27 +23,25 @@ class OutlinkTransformer(kserve.Model):
         self.WIKI_URL = os.environ.get("WIKI_URL")
         self.AIOHTTP_CLIENT_TIMEOUT = os.environ.get("AIOHTTP_CLIENT_TIMEOUT", 5)
         self._http_client_session = {}
-        atexit.register(self._shutdown)
         # FIXME: this may not be needed, in theory we could simply rely on
         # kserve.constants.KSERVE_LOGLEVEL (passing KSERVE_LOGLEVEL as env var)
         # but it doesn't seem to work.
         logging_utils.set_log_level()
 
     def get_http_client_session(self, endpoint):
+        """Returns a aiohttp session for the specific endpoint passed as input.
+        We need to do it since sharing a single session leads to unexpected
+        side effects (like sharing headers, most notably the Host one)."""
         timeout = aiohttp.ClientTimeout(total=self.AIOHTTP_CLIENT_TIMEOUT)
         if (
             self._http_client_session.get(endpoint, None) is None
             or self._http_client_session[endpoint].closed
         ):
             logging.info(f"Opening a new Asyncio session for {endpoint}.")
-            self._http_client_session[endpoint] = aiohttp.ClientSession(timeout=timeout)
+            self._http_client_session[endpoint] = aiohttp.ClientSession(
+                timeout=timeout, raise_for_status=True
+            )
         return self._http_client_session[endpoint]
-
-    def _shutdown(self):
-        for endpoint, session in self._http_client_session.items():
-            if session and not session.closed:
-                logging.info(f"Closing asyncio session for {endpoint}")
-                asyncio.run(session.close())
 
     async def get_outlinks(self, title: str, lang: str, limit=1000) -> Set:
         """Gather set of up to `limit` outlinks for an article."""
@@ -88,16 +83,13 @@ class OutlinkTransformer(kserve.Model):
         logging.debug("%s (%s) fetched %d outlinks", title, lang, len(outlink_qids))
         return outlink_qids
 
-    async def preprocess(self, inputs: Dict) -> Dict:
+    async def preprocess(self, inputs: Dict, headers: Dict[str, str] = None) -> Dict:
         lang = preprocess_utils.get_lang(inputs, self.EVENT_KEY)
         page_title = preprocess_utils.get_page_title(inputs, self.EVENT_KEY)
         threshold = inputs.get("threshold", 0.5)
         if not isinstance(threshold, float):
             logging.error("Expected threshold to be a float")
-            raise HTTPError(
-                status_code=HTTPStatus.BAD_REQUEST,
-                reason='Expected "threshold" to be a float',
-            )
+            raise InvalidInput('Expected "threshold" to be a float')
         debug = inputs.get("debug", False)
         if debug:
             # when debug is enabled, we want to return all the
@@ -113,13 +105,10 @@ class OutlinkTransformer(kserve.Model):
                 logging.exception(
                     "Unexpected error while trying to get outlinks from MW API"
                 )
-                raise HTTPError(
-                    status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
-                    reason=(
-                        "An unexpected error has occurred while trying "
-                        "to get outlinks from MW API. "
-                        "Please contact the ML team for more info."
-                    ),
+                raise InferenceError(
+                    "An unexpected error has occurred while trying "
+                    "to get outlinks from MW API. "
+                    "Please contact the ML team for more info."
                 )
             features_str = " ".join(outlinks)
         request = {
@@ -133,7 +122,7 @@ class OutlinkTransformer(kserve.Model):
             request[self.EVENT_KEY] = inputs[self.EVENT_KEY]
         return request
 
-    def postprocess(self, outputs: Dict) -> Dict:
+    def postprocess(self, outputs: Dict, headers: Dict[str, str] = None) -> Dict:
         topics = outputs["topics"]
         lang = outputs["lang"]
         page_title = outputs["page_title"]

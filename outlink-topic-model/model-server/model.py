@@ -1,17 +1,14 @@
-import atexit
-import asyncio
 import aiohttp
 import os
 import logging
 from typing import Dict
-from http import HTTPStatus
 
 import kserve
 import fasttext
 
 import events
 
-from tornado.web import HTTPError
+from kserve.errors import InferenceError
 
 logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
 
@@ -30,30 +27,28 @@ class OutlinksTopicModel(kserve.Model):
         self.AIOHTTP_CLIENT_TIMEOUT = os.environ.get("AIOHTTP_CLIENT_TIMEOUT", 5)
         self.MODEL_VERSION = os.environ.get("MODEL_VERSION")
         self._http_client_session = {}
-        atexit.register(self._shutdown)
         self.load()
 
     def get_http_client_session(self, endpoint):
+        """Returns a aiohttp session for the specific endpoint passed as input.
+        We need to do it since sharing a single session leads to unexpected
+        side effects (like sharing headers, most notably the Host one)."""
         timeout = aiohttp.ClientTimeout(total=self.AIOHTTP_CLIENT_TIMEOUT)
         if (
             self._http_client_session.get(endpoint, None) is None
             or self._http_client_session[endpoint].closed
         ):
             logging.info(f"Opening a new Asyncio session for {endpoint}.")
-            self._http_client_session[endpoint] = aiohttp.ClientSession(timeout=timeout)
+            self._http_client_session[endpoint] = aiohttp.ClientSession(
+                timeout=timeout, raise_for_status=True
+            )
         return self._http_client_session[endpoint]
-
-    def _shutdown(self):
-        for endpoint, session in self._http_client_session.items():
-            if session and not session.closed:
-                logging.info(f"Closing asyncio session for {endpoint}")
-                asyncio.run(session.close())
 
     def load(self):
         self.model = fasttext.load_model("/mnt/models/model.bin")
         self.ready = True
 
-    async def predict(self, request: Dict) -> Dict:
+    async def predict(self, request: Dict, headers: Dict[str, str] = None) -> Dict:
         features_str = request["features_str"]
         page_title = request["page_title"]
         lang = request["lang"]
@@ -70,12 +65,12 @@ class OutlinksTopicModel(kserve.Model):
         if above_threshold:
             for res in above_threshold:
                 if debug:
-                    print("{}: {:.3f}".format(*res))
+                    logging.info("{}: {:.3f}".format(*res))
                 if res[1] > threshold:
                     lbls_above_threshold.append(res[0])
         elif debug:
-            print(f"No label above {threshold} threshold.")
-            print(
+            logging.info(f"No label above {threshold} threshold.")
+            logging.info(
                 "Top result: {} ({:.3f}) -- {}".format(
                     sorted_res[0][0], sorted_res[0][1], sorted_res[0][2]
                 )
@@ -104,13 +99,10 @@ class OutlinksTopicModel(kserve.Model):
                 )
             except RuntimeError:
                 # FIXME: move to FastAPI when migrating to KServe 0.10
-                raise HTTPError(
-                    status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
-                    reason=(
-                        "An error happened when trying to send the event to "
-                        "Eventgate (it may never have reached it). "
-                        "Please contact the ML-Team if the issue persists."
-                    ),
+                raise InferenceError(
+                    "An error happened when trying to send the event to "
+                    "Eventgate (it may never have reached it). "
+                    "Please contact the ML-Team if the issue persists."
                 )
         return {"topics": above_threshold, "lang": lang, "page_title": page_title}
 

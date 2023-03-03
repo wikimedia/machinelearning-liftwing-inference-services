@@ -37,6 +37,7 @@ variants:
     apt:
       packages:
         - python3
+        - python3-distutils
         - wmf-certificates
     python:
       version: python3
