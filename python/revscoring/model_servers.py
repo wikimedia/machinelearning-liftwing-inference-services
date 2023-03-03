@@ -1,5 +1,3 @@
-import asyncio
-import atexit
 import bz2
 import logging
 import os
@@ -64,7 +62,6 @@ class RevscoringModel(kserve.Model):
         # Deployed via the wmf-certificates package
         self.TLS_CERT_BUNDLE_PATH = "/etc/ssl/certs/wmf-ca-certificates.crt"
         self._http_client_session = {}
-        atexit.register(self._shutdown)
         if model_kind in [
             RevscoringModelType.EDITQUALITY_DAMAGING,
             RevscoringModelType.EDITQUALITY_GOODFAITH,
@@ -102,12 +99,6 @@ class RevscoringModel(kserve.Model):
                 timeout=timeout, raise_for_status=True
             )
         return self._http_client_session[endpoint]
-
-    def _shutdown(self):
-        for endpoint, session in self._http_client_session.items():
-            if session and not session.closed:
-                logging.info(f"Closing asyncio session for {endpoint}")
-                asyncio.run(session.close())
 
     def load(self):
         if self.model_kind == RevscoringModelType.DRAFTQUALITY:
