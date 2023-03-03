@@ -3,10 +3,10 @@ import base64
 import binascii
 from typing import Dict
 import PIL
-from http import HTTPStatus
 
 import kserve
-from tornado.web import HTTPError
+
+from kserve.errors import InvalidInput
 from keras.models import load_model
 from keras.applications.mobilenet import preprocess_input
 from keras.preprocessing.image import img_to_array
@@ -43,26 +43,17 @@ class ImageContentFiltrationModel(kserve.Model):
             # https://www.tensorflow.org/tfx/serving/api_rest#encoding_binary_values
             data = inputs[0]["image"]["b64"]
         except (KeyError, TypeError):
-            raise HTTPError(
-                status_code=HTTPStatus.BAD_REQUEST,
-                reason=(
-                    "Input data should have the following format:"
-                    ' {"instances": [{"image": {"b64": "<base64 encoded string>"}}]}'
-                ),
+            raise InvalidInput(
+                "Input data should have the following format:"
+                ' {"instances": [{"image": {"b64": "<base64 encoded string>"}}]}'
             )
         try:
             raw_img_data = base64.b64decode(data)
             input_image = PIL.Image.open(io.BytesIO(raw_img_data))
         except binascii.Error:
-            raise HTTPError(
-                status_code=HTTPStatus.BAD_REQUEST,
-                reason=("Base64 encoded string is incorrectly padded."),
-            )
+            raise InvalidInput("Base64 encoded string is incorrectly padded.")
         except PIL.UnidentifiedImageError:
-            raise HTTPError(
-                status_code=HTTPStatus.BAD_REQUEST,
-                reason=("Image cannot be opened and identified."),
-            )
+            raise InvalidInput("Image cannot be opened and identified.")
         preprocessed_image = preprocess(input_image)
 
         output = self.model.predict(preprocessed_image).tolist()
