@@ -42,7 +42,9 @@ class RevisionRevertRiskModel(kserve.Model):
         self.model = KI_module.load_model("/mnt/models/model.pkl")
         self.ready = True
 
-    async def preprocess(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
+    async def preprocess(
+        self, inputs: Dict[str, Any], headers: Dict[str, str] = None
+    ) -> Dict[str, Any]:
         lang = inputs.get("lang")
         rev_id = inputs.get("rev_id")
         if lang is None:
@@ -80,7 +82,9 @@ class RevisionRevertRiskModel(kserve.Model):
         inputs["revision"] = rev
         return inputs
 
-    def predict(self, request: Dict[str, Any]) -> Dict[str, Any]:
+    def predict(
+        self, request: Dict[str, Any], headers: Dict[str, str] = None
+    ) -> Dict[str, Any]:
         if request["revision"] is None:
             # return empty score if missing revision required
             return {
