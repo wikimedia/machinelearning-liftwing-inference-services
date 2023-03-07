@@ -98,7 +98,6 @@ class OutlinksTopicModel(kserve.Model):
                     self.get_http_client_session("eventgate"),
                 )
             except RuntimeError:
-                # FIXME: move to FastAPI when migrating to KServe 0.10
                 raise InferenceError(
                     "An error happened when trying to send the event to "
                     "Eventgate (it may never have reached it). "

@@ -1,9 +1,9 @@
 import re
 import logging
 
-from tornado.web import HTTPError
 from typing import Dict
-from http import HTTPStatus
+
+from kserve.errors import InvalidInput
 
 
 def get_lang(inputs: Dict, event_input_key) -> Dict:
@@ -14,10 +14,7 @@ def get_lang(inputs: Dict, event_input_key) -> Dict:
             lang = inputs["lang"]
     except KeyError:
         logging.error("Missing lang in input data.")
-        raise HTTPError(
-            status_code=HTTPStatus.BAD_REQUEST,
-            reason='Missing "lang" in input data.',
-        )
+        raise InvalidInput('Missing "lang" in input data.')
     return lang
 
 
@@ -29,8 +26,5 @@ def get_page_title(inputs: Dict, event_input_key) -> Dict:
             page_title = inputs["page_title"]
     except KeyError:
         logging.error("Missing page_title in input data.")
-        raise HTTPError(
-            status_code=HTTPStatus.BAD_REQUEST,
-            reason='Missing "page_title" in input data.',
-        )
+        raise InvalidInput('Missing "page_title" in input data.')
     return page_title

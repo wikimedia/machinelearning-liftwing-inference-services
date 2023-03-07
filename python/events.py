@@ -98,11 +98,11 @@ def generate_revision_score_event(
     else:
         prediction = [p]
 
-    if event["$schema"] == "/mediawiki/revision/create/1.1.0":
+    if event["$schema"].startswith("/mediawiki/revision/create/1"):
         revision_score_event = _revision_score_from_revision_create(
             event, eventgate_stream
         )
-    elif event["$schema"] == "/mediawiki/page/change/1.0.0":
+    elif event["$schema"].startswith("/mediawiki/page/change/1"):
         revision_score_event = _revision_score_from_page_change(event, eventgate_stream)
     else:
         raise RuntimeError(
@@ -149,10 +149,6 @@ async def send_event(
             )
     except aiohttp.ClientError as e:
         logging.error(f"Connection error while sending an event to EventGate: {e}")
-        # FIXME: after all model-servers are migrated to KServe 0.10,
-        # this RuntimeError should probably become kserve.errors.InferenceError
-        # We don't want to leak internal error info from aiohttp to the external
-        # client, this is why the logging msg is richer in content.
         raise RuntimeError(
             "Connection error while trying to post the event to EventGate. "
             "Please contact the ML team if the issue persists."
@@ -164,10 +160,6 @@ async def send_event(
                 e.status, e.message
             )
         )
-        # FIXME: after all model-servers are migrated to KServe 0.10,
-        # this RuntimeError should probably become kserve.errors.InferenceError
-        # We don't want to leak internal error info from aiohttp to the external
-        # client, this is why the logging msg is richer in content.
         raise RuntimeError(
             "The event posted to EventGate has been rejected, "
             "please contact the ML team if the issue persists."
@@ -176,10 +168,6 @@ async def send_event(
         logging.error(
             f"Unexpected error while trying to send an event to EventGate: {e}"
         )
-        # FIXME: after all model-servers are migrated to KServe 0.10,
-        # this RuntimeError should probably become kserve.errors.InferenceError
-        # We don't want to leak internal error info from aiohttp to the external
-        # client, this is why the logging msg is richer in content.
         raise RuntimeError(
             "Unexpected error happened while the event was posted to EventGate, "
             "there is the possibility that it never reached it. "

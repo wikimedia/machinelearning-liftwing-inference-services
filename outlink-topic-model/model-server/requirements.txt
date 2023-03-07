@@ -84,7 +84,6 @@ s3transfer==0.5.0
 six==1.16.0
 sniffio==1.2.0
 table-logger==0.3.6
-tornado==6.1
 typing_extensions==4.0.1
 urllib3==1.26.8
 uvicorn==0.16.0
