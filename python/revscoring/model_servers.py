@@ -229,13 +229,12 @@ class RevscoringModel(kserve.Model):
             # its rev-id is considerate the one to score.
             # Otherwise, we look for a specific "rev_id" input.
             if event_input_key in inputs:
-                if (
-                    inputs[event_input_key]["$schema"]
-                    == "/mediawiki/revision/create/1.1.0"
+                if inputs[event_input_key]["$schema"].startswith(
+                    "/mediawiki/revision/create/1"
                 ):
                     rev_id = inputs[event_input_key]["rev_id"]
-                elif (
-                    inputs[event_input_key]["$schema"] == "/mediawiki/page/change/1.0.0"
+                elif inputs[event_input_key]["$schema"].startswith(
+                    "/mediawiki/page/change/1"
                 ):
                     rev_id = inputs[event_input_key]["revision"]["rev_id"]
                 else:
