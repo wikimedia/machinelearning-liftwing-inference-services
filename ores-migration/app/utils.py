@@ -53,3 +53,29 @@ def merge_liftwing_responses(context, responses: List[str]) -> defaultdict:
             else:
                 result[context][k].update(v)
     return result
+
+
+def manipulate_wp10_call(func: callable):
+    """
+    This function is meant to be used as a decorator to manipulate the input and output of a response
+    in order to make it compatible with the old ORES API since wp10 has been renamed to articlequality
+    """
+
+    async def wrapper_func(*args, **kwargs):
+        requested_model = kwargs.get("model_name")
+        kwargs["model_name"] = (
+            requested_model if requested_model != "wp10" else "articlequality"
+        )
+        context = kwargs["db"]
+        rev_id = str(kwargs["rev_id"])
+        response = await func(*args, **kwargs)
+        if isinstance(response, dict) and (requested_model == "wp10"):
+            response[context]["models"]["wp10"] = response[context]["models"].pop(
+                "articlequality"
+            )
+            response[context]["scores"][rev_id]["wp10"] = response[context]["scores"][
+                rev_id
+            ].pop("articlequality")
+        return response
+
+    return wrapper_func

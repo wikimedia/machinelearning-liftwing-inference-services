@@ -2,14 +2,6 @@ import pytest
 from unittest import mock
 import yaml
 import json
-from app.main import app
-from httpx import AsyncClient
-
-
-@pytest.fixture
-def client():
-    return AsyncClient(app=app, base_url="http://test")
-
 
 with open("tests/app/config/test_available_models.yaml") as f:
     available_models = yaml.safe_load(f)

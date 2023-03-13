@@ -2,10 +2,12 @@ import logging
 from typing import List
 import aiohttp
 import asyncio
+from app.utils import manipulate_wp10_call
 
 
+@manipulate_wp10_call
 async def get_liftwing_response(
-    session,
+    session: aiohttp.ClientSession,
     db: str,
     model_name: str,
     rev_id: int,
@@ -35,7 +37,13 @@ async def make_liftiwing_calls(
 ):
     async with aiohttp.ClientSession() as session:
         tasks = [
-            get_liftwing_response(session, context, model, revid, liftwing_url)
+            get_liftwing_response(
+                session=session,
+                db=context,
+                model_name=model,
+                rev_id=revid,
+                liftwing_url=liftwing_url,
+            )
             for revid in rev_ids
             for model in models
         ]
