@@ -74,6 +74,7 @@ async def test_get_scores_returns_scores_revid_without_model(mock_get_response, 
 async def test_get_scores_returns_400_when_models_do_not_exist_for_context(client):
     response = await client.get("/v3/scores/enwiki?models=NONEXISTENTMODEL")
     assert response.status_code == 400
+    assert response.json()["detail"]["error"]["code"] == "not found"
 
 
 @pytest.mark.asyncio

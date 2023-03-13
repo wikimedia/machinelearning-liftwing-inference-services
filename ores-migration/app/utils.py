@@ -9,7 +9,7 @@ with open("app/config/available_models.yaml") as f:
     available_models = yaml.safe_load(f)
 
 
-def get_check_models(context, models=None):
+def get_check_models(context: str, models=None):
     try:
         models_in_context = available_models[context]
     except KeyError:
@@ -40,7 +40,7 @@ def get_check_models(context, models=None):
     return models_list, models_in_context
 
 
-def merge_liftwing_responses(context, responses: List[str]) -> defaultdict:
+def merge_liftwing_responses(context: str, responses: List[str]) -> defaultdict:
     result = defaultdict(lambda: defaultdict(lambda: defaultdict()))
     for d in responses:
         if not d:
@@ -94,3 +94,32 @@ class PrettyJSONResponse(Response):
             indent=2,
             separators=(", ", ": "),
         ).encode("utf-8")
+
+
+async def create_error_response(
+    error_message: str,
+    error_type: str,
+    context: str,
+    model_name: str,
+    rev_id: int,
+    models_info: dict = available_models,
+):
+    return {
+        context: {
+            "models": {
+                model_name: {
+                    "version": models_info[context]["models"][model_name]["version"]
+                },
+            },
+            "scores": {
+                str(rev_id): {
+                    model_name: {
+                        "error": {
+                            "message": error_message,
+                            "type": error_type,
+                        },
+                    }
+                }
+            },
+        }
+    }

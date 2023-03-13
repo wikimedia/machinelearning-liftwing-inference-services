@@ -3,6 +3,7 @@ from typing import List
 import aiohttp
 import asyncio
 from app.utils import manipulate_wp10_call
+from app.utils import create_error_response
 
 
 @manipulate_wp10_call
@@ -20,13 +21,21 @@ async def get_liftwing_response(
         "Host": f"{db}-{model_name}.{model_hostname}.wikimedia.org",
     }
     data = {"rev_id": rev_id}
-    async with session.post(url, headers=headers, json=data) as response:
-        if response.status != 200:
-            logging.error(
-                f"LiftWing call for model {model_name} returned {response.status}"
-            )
-            return {}
-        return await response.json()
+    try:
+        async with session.post(url, headers=headers, json=data) as response:
+            if response.status != 200:
+                response_json = await response.json()
+                error_message = response_json["error"]
+                logging.error(
+                    f"LiftWing call for model {model_name} returned {response.status} with message {error_message}"
+                )
+                logging.error(f"Raw Response: {response_json}")
+                return await create_error_response(
+                    error_message, response.reason, db, model_name, rev_id
+                )
+            return await response.json()
+    except aiohttp.ClientError as e:
+        return await create_error_response(e, "ClientError", db, model_name, rev_id)
 
 
 async def make_liftiwing_calls(
