@@ -1,6 +1,8 @@
 from fastapi import HTTPException, status
 from collections import defaultdict
-from typing import List
+from starlette.responses import Response
+from typing import Any, List
+import json
 import yaml
 
 with open("app/config/available_models.yaml") as f:
@@ -79,3 +81,16 @@ def manipulate_wp10_call(func: callable):
         return response
 
     return wrapper_func
+
+
+class PrettyJSONResponse(Response):
+    media_type = "application/json"
+
+    def render(self, content: Any) -> bytes:
+        return json.dumps(
+            content,
+            ensure_ascii=False,
+            allow_nan=False,
+            indent=2,
+            separators=(", ", ": "),
+        ).encode("utf-8")

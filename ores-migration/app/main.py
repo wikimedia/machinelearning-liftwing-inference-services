@@ -5,7 +5,7 @@ import time
 import logging
 from typing import Union
 from app.liftwing.response import make_liftiwing_calls
-from app.utils import get_check_models, merge_liftwing_responses
+from app.utils import get_check_models, merge_liftwing_responses, PrettyJSONResponse
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -33,12 +33,12 @@ with open("app/config/available_models.yaml") as f:
 liftwing_url = os.environ.get("LIFTWING_URL")
 
 
-@app.get("/")
+@app.get("/", response_class=PrettyJSONResponse)
 async def root():
     return {"message": "ORES/LiftWing calls legacy service"}
 
 
-@app.get("/v3/scores")
+@app.get("/v3/scores", response_class=PrettyJSONResponse)
 async def list_available_scores():
     """
     **Implementation Notes**
@@ -52,7 +52,7 @@ async def list_available_scores():
     return available_models
 
 
-@app.get("/v3/scores/{context}")
+@app.get("/v3/scores/{context}", response_class=PrettyJSONResponse)
 async def get_scores(context: str, models: str = None, revids: Union[str, None] = None):
     """
     **Implementation Notes**
@@ -76,7 +76,7 @@ async def get_scores(context: str, models: str = None, revids: Union[str, None] 
         return {context: models_in_context}
 
 
-@app.get("/v3/scores/{context}/{revid}")
+@app.get("/v3/scores/{context}/{revid}", response_class=PrettyJSONResponse)
 async def get_context_scores(context: str, revid: int, models: str = None):
     print("called /v3/scores/{context}/{revid}")
     start_time = time.time()
@@ -88,7 +88,7 @@ async def get_context_scores(context: str, revid: int, models: str = None):
     return responses
 
 
-@app.get("/v3/scores/{context}/{revid}/{model}")
+@app.get("/v3/scores/{context}/{revid}/{model}", response_class=PrettyJSONResponse)
 async def get_model_scores(context: str, revid: int, model: str):
     start_time = time.time()
     response = await make_liftiwing_calls(context, [model], [revid], liftwing_url)
