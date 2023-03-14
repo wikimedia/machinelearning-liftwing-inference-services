@@ -1,9 +1,16 @@
-from fastapi import HTTPException, status
-from collections import defaultdict
-from starlette.responses import Response
-from typing import Any, List
 import json
+import logging.config
+import time
+from collections import defaultdict
+from functools import wraps
+from typing import Any, List
+
 import yaml
+from fastapi import HTTPException, status
+from starlette.responses import Response
+
+logging.config.fileConfig("logging.conf", disable_existing_loggers=False)
+logger = logging.getLogger(__name__)
 
 with open("app/config/available_models.yaml") as f:
     available_models = yaml.safe_load(f)
@@ -123,3 +130,19 @@ async def create_error_response(
             },
         }
     }
+
+
+def log_user_request(func: callable):
+    @wraps(func)
+    async def wrapper_func(*args, **kwargs):
+        start_time = time.time()
+        request = kwargs.get("request")
+        logger.info(
+            f"IP:{request.client.host}, User-Agent:{request.headers.get('User-Agent')}"
+        )
+        logger.debug(f"method_called:{func.__name__} url_path:{request.url.path}")
+        response = await func(*args, **kwargs)
+        logger.info(f"response_time:{time.time() - start_time}s")
+        return response
+
+    return wrapper_func

@@ -1,9 +1,14 @@
+import asyncio
 import logging
 from typing import List
+
 import aiohttp
-import asyncio
+
 from app.utils import manipulate_wp10_call
 from app.utils import create_error_response
+
+logging.config.fileConfig("logging.conf", disable_existing_loggers=False)
+logger = logging.getLogger(__name__)
 
 
 @manipulate_wp10_call
@@ -23,6 +28,9 @@ async def get_liftwing_response(
     data = {"rev_id": rev_id}
     try:
         async with session.post(url, headers=headers, json=data) as response:
+            logger.debug(
+                f"URL:{url}, HOST:{headers['Host']}, REV_ID:{data['rev_id']}, STATUS: {response.status}"
+            )
             if response.status != 200:
                 response_json = await response.json()
                 error_message = response_json["error"]
@@ -57,4 +65,5 @@ async def make_liftiwing_calls(
             for model in models
         ]
         result = await asyncio.gather(*tasks)
+    logger.info(f"Made #{len(result)} calls to LiftWing")
     return result
