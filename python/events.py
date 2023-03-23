@@ -67,7 +67,11 @@ def _revision_score_from_page_change(
         "page_is_redirect": page_change_event["page"]["is_redirect"],
         "rev_id": page_change_event["revision"]["rev_id"],
         "rev_timestamp": page_change_event["revision"]["rev_dt"],
-        "performer": page_change_event["performer"],
+        "performer": {
+            "user_text": page_change_event["performer"]["user_text"],
+            "user_groups": page_change_event["performer"]["groups"],
+            "user_is_bot": page_change_event["performer"]["is_bot"],
+        },
     }
     if "rev_parent_id" in page_change_event:
         revision_score_event["rev_parent_id"] = page_change_event["revision"][
