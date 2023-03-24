@@ -151,12 +151,6 @@ async def send_event(
                 f"{resp.status} and text '{await resp.text()}'"
                 f":\n{revision_score_event}"
             )
-    except aiohttp.ClientError as e:
-        logging.error(f"Connection error while sending an event to EventGate: {e}")
-        raise RuntimeError(
-            "Connection error while trying to post the event to EventGate. "
-            "Please contact the ML team if the issue persists."
-        )
     except aiohttp.ClientResponseError as e:
         logging.error(
             "The event has been rejected by EventGate, "
@@ -167,6 +161,12 @@ async def send_event(
         raise RuntimeError(
             "The event posted to EventGate has been rejected, "
             "please contact the ML team if the issue persists."
+        )
+    except aiohttp.ClientError as e:
+        logging.error(f"Connection error while sending an event to EventGate: {e}")
+        raise RuntimeError(
+            "Connection error while trying to post the event to EventGate. "
+            "Please contact the ML team if the issue persists."
         )
     except Exception as e:
         logging.error(
