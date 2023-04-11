@@ -126,8 +126,36 @@ def generate_revision_score_event(
     return revision_score_event
 
 
+def generate_prediction_classification_event(
+    source_event: Dict[str, Any],
+    eventgate_stream: str,
+    model_name: str,
+    model_version: str,
+    prediction_results: Dict,
+) -> Dict:
+    """Generates a prediction_classification event, tailored for a given model,
+    from a page_change event.
+    """
+    if source_event["$schema"].startswith("/mediawiki/page/change/1"):
+        event = {k: v for k, v in source_event.items()}
+        event["$schema"] = "mediawiki/page/prediction_classification_change/1.0.0"
+        event["meta"]["stream"] = eventgate_stream
+        event["predicted_classification"] = {
+            "model_name": model_name,
+            "model_version": model_version,
+            "predictions": prediction_results["predictions"],
+            "probabilities": prediction_results["probabilities"],
+        }
+    else:
+        raise RuntimeError(
+            f"Unsupported event of schema {event['$schema']}, please contact "
+            "the ML team."
+        )
+    return event
+
+
 async def send_event(
-    revision_score_event: Dict[str, Any],
+    event: Dict[str, Any],
     eventgate_url: str,
     tls_bundle_path: str,
     user_agent: str,
@@ -139,7 +167,7 @@ async def send_event(
         async with aio_http_client.post(
             eventgate_url,
             ssl=sslcontext,
-            json=revision_score_event,
+            json=event,
             headers={
                 "Content-type": "application/json",
                 "UserAgent": user_agent,
@@ -149,7 +177,7 @@ async def send_event(
                 "Sent the following event to "
                 "EventGate, that returned a HTTP response with status "
                 f"{resp.status} and text '{await resp.text()}'"
-                f":\n{revision_score_event}"
+                f":\n{event}"
             )
     except aiohttp.ClientResponseError as e:
         logging.error(
