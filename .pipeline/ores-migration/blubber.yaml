@@ -38,7 +38,7 @@ variants:
         - python3-distutils
         - build-essential
         - wmf-certificates
-    entrypoint: ["uvicorn", "app.main:app", "--proxy-headers", "--host", "0.0.0.0", "--port", "80"]
+    entrypoint: ["uvicorn", "app.main:app", "--proxy-headers", "--host", "0.0.0.0", "--port", "8080"]
 
   test:
     apt:
