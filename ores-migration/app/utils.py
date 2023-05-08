@@ -2,6 +2,7 @@ import json
 import logging.config
 import time
 from collections import defaultdict
+from copy import copy
 from functools import wraps
 from typing import Any, List
 
@@ -18,7 +19,7 @@ with open("app/config/available_models.yaml") as f:
 
 def get_check_models(context: str, models=None):
     try:
-        models_in_context = available_models[context]
+        models_in_context = copy(available_models[context])
     except KeyError:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -33,6 +34,13 @@ def get_check_models(context: str, models=None):
         models_list = models_in_context["models"]
     else:
         models_list = models.split("|")
+        filtered_models = {
+            key: value
+            for key, value in models_in_context["models"].items()
+            if key in models_list
+        }
+        models_in_context["models"] = filtered_models
+
     for model in models_list:
         if model not in models_in_context["models"]:
             raise HTTPException(

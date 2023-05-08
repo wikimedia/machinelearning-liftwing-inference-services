@@ -99,4 +99,4 @@ async def test_get_liftwing_wrong_url_response(mock_post):
     response_msg = response_dict["enwiki"]["scores"][str(11422868611312312)][
         "articlequality"
     ]
-    assert response_msg["error"]["type"] == "ClientConnectorError"
+    assert response_msg["error"]["type"] == "ClientError"

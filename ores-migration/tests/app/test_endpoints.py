@@ -29,6 +29,22 @@ async def test_get_scores_no_query_params(client):
     assert response.json() == expected
 
 
+@mock.patch("app.utils.available_models", available_models)
+@pytest.mark.asyncio
+async def test_get_info_for_some_models(client):
+    response = await client.get("/v3/scores/cswiki?models=damaging|goodfaith")
+    expected = {
+        "cswiki": {
+            "models": {
+                "damaging": {"version": "0.6.0"},
+                "goodfaith": {"version": "0.6.0"},
+            }
+        }
+    }
+    assert response.status_code == 200
+    assert response.json() == expected
+
+
 @mock.patch("app.liftwing.response.get_liftwing_response")
 @pytest.mark.asyncio
 async def test_get_scores_returns_scores_for_one_revid(mock_response, client):
