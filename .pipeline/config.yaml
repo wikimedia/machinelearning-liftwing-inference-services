@@ -93,6 +93,25 @@ pipelines:
             name: '${setup.project}-revertrisk-multilingual'
             tags: [stable]
 
+  revertrisk-wikidata:
+    blubberfile: revertrisk/wikidata.yaml
+    stages:
+      - name: run-test
+        build: test
+        run: true
+      - name: production
+        build: production
+
+  revertrisk-wikidata-publish:
+    blubberfile: revertrisk/wikidata.yaml
+    stages:
+      - name: publish
+        build: production
+        publish:
+          image:
+            name: '${setup.project}-revertrisk-wikidata'
+            tags: [stable]
+
   revscoring:
     stages:
       - name: run-test

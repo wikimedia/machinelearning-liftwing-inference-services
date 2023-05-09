@@ -50,18 +50,22 @@ class RevisionRevertRiskModel(kserve.Model):
         if lang is None:
             logging.error("Missing lang in input data.")
             raise InvalidInput("The parameter lang is required.")
-        if lang not in self.model.supported_wikis:
-            logging.error(f"Unsupported lang: {lang}.")
-            raise InvalidInput(f"Unsupported lang: {lang}.")
         if rev_id is None:
             logging.error("Missing rev_id in input data.")
             raise InvalidInput("The parameter rev_id is required.")
+        if model_name == "revertrisk-wikidata":
+            self.WIKI_URL = "http://www.wikidata.org"
+        else:
+            if lang not in self.model.supported_wikis:
+                logging.error(f"Unsupported lang: {lang}.")
+                raise InvalidInput(f"Unsupported lang: {lang}.")
         session = mwapi.AsyncSession(
             host=self.WIKI_URL or f"https://{lang}.wikipedia.org",
             user_agent="WMF ML Team revert-risk-model isvc",
             session=self.get_http_client_session("mwapi"),
         )
-        session.headers["Host"] = f"{lang}.wikipedia.org"
+        if model_name != "revertrisk-wikidata":
+            session.headers["Host"] = f"{lang}.wikipedia.org"
         try:
             rev = await get_current_revision(session, rev_id, lang)
         except Exception as e:
@@ -108,7 +112,9 @@ class RevisionRevertRiskModel(kserve.Model):
 
 if __name__ == "__main__":
     model_name = os.environ.get("MODEL_NAME")
-    if model_name == "revertrisk-multilingual":
+    if model_name == "revertrisk-wikidata":
+        import knowledge_integrity.models.revertrisk_wikidata as KI_module
+    elif model_name == "revertrisk-multilingual":
         import knowledge_integrity.models.revertrisk_multilingual as KI_module
     else:
         import knowledge_integrity.models.revertrisk as KI_module
