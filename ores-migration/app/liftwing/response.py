@@ -35,7 +35,8 @@ async def get_liftwing_response(
                 response_json = await response.json()
                 error_message = response_json["error"]
                 logging.error(
-                    f"LiftWing call for model {model_name} returned {response.status} with message {error_message}"
+                    f"LiftWing call for model {model_name} and rev-id {rev_id} "
+                    f"returned {response.status} with message {error_message}"
                 )
                 logging.error(f"Raw Response: {response_json}")
                 return await create_error_response(
@@ -43,6 +44,10 @@ async def get_liftwing_response(
                 )
             return await response.json()
     except aiohttp.ClientError as e:
+        logging.error(
+            f"LiftWing call for model {model_name} and rev-id {rev_id} raised "
+            f"a ClientError excp with message: {e}"
+        )
         return await create_error_response(e, "ClientError", db, model_name, rev_id)
 
 
