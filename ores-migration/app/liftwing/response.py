@@ -19,7 +19,7 @@ async def get_liftwing_response(
     rev_id: int,
     liftwing_url: str,
 ) -> dict:
-    url = f"{liftwing_url}:30443/v1/models/{db}-{model_name}:predict"
+    url = f"{liftwing_url}/v1/models/{db}-{model_name}:predict"
     model_hostname = f"revscoring{'-editquality-' if model_name in ['damaging', 'reverted', 'goodfaith'] else '-'}{model_name}"
     headers = {
         "Content-type": "application/json",
