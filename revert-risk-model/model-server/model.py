@@ -53,19 +53,26 @@ class RevisionRevertRiskModel(kserve.Model):
         if rev_id is None:
             logging.error("Missing rev_id in input data.")
             raise InvalidInput("The parameter rev_id is required.")
-        if model_name == "revertrisk-wikidata":
-            self.WIKI_URL = "http://www.wikidata.org"
-        else:
+        if model_name != "revertrisk-wikidata":
             if lang not in self.model.supported_wikis:
                 logging.error(f"Unsupported lang: {lang}.")
                 raise InvalidInput(f"Unsupported lang: {lang}.")
+            mw_host = f"https://{lang}.wikipedia.org"
+        else:
+            mw_host = "http://www.wikidata.org"
         session = mwapi.AsyncSession(
-            host=self.WIKI_URL or f"https://{lang}.wikipedia.org",
+            # host is set to http://api-ro.discovery.wmnet
+            # for accessing MediaWiki APIs within WMF networks
+            # in Lift Wing. But it can also be set to URLs like
+            # https://en.wikipedia.org in non-LW environment
+            # that call MediaWiki APIs in a public manner.
+            host=self.WIKI_URL or mw_host,
             user_agent="WMF ML Team revert-risk-model isvc",
             session=self.get_http_client_session("mwapi"),
         )
-        if model_name != "revertrisk-wikidata":
-            session.headers["Host"] = f"{lang}.wikipedia.org"
+        # an additional HTTP Host header must be set for the session
+        # when the host is set to http://api-ro.discovery.wmnet
+        session.headers["Host"] = mw_host
         try:
             rev = await get_current_revision(session, rev_id, lang)
         except Exception as e:
