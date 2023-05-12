@@ -1,0 +1,70 @@
+# syntax=docker-registry.wikimedia.org/repos/releng/blubber/buildkit:v0.15.0
+version: v4
+base: docker-registry.wikimedia.org/bullseye:20221218
+runs:
+  insecurely: true
+
+lives:
+  in: /srv/bloom
+
+variants:
+  build:
+    python:
+      version: python3
+      requirements: [bloom/model-server/requirements.txt]
+    apt:
+      packages:
+        - build-essential
+        - python3-pip
+        - python3-dev
+        - python3-setuptools
+        - git
+
+  production:
+    copies:
+      - from: local
+        source: bloom/model-server
+        destination: model-server
+      - from: build
+        source: /opt/lib/python/site-packages
+        destination: /opt/lib/python/site-packages
+    apt:
+      packages:
+        - python3
+        - python3-distutils
+        - wmf-certificates
+    python:
+      version: python3
+      use-system-flag: false
+    entrypoint: ["python3",  "model-server/model.py"]
+
+  test:
+    apt:
+      packages:
+        - python3-pip
+        - python3-setuptools
+        - git
+    copies:
+      - from: local
+        source: bloom/model-server
+        destination: model-server
+      - from: local
+        source: tox.ini
+        destination: model-server
+      - from: local
+        source: .pre-commit-config.yaml
+        destination: .
+      - from: local
+        source: entrypoint.sh
+        destination: .
+      - from: local
+        source: ruff.toml
+        destination: .
+      - from: local
+        source: requirements-test.txt
+        destination: .
+    entrypoint: ["./entrypoint.sh", "model-server"]
+    python:
+      version: python3
+      use-system-flag: false
+      requirements: [requirements-test.txt]

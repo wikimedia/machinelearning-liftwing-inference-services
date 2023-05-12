@@ -148,3 +148,22 @@ pipelines:
           image:
             name: '${setup.project}-ores-migration'
             tags: [stable]
+
+  bloom:
+    blubberfile: bloom/blubber.yaml
+    stages:
+      - name: run-test
+        build: test
+        run: true
+      - name: production
+        build: production
+
+  bloom-publish:
+    blubberfile: bloom/blubber.yaml
+    stages:
+      - name: publish
+        build: production
+        publish:
+          image:
+            name: '${setup.project}-bloom'
+            tags: [stable]
