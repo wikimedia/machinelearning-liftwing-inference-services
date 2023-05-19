@@ -35,7 +35,7 @@ class BloomModel(kserve.Model):
     def predict(
         self, request: Dict[str, Any], headers: Dict[str, str] = None
     ) -> Dict[str, Any]:
-        outputs = model.generate(
+        outputs = self.model.generate(
             request["input_ids"],
             max_length=request["result_length"],
             do_sample=True,
