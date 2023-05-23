@@ -59,7 +59,7 @@ class RevisionRevertRiskModel(kserve.Model):
                 raise InvalidInput(f"Unsupported lang: {lang}.")
             mw_host = f"https://{lang}.wikipedia.org"
         else:
-            mw_host = "http://www.wikidata.org"
+            mw_host = "https://www.wikidata.org"
         session = mwapi.AsyncSession(
             # host is set to http://api-ro.discovery.wmnet
             # for accessing MediaWiki APIs within WMF networks
@@ -72,7 +72,7 @@ class RevisionRevertRiskModel(kserve.Model):
         )
         # an additional HTTP Host header must be set for the session
         # when the host is set to http://api-ro.discovery.wmnet
-        session.headers["Host"] = mw_host
+        session.headers["Host"] = mw_host.replace("https://", "")
         try:
             rev = await get_current_revision(session, rev_id, lang)
         except Exception as e:
