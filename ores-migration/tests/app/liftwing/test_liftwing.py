@@ -82,9 +82,7 @@ async def test_get_liftwing_response_400_response(mock_post):
 
 @mock.patch(
     "aiohttp.ClientSession.post",
-    side_effect=aiohttp.ClientConnectorError(
-        "dummy message", aiohttp.ClientOSError(8, "dummy error")
-    ),
+    side_effect=aiohttp.ClientConnectionError("dummy message"),
 )
 @pytest.mark.asyncio
 async def test_get_liftwing_wrong_url_response(mock_post):
