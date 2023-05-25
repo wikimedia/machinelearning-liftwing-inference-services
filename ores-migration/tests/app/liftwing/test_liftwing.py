@@ -2,7 +2,6 @@ import json
 import pytest
 from unittest import mock
 from app.liftwing.response import get_liftwing_response
-from app.utils import manipulate_wp10_call
 import aiohttp
 
 with open("tests/sample_responses/liftwing_responses.json") as f:
@@ -44,9 +43,8 @@ async def test_get_liftwing_wp10_decorator_response(mock_post):
     mock_post.return_value.__aenter__.return_value.json.return_value = lw_responses[
         "articlequality"
     ]
-    wrapped = manipulate_wp10_call(get_liftwing_response)
     async with aiohttp.ClientSession() as session:
-        response_dict = await wrapped(
+        response_dict = await get_liftwing_response(
             session=session,
             db="enwiki",
             model_name="wp10",
