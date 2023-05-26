@@ -19,12 +19,12 @@ variants:
     builders:
       - python:
           version: python3.9
-          requirements: [ ores-migration/requirements.txt]
+          requirements: [ ores-legacy/requirements.txt]
 
   production:
     copies:
       - from: local
-        source: ores-migration/
+        source: ores-legacy/
         destination: .
       - from: build
         source: /opt/lib/python/site-packages
@@ -48,7 +48,7 @@ variants:
         - git
     copies:
       - from: local
-        source: ores-migration/
+        source: ores-legacy/
         destination: .
       - from: local
         source: requirements-test.txt

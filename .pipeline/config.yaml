@@ -130,8 +130,8 @@ pipelines:
             name: '${setup.project}-revscoring'
             tags: [stable]
 
-  ores-migration:
-    blubberfile: ores-migration/blubber.yaml
+  ores-legacy:
+    blubberfile: ores-legacy/blubber.yaml
     stages:
       - name: run-test
         build: test
@@ -139,14 +139,14 @@ pipelines:
       - name: production
         build: production
 
-  ores-migration-publish:
-    blubberfile: ores-migration/blubber.yaml
+  ores-legacy-publish:
+    blubberfile: ores-legacy/blubber.yaml
     stages:
       - name: publish
         build: production
         publish:
           image:
-            name: '${setup.project}-ores-migration'
+            name: '${setup.project}-ores-legacy'
             tags: [stable]
 
   bloom:

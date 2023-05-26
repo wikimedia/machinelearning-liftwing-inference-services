@@ -3,7 +3,7 @@ _Running the service locally will just run the FastAPI app but it will not have 
 
 Build the production image:
 ```bash
-docker build --target production -f .pipeline/ores-migration/blubber.yaml -t ores:prod .
+docker build --target production -f .pipeline/ores-legacy/blubber.yaml -t ores:prod .
 ```
 
 Run the container binding the port 8000 to the container port 80
@@ -18,7 +18,7 @@ In order to test the application end to end with LiftWing, one can run the appli
 the following:
 
 - ssh into a statbox
-- upload/scp files under ores-migration directory
+- upload/scp files under ores-legacy directory
 - create a virtual environment and install the requirements.txt file
 - run the application using uvicorn and setting the environment variable for the LIFTWING_URL
   > LIFTWING_URL=https://inference.svc.codfw.wmnet:30443 uvicorn app.main:app --reload --port 8000
