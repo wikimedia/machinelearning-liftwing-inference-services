@@ -1,15 +1,31 @@
+import os
 import pytest
 from unittest import mock
 import yaml
 import json
 
-with open("tests/app/config/test_available_models.yaml") as f:
+with open(
+    os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        "app/config/test_available_models.yaml",
+    )
+) as f:
     available_models = yaml.safe_load(f)
 
-with open("tests/sample_responses/liftwing_responses.json") as f:
+with open(
+    os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        "sample_responses/liftwing_responses.json",
+    )
+) as f:
     lw_responses = json.load(f)["responses"]
 
-with open("tests/sample_responses/enwiki_ores_responses.json") as f:
+with open(
+    os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        "sample_responses/enwiki_ores_responses.json",
+    )
+) as f:
     ores_responses = json.load(f)
 
 

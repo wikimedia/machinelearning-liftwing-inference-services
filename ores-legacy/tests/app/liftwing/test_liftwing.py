@@ -1,10 +1,16 @@
 import json
+import os
 import pytest
 from unittest import mock
 from app.liftwing.response import get_liftwing_response
 import aiohttp
 
-with open("tests/sample_responses/liftwing_responses.json") as f:
+with open(
+    os.path.join(
+        os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+        "sample_responses/liftwing_responses.json",
+    )
+) as f:
     lw_responses = json.load(f)["responses"]
 
 

@@ -62,11 +62,8 @@ variants:
       - from: local
         source: ruff.toml
         destination: .
-      - from: local
-        source: tox.ini
-        destination: .
     entrypoint: ["./entrypoint.sh", "."]
     python:
       version: python3
-      requirements: [requirements-test.txt]
+      requirements: [requirements-test.txt, ores-legacy/requirements.txt]
       use-system-flag: false

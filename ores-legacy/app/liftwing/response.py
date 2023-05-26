@@ -7,7 +7,6 @@ import aiohttp
 from app.utils import manipulate_wp10_call
 from app.utils import create_error_response
 
-logging.config.fileConfig("logging.conf", disable_existing_loggers=False)
 logger = logging.getLogger(__name__)
 
 

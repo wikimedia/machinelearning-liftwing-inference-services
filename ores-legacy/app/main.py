@@ -13,7 +13,6 @@ from app.utils import (
     merge_liftwing_responses,
 )
 
-logging.config.fileConfig("logging.conf", disable_existing_loggers=False)
 logger = logging.getLogger(__name__)
 
 app = FastAPI(
@@ -34,7 +33,11 @@ app = FastAPI(
     },
 )
 
-with open("app/config/available_models.yaml") as f:
+with open(
+    os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "config/available_models.yaml"
+    )
+) as f:
     available_models = yaml.safe_load(f)
 
 liftwing_url = os.environ.get("LIFTWING_URL")

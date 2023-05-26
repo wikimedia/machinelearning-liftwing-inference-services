@@ -1,5 +1,6 @@
 import json
 import logging.config
+import os
 import time
 from collections import defaultdict
 from copy import copy
@@ -10,10 +11,13 @@ import yaml
 from fastapi import HTTPException, status
 from starlette.responses import Response
 
-logging.config.fileConfig("logging.conf", disable_existing_loggers=False)
 logger = logging.getLogger(__name__)
 
-with open("app/config/available_models.yaml") as f:
+with open(
+    os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "config/available_models.yaml"
+    )
+) as f:
     available_models = yaml.safe_load(f)
 
 
