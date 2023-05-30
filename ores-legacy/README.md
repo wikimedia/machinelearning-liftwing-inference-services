@@ -18,10 +18,8 @@ In order to test the application end to end with LiftWing, one can run the appli
 the following:
 
 - ssh into a statbox
-- upload/scp files under ores-legacy directory
-- create a virtual environment and install the requirements.txt file
-- run the application using uvicorn and setting the environment variable for the LIFTWING_URL
-  > LIFTWING_URL=https://inference.svc.codfw.wmnet:30443 uvicorn app.main:app --reload --port 8000
-- use ssh tunneling to access the application from your local machine e.g.
-  `ssh -N stat1001.eqiad.wmnet -L 8000:127.0.0.1:8000`
+- `git clone "https://gerrit.wikimedia.org/r/machinelearning/liftwing/inference-services"`
+- `export https_proxy=http://webproxy:8080`
+- `make test-server` will create a virtual environment, set up dependencies and
+   run Uvicorn with basic settings.
 - Access the application and make calls from your local machine at http://localhost:8000
