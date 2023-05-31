@@ -8,6 +8,8 @@ import mwapi
 
 from knowledge_integrity.revision import get_current_revision
 from kserve.errors import InvalidInput, InferenceError
+from http import HTTPStatus
+from fastapi import HTTPException
 
 logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
 
@@ -104,6 +106,17 @@ class RevisionRevertRiskModel(kserve.Model):
                 "score": {},
             }
         result = KI_module.classify(self.model, request["revision"])
+        edit_summary = request["revision"].comment
+        if result is None:
+            logging.info(f"Edit type {edit_summary} is not supported at the moment.")
+            raise HTTPException(
+                status_code=HTTPStatus.BAD_REQUEST,
+                detail=(
+                    "Prediction for this type of edit is not supported "
+                    "at the moment. Currently only 'claim' edits and "
+                    "'description' edits are supported."
+                ),
+            )
         return {
             "lang": request.get("lang"),
             "rev_id": request.get("rev_id"),
