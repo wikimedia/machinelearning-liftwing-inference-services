@@ -18,7 +18,12 @@ class BloomModel(kserve.Model):
 
     def load(self) -> Tuple[AutoModelForCausalLM, AutoTokenizer]:
         model_path = "/mnt/models/"
-        model = AutoModelForCausalLM.from_pretrained(model_path, local_files_only=True)
+        model = AutoModelForCausalLM.from_pretrained(
+            model_path,
+            local_files_only=True,
+            trust_remote_code=True,
+            low_cpu_mem_usage=True,
+        )
         tokenizer = AutoTokenizer.from_pretrained(model_path, local_files_only=True)
         self.ready = True
         return model, tokenizer
