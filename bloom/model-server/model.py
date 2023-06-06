@@ -1,8 +1,10 @@
-import os
 import logging
+import os
 from typing import Any, Dict, Tuple
-from transformers import AutoModelForCausalLM, AutoTokenizer
+
 import kserve
+import torch
+from transformers import AutoModelForCausalLM, AutoTokenizer
 
 logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
 
@@ -14,6 +16,10 @@ class BloomModel(kserve.Model):
         self.model = None
         self.model_name = model_name
         self.ready = False
+        # The cuda keyword is internally translated to hip and rocm is used if available.
+        # https://pytorch.org/docs/stable/notes/hip.html
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        logging.info(f"Using device: {self.device}")
         self.model, self.tokenizer = self.load()
 
     def load(self) -> Tuple[AutoModelForCausalLM, AutoTokenizer]:
@@ -25,6 +31,7 @@ class BloomModel(kserve.Model):
             low_cpu_mem_usage=True,
         )
         tokenizer = AutoTokenizer.from_pretrained(model_path, local_files_only=True)
+        model = model.to(self.device)
         self.ready = True
         return model, tokenizer
 
@@ -33,7 +40,7 @@ class BloomModel(kserve.Model):
     ) -> Dict[str, Any]:
         prompt = inputs.get("prompt")
         result_length = inputs.get("result_length")
-        inputs = self.tokenizer(prompt, return_tensors="pt").to("cpu")
+        inputs = self.tokenizer(prompt, return_tensors="pt").to(self.device)
         inputs["result_length"] = result_length + inputs["input_ids"].size()[1]
         return inputs
 
