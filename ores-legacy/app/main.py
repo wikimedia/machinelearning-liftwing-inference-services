@@ -65,7 +65,11 @@ async def list_available_scores(request: Request):
 @app.get("/v3/scores/{context}", response_class=PrettyJSONResponse)
 @log_user_request
 async def get_scores(
-    context: str, request: Request, models: str = None, revids: Union[str, None] = None
+    context: str,
+    request: Request,
+    models: str = None,
+    revids: Union[str, None] = None,
+    features: bool = False,
 ):
     """
     **Implementation Notes**
@@ -77,7 +81,7 @@ async def get_scores(
     models_list, models_in_context = get_check_models(context, models)
     revids_list = list(map(int, revids.split("|") if revids else []))
     responses = await make_liftiwing_calls(
-        context, models_list, revids_list, liftwing_url
+        context, models_list, revids_list, features, liftwing_url
     )
     responses = merge_liftwing_responses(context, responses)
     if responses:
@@ -89,17 +93,27 @@ async def get_scores(
 @app.get("/v3/scores/{context}/{revid}", response_class=PrettyJSONResponse)
 @log_user_request
 async def get_context_scores(
-    context: str, revid: int, request: Request, models: str = None
+    context: str,
+    revid: int,
+    request: Request,
+    models: str = None,
+    features: bool = False,
 ):
     models_list, _ = get_check_models(context, models)
-    responses = await make_liftiwing_calls(context, models_list, [revid], liftwing_url)
+    responses = await make_liftiwing_calls(
+        context, models_list, [revid], features, liftwing_url
+    )
     responses = merge_liftwing_responses(context, responses)
     return responses
 
 
 @app.get("/v3/scores/{context}/{revid}/{model}", response_class=PrettyJSONResponse)
 @log_user_request
-async def get_model_scores(context: str, revid: int, model: str, request: Request):
-    response = await make_liftiwing_calls(context, [model], [revid], liftwing_url)
+async def get_model_scores(
+    context: str, revid: int, model: str, request: Request, features: bool = False
+):
+    response = await make_liftiwing_calls(
+        context, [model], [revid], features, liftwing_url
+    )
     responses = merge_liftwing_responses(context, response)
     return responses

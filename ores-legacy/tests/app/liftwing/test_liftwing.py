@@ -30,6 +30,7 @@ async def test_get_liftwing_response(mock_post):
             db="enwiki",
             model_name="articlequality",
             rev_id=1234,
+            features=False,
             liftwing_url="http://dummy.url",
         )
     assert response_dict == lw_responses["articlequality"]
@@ -55,6 +56,7 @@ async def test_get_liftwing_wp10_decorator_response(mock_post):
             db="enwiki",
             model_name="wp10",
             rev_id=1097728152,  # need the correct rev_id as we search for it in the response
+            features=False,
             liftwing_url="http://dummy.url",
         )
     assert response_dict == lw_responses["wp10"]
@@ -74,6 +76,7 @@ async def test_get_liftwing_response_400_response(mock_post):
             db="enwiki",
             model_name="articlequality",
             rev_id=11422868611312312,
+            features=False,
             liftwing_url="http://dummy.url",
         )
     response_msg = response_dict["enwiki"]["scores"][str(11422868611312312)][
@@ -96,6 +99,7 @@ async def test_get_liftwing_wrong_url_response(mock_post):
             db="enwiki",
             model_name="articlequality",
             rev_id=11422868611312312,
+            features=False,
             liftwing_url="http://dummy.url",
         )
     response_msg = response_dict["enwiki"]["scores"][str(11422868611312312)][

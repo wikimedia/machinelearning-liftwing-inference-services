@@ -16,6 +16,7 @@ async def get_liftwing_response(
     db: str,
     model_name: str,
     rev_id: int,
+    features: bool,
     liftwing_url: str,
 ) -> dict:
     url = f"{liftwing_url}/v1/models/{db}-{model_name}:predict"
@@ -24,7 +25,7 @@ async def get_liftwing_response(
         "Content-type": "application/json",
         "Host": f"{db}-{model_name}.{model_hostname}.wikimedia.org",
     }
-    data = {"rev_id": rev_id}
+    data = {"rev_id": rev_id, "extended_output": features}
     try:
         async with session.post(url, headers=headers, json=data) as response:
             logger.debug(
@@ -54,6 +55,7 @@ async def make_liftiwing_calls(
     context: str,
     models: List[str],
     rev_ids: List[int],
+    features: bool = None,
     liftwing_url: str = "https://inference.discovery.wmnet",
 ):
     async with aiohttp.ClientSession() as session:
@@ -63,6 +65,7 @@ async def make_liftiwing_calls(
                 db=context,
                 model_name=model,
                 rev_id=revid,
+                features=features,
                 liftwing_url=liftwing_url,
             )
             for revid in rev_ids
