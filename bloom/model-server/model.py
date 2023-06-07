@@ -4,9 +4,11 @@ from typing import Any, Dict, Tuple
 
 import kserve
 import torch
+import torch.multiprocessing as mp
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
+mp.set_start_method("spawn", force=True)
 
 
 class BloomModel(kserve.Model):
