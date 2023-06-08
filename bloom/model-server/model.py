@@ -42,7 +42,7 @@ class BloomModel(kserve.Model):
             # https://pytorch.org/docs/stable/notes/hip.html
             self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
             logging.info(f"Using device: {self.device}")
-            self.model = model.to(self.device)
+            self.model = self.model.to(self.device)
 
     def preprocess(
         self, inputs: Dict[str, Any], headers: Dict[str, str] = None
