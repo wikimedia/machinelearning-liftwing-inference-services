@@ -1,3 +1,4 @@
+import json
 import logging.config
 import os
 from typing import Union
@@ -6,6 +7,7 @@ import yaml
 from fastapi import FastAPI, Request
 
 from app.liftwing.response import make_liftiwing_calls
+from app.response_models import ResponseModel
 from app.utils import (
     PrettyJSONResponse,
     get_check_models,
@@ -40,6 +42,13 @@ with open(
 ) as f:
     available_models = yaml.safe_load(f)
 
+with open(
+    os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "config/ores_example_responses.json"
+    )
+) as f:
+    examples = json.load(f)["responses"]
+
 liftwing_url = os.environ.get("LIFTWING_URL")
 
 
@@ -49,7 +58,21 @@ async def root(request: Request):
     return {"message": "ORES/LiftWing calls legacy service"}
 
 
-@app.get("/v3/scores", response_class=PrettyJSONResponse)
+@app.get(
+    "/v3/scores",
+    response_class=PrettyJSONResponse,
+    response_model=ResponseModel,
+    responses={
+        200: {
+            "description": "Item requested by ID",
+            "content": {
+                "application/json": {
+                    "example": examples["list_available_scores"],
+                }
+            },
+        },
+    },
+)
 @log_user_request
 async def list_available_scores(request: Request):
     """
@@ -62,7 +85,21 @@ async def list_available_scores(request: Request):
     return available_models
 
 
-@app.get("/v3/scores/{context}", response_class=PrettyJSONResponse)
+@app.get(
+    "/v3/scores/{context}",
+    response_class=PrettyJSONResponse,
+    response_model=ResponseModel,
+    responses={
+        200: {
+            "description": "Item requested by ID",
+            "content": {
+                "application/json": {
+                    "example": examples["get_scores"],
+                }
+            },
+        },
+    },
+)
 @log_user_request
 async def get_scores(
     context: str,
@@ -90,7 +127,21 @@ async def get_scores(
         return {context: models_in_context}
 
 
-@app.get("/v3/scores/{context}/{revid}", response_class=PrettyJSONResponse)
+@app.get(
+    "/v3/scores/{context}/{revid}",
+    response_class=PrettyJSONResponse,
+    response_model=ResponseModel,
+    responses={
+        200: {
+            "description": "Item requested by ID",
+            "content": {
+                "application/json": {
+                    "example": examples["get_context_scores"],
+                }
+            },
+        },
+    },
+)
 @log_user_request
 async def get_context_scores(
     context: str,
@@ -103,17 +154,31 @@ async def get_context_scores(
     responses = await make_liftiwing_calls(
         context, models_list, [revid], features, liftwing_url
     )
-    responses = merge_liftwing_responses(context, responses)
-    return responses
+    response = merge_liftwing_responses(context, responses)
+    return response
 
 
-@app.get("/v3/scores/{context}/{revid}/{model}", response_class=PrettyJSONResponse)
+@app.get(
+    "/v3/scores/{context}/{revid}/{model}",
+    response_class=PrettyJSONResponse,
+    response_model=ResponseModel,
+    responses={
+        200: {
+            "description": "Item requested by ID",
+            "content": {
+                "application/json": {
+                    "example": examples["get_model_scores"],
+                }
+            },
+        },
+    },
+)
 @log_user_request
 async def get_model_scores(
     context: str, revid: int, model: str, request: Request, features: bool = False
 ):
-    response = await make_liftiwing_calls(
+    responses = await make_liftiwing_calls(
         context, [model], [revid], features, liftwing_url
     )
-    responses = merge_liftwing_responses(context, response)
-    return responses
+    response = merge_liftwing_responses(context, responses)
+    return response

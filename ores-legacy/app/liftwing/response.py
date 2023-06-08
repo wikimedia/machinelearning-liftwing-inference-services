@@ -43,6 +43,14 @@ async def get_liftwing_response(
                     error_message, response.reason, db, model_name, rev_id
                 )
             return await response.json()
+    except aiohttp.ClientConnectorError as e:
+        logging.error(
+            "The attempt to establish a connection to the LiftWing server raised "
+            f"a ClientConnectorError excp with message: {e}"
+        )
+        return await create_error_response(
+            str(e), "ClientConnectorError", db, model_name, rev_id
+        )
     except aiohttp.ClientError as e:
         logging.error(
             f"LiftWing call for model {model_name} and rev-id {rev_id} raised "

@@ -1,0 +1,141 @@
+{
+    "responses":
+    {
+        "list_available_scores":
+        {
+            "bnwiki":
+            {
+                "models":
+                {
+                    "reverted":
+                    {
+                        "version": "0.5.0"
+                    }
+                }
+            },
+            "bswiki":
+            {
+                "models":
+                {
+                    "damaging":
+                    {
+                        "version": "0.5.0"
+                    },
+                    "goodfaith":
+                    {
+                        "version": "0.5.0"
+                    }
+                }
+            }
+        },
+        "get_scores":
+        {
+            "enwiki":
+            {
+                "models":
+                {
+                    "damaging":
+                    {
+                        "version": "0.5.1"
+                    }
+                },
+                "scores":
+                {
+                    "12345":
+                    {
+                        "damaging":
+                        {
+                            "score":
+                            {
+                                "prediction": false,
+                                "probability":
+                                {
+                                    "false": 0.744276020191829,
+                                    "true": 0.255723979808171
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "get_context_scores":
+        {
+            "enwiki":
+            {
+                "models":
+                {
+                    "damaging":
+                    {
+                        "version": "0.5.1"
+                    },
+                    "goodfaith":
+                    {
+                        "version": "0.5.1"
+                    }
+                },
+                "scores":
+                {
+                    "12345":
+                    {
+                        "damaging":
+                        {
+                            "score":
+                            {
+                                "prediction": false,
+                                "probability":
+                                {
+                                    "false": 0.744276020191829,
+                                    "true": 0.255723979808171
+                                }
+                            }
+                        },
+                        "goodfaith":
+                        {
+                            "score":
+                            {
+                                "prediction": true,
+                                "probability":
+                                {
+                                    "false": 0.07396339218373627,
+                                    "true": 0.9260366078162637
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "get_model_scores":
+        {
+            "enwiki":
+            {
+                "models":
+                {
+                    "damaging":
+                    {
+                        "version": "0.5.1"
+                    }
+                },
+                "scores":
+                {
+                    "12345":
+                    {
+                        "damaging":
+                        {
+                            "score":
+                            {
+                                "prediction": false,
+                                "probability":
+                                {
+                                    "false": 0.744276020191829,
+                                    "true": 0.255723979808171
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
