@@ -5,13 +5,13 @@ runs:
   insecurely: true
 
 lives:
-  in: /srv/bloom
+  in: /srv/llm
 
 variants:
   build:
     python:
       version: python3
-      requirements: [bloom/model-server/requirements.txt]
+      requirements: [llm/model-server/requirements.txt]
     apt:
       packages:
         - build-essential
@@ -23,7 +23,7 @@ variants:
   production:
     copies:
       - from: local
-        source: bloom/model-server
+        source: llm/model-server
         destination: model-server
       - from: build
         source: /opt/lib/python/site-packages
@@ -47,7 +47,7 @@ variants:
         - git
     copies:
       - from: local
-        source: bloom/model-server
+        source: llm/model-server
         destination: model-server
       - from: local
         source: tox.ini

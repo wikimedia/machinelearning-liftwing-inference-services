@@ -9,7 +9,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
 
 
-class BloomModel(kserve.Model):
+class LLM(kserve.Model):
     def __init__(self, model_name: str) -> None:
         super().__init__(model_name)
         self.tokenizer = None
@@ -70,5 +70,5 @@ class BloomModel(kserve.Model):
 
 if __name__ == "__main__":
     model_name = os.environ.get("MODEL_NAME")
-    model = BloomModel(model_name)
+    model = LLM(model_name)
     kserve.ModelServer(workers=1).start([model])

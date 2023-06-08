@@ -149,8 +149,8 @@ pipelines:
             name: '${setup.project}-ores-legacy'
             tags: [stable]
 
-  bloom:
-    blubberfile: bloom/blubber.yaml
+  llm:
+    blubberfile: llm/blubber.yaml
     stages:
       - name: run-test
         build: test
@@ -158,12 +158,12 @@ pipelines:
       - name: production
         build: production
 
-  bloom-publish:
-    blubberfile: bloom/blubber.yaml
+  llm-publish:
+    blubberfile: llm/blubber.yaml
     stages:
       - name: publish
         build: production
         publish:
           image:
-            name: '${setup.project}-bloom'
+            name: '${setup.project}-llm'
             tags: [stable]
