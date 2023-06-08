@@ -4,11 +4,9 @@ from typing import Any, Dict, Tuple
 
 import kserve
 import torch
-import torch.multiprocessing as mp
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
-mp.set_start_method("spawn", force=True)
 
 
 class BloomModel(kserve.Model):
@@ -18,10 +16,7 @@ class BloomModel(kserve.Model):
         self.model = None
         self.model_name = model_name
         self.ready = False
-        # The cuda keyword is internally translated to hip and rocm is used if available.
-        # https://pytorch.org/docs/stable/notes/hip.html
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        logging.info(f"Using device: {self.device}")
+        self.device = None
         self.model, self.tokenizer = self.load()
 
     def load(self) -> Tuple[AutoModelForCausalLM, AutoTokenizer]:
@@ -33,13 +28,26 @@ class BloomModel(kserve.Model):
             low_cpu_mem_usage=True,
         )
         tokenizer = AutoTokenizer.from_pretrained(model_path, local_files_only=True)
-        model = model.to(self.device)
         self.ready = True
         return model, tokenizer
+
+    def check_gpu(self):
+        """
+        Loads the model in the GPU's memory and updates its reference.
+        This function needs to run after the webserver's initialization
+        (that forks and creates new processes, see https://github.com/pytorch/pytorch/issues/83973).
+        """
+        if not self.device:
+            # The cuda keyword is internally translated to hip and rocm is used if available.
+            # https://pytorch.org/docs/stable/notes/hip.html
+            self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            logging.info(f"Using device: {self.device}")
+            self.model = model.to(self.device)
 
     def preprocess(
         self, inputs: Dict[str, Any], headers: Dict[str, str] = None
     ) -> Dict[str, Any]:
+        self.check_gpu()
         prompt = inputs.get("prompt")
         result_length = inputs.get("result_length")
         inputs = self.tokenizer(prompt, return_tensors="pt").to(self.device)
