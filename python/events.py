@@ -138,6 +138,15 @@ def generate_prediction_classification_event(
     """
     if source_event["$schema"].startswith("/mediawiki/page/change/1"):
         event = {k: v for k, v in source_event.items()}
+        # remove content_slots field in .prior_state.revision and .revision
+        if "revision" in event and "content_slots" in event["revision"]:
+            del event["revision"]["content_slots"]
+        if (
+            "prior_state" in event
+            and "revision" in event["prior_state"]
+            and "content_slots" in event["prior_state"]["revision"]
+        ):
+            del event["prior_state"]["revision"]["content_slots"]
         event["$schema"] = "mediawiki/page/prediction_classification_change/1.0.0"
         event["meta"]["stream"] = eventgate_stream
         event["predicted_classification"] = {
