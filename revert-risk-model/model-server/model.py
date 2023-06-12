@@ -98,35 +98,39 @@ class RevisionRevertRiskModel(kserve.Model):
     def predict(
         self, request: Dict[str, Any], headers: Dict[str, str] = None
     ) -> Dict[str, Any]:
-        if request["revision"] is None:
-            # return empty score if missing revision required
-            return {
-                "lang": request.get("lang"),
-                "rev_id": request.get("rev_id"),
-                "score": {},
-            }
-        result = KI_module.classify(self.model, request["revision"])
-        edit_summary = request["revision"].comment
-        if result is None:
-            logging.info(f"Edit type {edit_summary} is not supported at the moment.")
-            raise HTTPException(
-                status_code=HTTPStatus.BAD_REQUEST,
-                detail=(
-                    "Prediction for this type of edit is not supported "
-                    "at the moment. Currently only 'claim' edits and "
-                    "'description' edits are supported."
-                ),
-            )
-        return {
-            "lang": request.get("lang"),
-            "rev_id": request.get("rev_id"),
-            "score": {
+        if request["revision"]:
+            result = KI_module.classify(self.model, request["revision"])
+            edit_summary = request["revision"].comment
+            if not result:
+                logging.info(
+                    f"Edit type {edit_summary} is not supported at the moment."
+                )
+                raise HTTPException(
+                    status_code=HTTPStatus.BAD_REQUEST,
+                    detail=(
+                        "Prediction for this type of edit is not supported "
+                        "at the moment. Currently only 'claim' edits and "
+                        "'description' edits are supported."
+                    ),
+                )
+            wiki_db = request.get("lang") + "wiki"
+            rev_id = request.get("rev_id")
+            output = {
                 "prediction": result.prediction,
-                "probability": {
+                "probabilities": {
                     "true": result.probability,
                     "false": 1 - result.probability,
                 },
-            },
+            }
+        else:
+            # return empty if missing revision
+            output = {}
+        return {
+            "model_name": self.name,
+            "model_version": str(self.model.model_version),
+            "wiki_db": wiki_db,
+            "revision_id": rev_id,
+            "output": output,
         }
 
 
