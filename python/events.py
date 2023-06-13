@@ -1,8 +1,31 @@
+import uuid
+
 import aiohttp
 import logging
 import ssl
 
 from typing import Dict, Any
+
+
+def _meta(source_event: Dict[str, Any], eventgate_stream: str) -> Dict[str, Any]:
+    """Generates the metadata field for new events emitted by the inference-services
+    it sets the mandatory "stream" field with eventgate_stream but also propagates
+    the domain and request_id from the source event and generates a new unique ID."""
+    metadata = {
+        "stream": eventgate_stream,
+        "id": str(uuid.uuid4())
+    }
+
+    if 'meta' in source_event:
+        source_event_metadata = source_event['meta']
+        if 'request_id' in source_event_metadata:
+            metadata['request_id'] = source_event_metadata['request_id']
+        if 'domain' in source_event_metadata:
+            metadata['domain'] = source_event_metadata['domain']
+        if 'uri' in source_event_metadata:
+            metadata['uri'] = source_event_metadata['uri']
+
+    return metadata
 
 
 def _revision_score_from_revision_create(
@@ -12,9 +35,7 @@ def _revision_score_from_revision_create(
     from a revision-create one's data."""
     revision_score_event = {
         "$schema": "/mediawiki/revision/score/2.0.0",
-        "meta": {
-            "stream": eventgate_stream,
-        },
+        "meta": _meta(rev_create_event, eventgate_stream),
         "database": rev_create_event["database"],
         "page_id": rev_create_event["page_id"],
         "page_title": rev_create_event["page_title"],
@@ -57,9 +78,7 @@ def _revision_score_from_page_change(
 
     revision_score_event = {
         "$schema": "/mediawiki/revision/score/2.0.0",
-        "meta": {
-            "stream": eventgate_stream,
-        },
+        "meta": _meta(page_change_event, eventgate_stream),
         "database": page_change_event["wiki_id"],
         "page_id": page_change_event["page"]["page_id"],
         "page_title": page_change_event["page"]["page_title"],
@@ -148,7 +167,7 @@ def generate_prediction_classification_event(
         ):
             del event["prior_state"]["revision"]["content_slots"]
         event["$schema"] = "mediawiki/page/prediction_classification_change/1.0.0"
-        event["meta"]["stream"] = eventgate_stream
+        event["meta"] = _meta(source_event, eventgate_stream)
         event["predicted_classification"] = {
             "model_name": model_name,
             "model_version": model_version,
