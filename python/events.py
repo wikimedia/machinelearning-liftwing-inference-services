@@ -34,7 +34,8 @@ def _revision_score_from_revision_create(
     """Generates a revision-score event (most of it, excluding the score bits)
     from a revision-create one's data."""
     revision_score_event = {
-        "$schema": "/mediawiki/revision/score/2.0.0",
+        "$schema": "/mediawiki/revision/score/3.0.0",
+        "dt": rev_create_event["rev_timestamp"],
         "meta": _meta(rev_create_event, eventgate_stream),
         "database": rev_create_event["database"],
         "page_id": rev_create_event["page_id"],
@@ -77,7 +78,8 @@ def _revision_score_from_page_change(
         )
 
     revision_score_event = {
-        "$schema": "/mediawiki/revision/score/2.0.0",
+        "$schema": "/mediawiki/revision/score/3.0.0",
+        "dt": page_change_event["dt"],
         "meta": _meta(page_change_event, eventgate_stream),
         "database": page_change_event["wiki_id"],
         "page_id": page_change_event["page"]["page_id"],

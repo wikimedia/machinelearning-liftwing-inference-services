@@ -11,6 +11,8 @@ def get_lang(inputs: Dict, event_input_key) -> Dict:
         if event_input_key in inputs:
             if inputs[event_input_key]["$schema"].startswith(
                 "/mediawiki/revision/create/1"
+            ) or inputs[event_input_key]["$schema"].startswith(
+                "/mediawiki/revision/create/2"
             ):
                 database = inputs[event_input_key]["database"]
                 lang = re.match(r"(\w+)wiki", database).group(1)
@@ -40,6 +42,8 @@ def get_page_title(inputs: Dict, event_input_key) -> Dict:
         if event_input_key in inputs:
             if inputs[event_input_key]["$schema"].startswith(
                 "/mediawiki/revision/create/1"
+            ) or inputs[event_input_key]["$schema"].startswith(
+                "/mediawiki/revision/create/2"
             ):
                 page_title = inputs[event_input_key]["page_title"]
             elif inputs[event_input_key]["$schema"].startswith(

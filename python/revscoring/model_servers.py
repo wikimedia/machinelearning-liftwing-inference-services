@@ -231,6 +231,8 @@ class RevscoringModel(kserve.Model):
             if event_input_key in inputs:
                 if inputs[event_input_key]["$schema"].startswith(
                     "/mediawiki/revision/create/1"
+                ) or inputs[event_input_key]["$schema"].startswith(
+                    "/mediawiki/revision/create/2"
                 ):
                     rev_id = inputs[event_input_key]["rev_id"]
                 elif inputs[event_input_key]["$schema"].startswith(
