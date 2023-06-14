@@ -93,7 +93,8 @@ async def get_revscoring_extractor_cache(
         )
 
         # If 'badrevids' is returned by the MW API then there is something wrong
-        # with the revision id provided.
+        # with the revision id provided. If the error message is changed in the InvalidInput exception
+        # then the check in the ores-legacy app should be changed as well.
         if "query" in rev_id_doc and "badrevids" in rev_id_doc["query"]:
             logging.error(
                 "Received a badrevids error from the MW API for rev-id {}. "

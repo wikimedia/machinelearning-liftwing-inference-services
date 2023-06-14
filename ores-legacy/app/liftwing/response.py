@@ -48,7 +48,9 @@ async def get_liftwing_response(
             f"LiftWing call for model {model_name} and rev-id {rev_id} raised "
             f"a ClientError excp with message: {e}"
         )
-        return await create_error_response(e, "ClientError", db, model_name, rev_id)
+        return await create_error_response(
+            str(e), "ClientError", db, model_name, rev_id
+        )
 
 
 async def make_liftiwing_calls(

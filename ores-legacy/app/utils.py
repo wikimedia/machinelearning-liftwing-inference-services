@@ -123,6 +123,13 @@ async def create_error_response(
     rev_id: int,
     models_info: dict = available_models,
 ):
+    if error_message.startswith(
+        "The MW API does not have any info related to the rev-id"
+    ):
+        error_message = (
+            f"RevisionNotFound: Could not find revision ({{revision}}:{rev_id})"
+        )
+        error_type = "RevisionNotFound"
     return {
         context: {
             "models": {
