@@ -1,3 +1,4 @@
+import gc
 import logging
 import os
 from typing import Any, Dict, Tuple
@@ -61,6 +62,18 @@ class LLM(kserve.Model):
             # into something hardware agnostic. If a RuntimeError containing
             # the msg "HIP etc.." is raised it means that a GPU error occurred.
             if "HIP" in str(e):
+                logging.error(
+                    "HIP error registered, the GPU may be into an inconsistent "
+                    "state, dropping memory and forcing its re-initialization."
+                )
+                # Delete tensors from GPU memory
+                # and force the gc collection to be sure about the deletion.
+                del self.device
+                gc.collect()
+                # Restore the device attribute to None so it can be
+                # re-initialized during the next preprocess call.
+                # Call also empty_cache() to drop any extra data saved on the GPU.
+                self.device = None
                 torch.cuda.empty_cache()
             raise InferenceError(
                 "An error has occurred in preprocess. Please contact the ML-team "
