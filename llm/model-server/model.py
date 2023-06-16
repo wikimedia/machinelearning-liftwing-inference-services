@@ -1,4 +1,5 @@
 import gc
+import importlib
 import logging
 import os
 from typing import Any, Dict, Tuple
@@ -14,6 +15,7 @@ logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
 class LLM(kserve.Model):
     def __init__(self, model_name: str) -> None:
         super().__init__(model_name)
+        self.model_path = "/mnt/models/"
         self.tokenizer = None
         self.model = None
         self.model_name = model_name
@@ -22,14 +24,15 @@ class LLM(kserve.Model):
         self.model, self.tokenizer = self.load()
 
     def load(self) -> Tuple[AutoModelForCausalLM, AutoTokenizer]:
-        model_path = "/mnt/models/"
         model = AutoModelForCausalLM.from_pretrained(
-            model_path,
+            self.model_path,
             local_files_only=True,
             trust_remote_code=True,
             low_cpu_mem_usage=True,
         )
-        tokenizer = AutoTokenizer.from_pretrained(model_path, local_files_only=True)
+        tokenizer = AutoTokenizer.from_pretrained(
+            self.model_path, local_files_only=True
+        )
         self.ready = True
         return model, tokenizer
 
@@ -95,6 +98,21 @@ class LLM(kserve.Model):
 
 
 if __name__ == "__main__":
+    """
+    We use the variable llm_class_name to dynamically import the LLM class that is required
+    for the model we want to deploy. The default value is model.LLM, which means
+    that the class LLM is used which supports most LLMs out of the box.
+    """
     model_name = os.environ.get("MODEL_NAME")
-    model = LLM(model_name)
+    llm_class_name = os.environ.get("LLM_CLASS", "model.LLM")
+    try:
+        module_name, class_name = llm_class_name.split(".")
+        module = importlib.import_module(module_name)
+        llm_class = getattr(module, class_name)
+    except (ImportError, AttributeError):
+        raise ImportError(
+            f"Unable to load class: {llm_class_name}. LLM_CLASS envrionment variable must be set,"
+            "and follow the format: module_name.class_name"
+        )
+    model = llm_class(model_name)
     kserve.ModelServer(workers=1).start([model])
