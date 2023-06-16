@@ -61,7 +61,7 @@ class LLM(kserve.Model):
             # into something hardware agnostic. If a RuntimeError containing
             # the msg "HIP etc.." is raised it means that a GPU error occurred.
             if "HIP" in str(e):
-                self.device.empty_cache()
+                torch.cuda.empty_cache()
             raise InferenceError(
                 "An error has occurred in preprocess. Please contact the ML-team "
                 "if the issue persists."
