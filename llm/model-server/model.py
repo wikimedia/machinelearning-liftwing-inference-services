@@ -16,12 +16,25 @@ class LLM(kserve.Model):
     def __init__(self, model_name: str) -> None:
         super().__init__(model_name)
         self.model_path = "/mnt/models/"
+        self.quantized = os.environ.get("QUANTIZED", False)
         self.tokenizer = None
         self.model = None
         self.model_name = model_name
         self.ready = False
         self.device = None
         self.model, self.tokenizer = self.load()
+        self.validate_inputs()
+
+    def validate_inputs(self):
+        """
+        Check if a GPU exists and if the model is intructed for quantization.
+        Only GPU models can be quantized, so if a GPU is not available we throw the same
+        RuntimeError that transformers throws when trying to quantize a model without GPU.
+        """
+        if not torch.cuda.is_available() and self.quantized:
+            raise RuntimeError(
+                "RuntimeError: No GPU found. A GPU is needed for quantization."
+            )
 
     def load(self) -> Tuple[AutoModelForCausalLM, AutoTokenizer]:
         model = AutoModelForCausalLM.from_pretrained(
@@ -29,6 +42,7 @@ class LLM(kserve.Model):
             local_files_only=True,
             trust_remote_code=True,
             low_cpu_mem_usage=True,
+            load_in_8bit=self.quantized,
         )
         tokenizer = AutoTokenizer.from_pretrained(
             self.model_path, local_files_only=True
@@ -41,8 +55,10 @@ class LLM(kserve.Model):
         Loads the model in the GPU's memory and updates its reference.
         This function needs to run after the webserver's initialization
         (that forks and creates new processes, see https://github.com/pytorch/pytorch/issues/83973).
+        Since quantization happens only with GPU we skip the check as it is already on GPU and
+        trying to load it again would raise an error.
         """
-        if not self.device:
+        if not self.device and not self.quantized:
             # The cuda keyword is internally translated to hip and rocm is used if available.
             # https://pytorch.org/docs/stable/notes/hip.html
             self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -56,7 +72,7 @@ class LLM(kserve.Model):
             self.check_gpu()
             prompt = inputs.get("prompt")
             result_length = inputs.get("result_length")
-            inputs = self.tokenizer(prompt, return_tensors="pt").to(self.device)
+            inputs = self.tokenizer(prompt, return_tensors="pt")
             inputs["result_length"] = result_length + inputs["input_ids"].size()[1]
             return inputs
         except RuntimeError as e:
