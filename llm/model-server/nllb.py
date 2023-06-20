@@ -10,7 +10,7 @@ from model import LLM
 
 class NLLB(LLM):
     def __init__(self, model_name: str):
-        self.src_lang = os.environ.get("SRC_LANG", "eng_Latin")
+        self.src_lang = os.environ.get("SRC_LANG", "eng_Latn")
         super().__init__(model_name)
 
     def load_tokenizer(self):
