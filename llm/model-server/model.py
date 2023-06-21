@@ -2,6 +2,7 @@ import gc
 import importlib
 import logging
 import os
+from distutils.util import strtobool
 from typing import Any, Dict, Tuple
 
 import kserve
@@ -16,7 +17,7 @@ class LLM(kserve.Model):
     def __init__(self, model_name: str) -> None:
         super().__init__(model_name)
         self.model_path = "/mnt/models/"
-        self.quantized = os.environ.get("QUANTIZED", False)
+        self.quantized = strtobool(os.environ.get("QUANTIZED", "False"))
         self.tokenizer = None
         self.model = None
         self.model_name = model_name
