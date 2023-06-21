@@ -167,3 +167,22 @@ pipelines:
           image:
             name: '${setup.project}-llm'
             tags: [stable]
+
+  readability:
+    blubberfile: readability/blubber.yaml
+    stages:
+      - name: run-test
+        build: test
+        run: true
+      - name: production
+        build: production
+
+  readability-publish:
+    blubberfile: readability/blubber.yaml
+    stages:
+      - name: publish
+        build: production
+        publish:
+          image:
+            name: '${setup.project}-readability'
+            tags: [stable]
