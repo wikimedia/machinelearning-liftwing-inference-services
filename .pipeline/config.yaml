@@ -186,3 +186,22 @@ pipelines:
           image:
             name: '${setup.project}-readability'
             tags: [stable]
+
+  langid:
+    blubberfile: langid/blubber.yaml
+    stages:
+      - name: run-test
+        build: test
+        run: true
+      - name: production
+        build: production
+
+  langid-publish:
+    blubberfile: langid/blubber.yaml
+    stages:
+      - name: publish
+        build: production
+        publish:
+          image:
+            name: '${setup.project}-langid'
+            tags: [stable]
