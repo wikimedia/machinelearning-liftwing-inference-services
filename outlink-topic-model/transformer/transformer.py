@@ -78,8 +78,10 @@ class OutlinkTransformer(kserve.Model):
                 if len(outlink_qids) > limit:
                     break
         except KeyError as e:
-            logging.error("KeyError occurs for %s (%s). Reason: %r.", title, lang, e)
-            logging.error("MW API returns: %r", r)
+            logging.warning("%r Title: %s Lang: %s", e, title, lang)
+            logging.warning("MW API returned: %r", r)
+            if hasattr(self, "source_event"):
+                logging.warning("Logging source event: %s", self.source_event)
         logging.debug("%s (%s) fetched %d outlinks", title, lang, len(outlink_qids))
         return outlink_qids
 
@@ -96,6 +98,8 @@ class OutlinkTransformer(kserve.Model):
             # predicted topics, so it sets the threshold to 0
             debug = True
             threshold = 0.0
+        if self.EVENT_KEY in inputs:
+            self.source_event = inputs[self.EVENT_KEY]
         if "features_str" in inputs:
             features_str = inputs["features_str"]
         else:
@@ -103,7 +107,7 @@ class OutlinkTransformer(kserve.Model):
                 outlinks = await self.get_outlinks(page_title, lang)
             except Exception:
                 if self.EVENT_KEY in inputs:
-                    logging.error("Logging source event: %s", inputs[self.EVENT_KEY])
+                    logging.info("Logging source event: %s", inputs[self.EVENT_KEY])
                 logging.exception(
                     "Unexpected error while trying to get outlinks from MW API"
                 )
