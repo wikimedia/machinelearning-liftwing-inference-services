@@ -5,6 +5,7 @@ from typing import Union
 
 import yaml
 from fastapi import FastAPI, Request
+from starlette.responses import RedirectResponse
 
 from app.liftwing.response import make_liftiwing_calls
 from app.response_models import ResponseModel
@@ -55,7 +56,7 @@ liftwing_url = os.environ.get("LIFTWING_URL")
 @app.get("/", response_class=PrettyJSONResponse)
 @log_user_request
 async def root(request: Request):
-    return {"message": "ORES/LiftWing calls legacy service"}
+    return RedirectResponse(url="/docs")
 
 
 @app.get(

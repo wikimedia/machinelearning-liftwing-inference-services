@@ -31,9 +31,12 @@ with open(
 
 @pytest.mark.asyncio
 async def test_read_main(client):
+    """
+    Test that the root endpoint redirects to /docs
+    """
     response = await client.get("/")
-    assert response.status_code == 200
-    assert response.json() == {"message": "ORES/LiftWing calls legacy service"}
+    assert response.status_code == 307
+    assert response.headers["location"] == "/docs"
 
 
 @mock.patch("app.utils.available_models", available_models)
