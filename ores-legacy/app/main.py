@@ -18,15 +18,18 @@ from app.utils import (
 
 logger = logging.getLogger(__name__)
 
+
+description = """
+> This is a simple API to translate ORES API calls to our new ML serving infrastructure,  [Lift Wing](https://wikitech.wikimedia.org/wiki/Machine_Learning/LiftWing).
+> You are encouraged to migrate to Lift Wing since the Wikimedia ML team is decommissioning the ORES infrastructure. This service will be available to support users transitioning to the new infrastructure until December 2023. Please note that Lift Wing differs from ORES, check the [docs](https://wikitech.wikimedia.org/wiki/Machine_Learning/LiftWing/Usage#Differences_using_Lift_Wing_instead_of_ORES) for more info.
+> If you want to start experimenting with Lift Wing, please check this [doc](https://wikitech.wikimedia.org/wiki/Machine_Learning/LiftWing/Usage) page containing all the info that you need.
+> Last but not the least, please reach out to the Wikimedia ML team if you have any question or doubt (see link below to get to our [Phabricator](https://phabricator.wikimedia.org/) board). We are also available in the `#wikimedia-ml` channel on Libera IRC.
+"""
+
 app = FastAPI(
     debug=True,
-    title="ORES legacy service",
-    description="""
-    This is a simple API to translate ORES API calls to our new ML serving infrastructure, [Lift Wing](https://wikitech.wikimedia.org/wiki/Machine_Learning/LiftWing). You are encouraged to migrate to Lift Wing since the Wikimedia ML team is decommissioning the ORES infrastructure. This service will be available to support users transitioning to the new infrastructure until December 2023.
-    Please note that Lift Wing differs from ORES, check the [docs](https://wikitech.wikimedia.org/wiki/Machine_Learning/LiftWing/Usage#Differences_using_Lift_Wing_instead_of_ORES) for more info.
-    If you want to start experimenting with Lift Wing, please check this [doc](https://wikitech.wikimedia.org/wiki/Machine_Learning/LiftWing/Usage) page containing all the info that you need.
-    Last but not the least, please reach out to the Wikimedia ML team if you have any question or doubt (see link below to get to our [Phabricator](https://phabricator.wikimedia.org/) board). We are also available in the `#wikimedia-ml` channel on Libera IRC.
-    """,
+    title="ORES legacy service 🤖",
+    description=description,
     version="1.0.0",
     contact={
         "name": "Machine Learning team",
@@ -55,7 +58,7 @@ with open(
 liftwing_url = os.environ.get("LIFTWING_URL")
 
 
-@app.get("/", response_class=PrettyJSONResponse)
+@app.get("/", include_in_schema=False)
 @log_user_request
 async def root(request: Request):
     return RedirectResponse(url="/docs")
