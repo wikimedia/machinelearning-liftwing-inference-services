@@ -97,16 +97,16 @@ async def get_revscoring_extractor_cache(
         # then the check in the ores-legacy app should be changed as well.
         if "query" in rev_id_doc and "badrevids" in rev_id_doc["query"]:
             logging.error(
-                "Received a badrevids error from the MW API for rev-id {}. "
-                "Complete response: {}".format(rev_id, rev_id_doc)
+                f"Received a badrevids error from the MW API for rev-id {rev_id}. "
+                f"Complete response: {rev_id_doc}"
             )
             raise InvalidInput(
                 (
                     "The MW API does not have any info related to the rev-id "
-                    "provided as input ({}), therefore it is not possible to "
+                    f"provided as input ({rev_id}), therefore it is not possible to "
                     "extract features properly. One possible cause is the deletion "
                     "of the page related to the revision id. "
-                    "Please contact the ML-Team if you need more info.".format(rev_id)
+                    "Please contact the ML-Team if you need more info."
                 ),
             )
 
@@ -124,7 +124,7 @@ async def get_revscoring_extractor_cache(
                 "The rev-id doc retrieved from the MW API "
                 "does not contain all the data needed "
                 "to extract features properly. "
-                "The error is {} and the document is: {}".format(e, rev_id_doc)
+                f"The error is {e} and the document is: {rev_id_doc}"
             )
             raise InferenceError(
                 "The rev-id doc retrieved from the MW API "
@@ -159,7 +159,7 @@ async def get_revscoring_extractor_cache(
     ) as e:
         logging.error(
             "An error has occurred while fetching feature "
-            "values from the MW API: {}".format(e)
+            f"values from the MW API: {e}"
         )
         raise InferenceError(
             (
@@ -203,12 +203,12 @@ def fetch_features(
         )
     except UnexpectedContentType:
         raise InvalidInput(
-            "Unexpected content type for rev-id {rev_id}: {e}",
+            f"Unexpected content type for rev-id {rev_id}: {e}",
         )
     except Exception as e:
         raise InvalidInput(
             "Generic error while extracting features "
-            "for rev-id {}: {}".format(rev_id, e)
+            f"for rev-id {rev_id}: {e}"
         )
 
     return feature_values
