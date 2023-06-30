@@ -1,8 +1,10 @@
+import logging
+import os
+from typing import Dict
+
+import fasttext
 from kserve import Model, ModelServer
 from kserve.errors import InvalidInput
-from typing import Dict
-import fasttext
-import logging
 
 
 class LanguageIdentificationModel(Model):
@@ -27,6 +29,7 @@ class LanguageIdentificationModel(Model):
 
 
 if __name__ == "__main__":
-    model = LanguageIdentificationModel("langid-model")
+    model_name = os.environ.get("MODEL_NAME")
+    model = LanguageIdentificationModel(model_name)
     model.load()
     ModelServer(workers=1).start([model])
