@@ -59,7 +59,11 @@ class RevisionRevertRiskModel(kserve.Model):
             if lang not in self.model.supported_wikis:
                 logging.error(f"Unsupported lang: {lang}.")
                 raise InvalidInput(f"Unsupported lang: {lang}.")
-            mw_host = f"https://{lang}.wikipedia.org"
+            # See https://phabricator.wikimedia.org/T340830
+            if lang == "be-x-old":
+                mw_host = "https://be-tarask.wikipedia.org"
+            else:
+                mw_host = f"https://{lang}.wikipedia.org"
         else:
             mw_host = "https://www.wikidata.org"
         session = mwapi.AsyncSession(
