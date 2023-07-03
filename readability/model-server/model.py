@@ -9,9 +9,7 @@ import mwapi
 from knowledge_integrity.revision import get_current_revision
 from readability.models.readability_bert import classify, load_model
 from kserve.errors import InvalidInput, InferenceError
-import nltk
 
-nltk.download("punkt")
 logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
 
 
