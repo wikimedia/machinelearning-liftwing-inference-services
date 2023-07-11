@@ -9,6 +9,8 @@ import mwapi
 from knowledge_integrity.revision import get_current_revision
 from readability.models.readability_bert import classify, load_model
 from kserve.errors import InvalidInput, InferenceError
+from http import HTTPStatus
+from fastapi import HTTPException
 
 logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
 
@@ -89,32 +91,34 @@ class ReadabilityModel(kserve.Model):
                 "get_current_revision returned empty results "
                 f"for revision {rev_id} ({lang})"
             )
+            raise HTTPException(
+                status_code=HTTPStatus.BAD_REQUEST,
+                detail=(
+                    "The necessary features cannot be obtained from the "
+                    "MediaWiki API. This could be because the data does "
+                    "not exist or has been deleted."
+                ),
+            )
         inputs["revision"] = rev
         return inputs
 
     def predict(
         self, request: Dict[str, Any], headers: Dict[str, str] = None
     ) -> Dict[str, Any]:
-        if request.get("revision", None):
-            result = classify(self.model, request["revision"])
-            wiki_db = request.get("lang") + "wiki"
-            rev_id = request.get("rev_id")
-            output = {
-                "prediction": result.prediction,
-                "probabilities": {
-                    "true": result.probability,
-                    "false": 1 - result.probability,
-                },
-                "fk_score": result.fk_score,
-            }
-        else:
-            # return empty if missing revision
-            output = {}
+        result = classify(self.model, request["revision"])
+        output = {
+            "prediction": result.prediction,
+            "probabilities": {
+                "true": result.probability,
+                "false": 1 - result.probability,
+            },
+            "fk_score": result.fk_score,
+        }
         return {
             "model_name": self.name,
             "model_version": str(self.model.model_version),
-            "wiki_db": wiki_db,
-            "revision_id": rev_id,
+            "wiki_db": request.get("lang") + "wiki",
+            "revision_id": request.get("rev_id"),
             "output": output,
         }
 
