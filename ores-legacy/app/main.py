@@ -4,7 +4,7 @@ import os
 from typing import Union
 
 import yaml
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, HTTPException, status
 from starlette.responses import RedirectResponse
 
 from app.liftwing.response import make_liftiwing_calls
@@ -188,3 +188,22 @@ async def get_model_scores(
     )
     response = merge_liftwing_responses(context, responses)
     return response
+
+
+@app.get("/scores/{context}", include_in_schema=False)
+@app.get("/v1/scores/{context}", include_in_schema=False)
+@app.get("/scores/{context}/{revid}", include_in_schema=False)
+@app.get("/v1/scores/{context}/{revid}", include_in_schema=False)
+@app.get("/scores/{context}/{revid}/{model}", include_in_schema=False)
+@app.get("/v1/scores/{context}/{revid}/{model}", include_in_schema=False)
+@log_user_request
+async def get_scores_v1(request: Request):
+    raise HTTPException(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        detail={
+            "error": {
+                "code": "not found",
+                "message": "ORES support for v1 has been deprecated. Please use v3.",
+            }
+        },
+    )
