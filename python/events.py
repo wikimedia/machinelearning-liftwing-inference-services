@@ -11,19 +11,16 @@ def _meta(source_event: Dict[str, Any], eventgate_stream: str) -> Dict[str, Any]
     """Generates the metadata field for new events emitted by the inference-services
     it sets the mandatory "stream" field with eventgate_stream but also propagates
     the domain and request_id from the source event and generates a new unique ID."""
-    metadata = {
-        "stream": eventgate_stream,
-        "id": str(uuid.uuid4())
-    }
+    metadata = {"stream": eventgate_stream, "id": str(uuid.uuid4())}
 
-    if 'meta' in source_event:
-        source_event_metadata = source_event['meta']
-        if 'request_id' in source_event_metadata:
-            metadata['request_id'] = source_event_metadata['request_id']
-        if 'domain' in source_event_metadata:
-            metadata['domain'] = source_event_metadata['domain']
-        if 'uri' in source_event_metadata:
-            metadata['uri'] = source_event_metadata['uri']
+    if "meta" in source_event:
+        source_event_metadata = source_event["meta"]
+        if "request_id" in source_event_metadata:
+            metadata["request_id"] = source_event_metadata["request_id"]
+        if "domain" in source_event_metadata:
+            metadata["domain"] = source_event_metadata["domain"]
+        if "uri" in source_event_metadata:
+            metadata["uri"] = source_event_metadata["uri"]
 
     return metadata
 

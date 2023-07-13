@@ -207,8 +207,7 @@ def fetch_features(
         )
     except Exception as e:
         raise InvalidInput(
-            "Generic error while extracting features "
-            f"for rev-id {rev_id}: {e}"
+            "Generic error while extracting features " f"for rev-id {rev_id}: {e}"
         )
 
     return feature_values
