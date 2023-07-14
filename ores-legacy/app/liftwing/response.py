@@ -32,8 +32,13 @@ async def get_liftwing_response(
                 f"URL:{url}, HOST:{headers['Host']}, REV_ID:{data['rev_id']}, STATUS: {response.status}"
             )
             if response.status != 200:
-                response_json = await response.json()
-                error_message = response_json["error"]
+                try:
+                    response_json = await response.json()
+                    error_message = response_json["error"]
+                except aiohttp.ContentTypeError:
+                    error_message = await response.text()
+                except Exception as e:
+                    error_message = str(e)
                 logging.error(
                     f"LiftWing call for model {model_name} and rev-id {rev_id} "
                     f"returned {response.status} with message {error_message}"
