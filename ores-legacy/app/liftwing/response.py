@@ -43,7 +43,7 @@ async def get_liftwing_response(
                     f"LiftWing call for model {model_name} and rev-id {rev_id} "
                     f"returned {response.status} with message {error_message}"
                 )
-                logging.error(f"Raw Response: {response_json}")
+                logging.error(f"Raw Response: {error_message}")
                 return await create_error_response(
                     error_message, response.reason, db, model_name, rev_id
                 )
