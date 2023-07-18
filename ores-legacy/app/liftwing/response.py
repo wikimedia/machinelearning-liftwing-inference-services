@@ -24,6 +24,7 @@ async def get_liftwing_response(
     headers = {
         "Content-type": "application/json",
         "Host": f"{db}-{model_name}.{model_hostname}.wikimedia.org",
+        "User-Agent": "ORES legacy service",
     }
     data = {"rev_id": rev_id, "extended_output": features}
     try:
