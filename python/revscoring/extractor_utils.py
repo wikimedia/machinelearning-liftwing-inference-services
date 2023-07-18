@@ -201,7 +201,7 @@ def fetch_features(
         raise InvalidInput(
             f"Missing resource for rev-id {rev_id}: {e}",
         )
-    except UnexpectedContentType:
+    except UnexpectedContentType as e:
         raise InvalidInput(
             f"Unexpected content type for rev-id {rev_id}: {e}",
         )
