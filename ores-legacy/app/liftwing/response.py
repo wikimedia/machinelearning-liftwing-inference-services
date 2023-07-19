@@ -78,7 +78,9 @@ async def make_liftiwing_calls(
     # since we deploy ores-legacy to use a proxy for any HTTP connection.
     # T341479
     async with aiohttp.ClientSession(
-        connector=aiohttp.TCPConnector(force_close=True, use_dns_cache=False)
+        connector=aiohttp.TCPConnector(
+            force_close=True, use_dns_cache=False, limit=None
+        )
     ) as session:
         tasks = [
             get_liftwing_response(
