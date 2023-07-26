@@ -12,12 +12,12 @@ logger = logging.getLogger(__name__)
 
 @manipulate_wp10_call
 async def get_liftwing_response(
-    session: aiohttp.ClientSession,
     db: str,
     model_name: str,
     rev_id: int,
     features: bool,
     liftwing_url: str,
+    session: aiohttp.ClientSession = None,
 ) -> dict:
     url = f"{liftwing_url}/v1/models/{db}-{model_name}:predict"
     model_hostname = f"revscoring{'-editquality-' if model_name in ['damaging', 'reverted', 'goodfaith'] else '-'}{model_name}"
@@ -27,6 +27,8 @@ async def get_liftwing_response(
         "User-Agent": "ORES legacy service",
     }
     data = {"rev_id": rev_id, "extended_output": features}
+    if session is None:
+        session = aiohttp.ClientSession()
     try:
         async with session.post(url, headers=headers, json=data) as response:
             logger.debug(
@@ -74,26 +76,17 @@ async def make_liftiwing_calls(
     features: bool = None,
     liftwing_url: str = "https://inference.discovery.wmnet",
 ):
-    # We don't want aiohttp to interfere with the connection handling,
-    # since we deploy ores-legacy to use a proxy for any HTTP connection.
-    # T341479
-    async with aiohttp.ClientSession(
-        connector=aiohttp.TCPConnector(
-            force_close=True, use_dns_cache=False, limit=None
+    tasks = [
+        get_liftwing_response(
+            db=context,
+            model_name=model,
+            rev_id=revid,
+            features=features,
+            liftwing_url=liftwing_url,
         )
-    ) as session:
-        tasks = [
-            get_liftwing_response(
-                session=session,
-                db=context,
-                model_name=model,
-                rev_id=revid,
-                features=features,
-                liftwing_url=liftwing_url,
-            )
-            for revid in rev_ids
-            for model in models
-        ]
-        result = await asyncio.gather(*tasks)
+        for revid in rev_ids
+        for model in models
+    ]
+    result = await asyncio.gather(*tasks)
     logger.info(f"Made #{len(result)} calls to LiftWing")
     return result
