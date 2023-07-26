@@ -14,6 +14,7 @@ class ModelInfo(BaseModel):
 class ScoreInfo(BaseModel):
     score: Optional[Score]
     error: Optional[Any]
+    features: Optional[Any]
 
 
 class WikiScores(BaseModel):
