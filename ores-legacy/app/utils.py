@@ -5,7 +5,7 @@ import time
 from collections import defaultdict
 from copy import copy
 from functools import wraps
-from typing import Any, List
+from typing import Any, List, Dict
 
 import yaml
 from fastapi import HTTPException, status
@@ -165,3 +165,18 @@ def log_user_request(func: callable):
         return response
 
     return wrapper_func
+
+
+def check_unsupported_features(**kwargs: Dict[str, Any]):
+    for k in kwargs:
+        if kwargs[k]:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "error": {
+                        "code": "bad request",
+                        "message": f"{k} query parameter is not supported by this endpoint anymore."
+                        " For more information please visit https://wikitech.wikimedia.org/wiki/ORES",
+                    }
+                },
+            )

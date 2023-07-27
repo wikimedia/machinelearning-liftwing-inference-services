@@ -125,3 +125,11 @@ async def test_get_scores_too_many_revisions(client):
     )
     assert response.status_code == 400
     assert response.json()["detail"]["error"]["code"] == "too many requests"
+
+
+@pytest.mark.asyncio
+async def test_get_scores_unsupported_features(client):
+    response = await client.get(
+        "/v3/scores/enwiki/12345/damaging?model_info=statistics"
+    )
+    assert response.status_code == 400

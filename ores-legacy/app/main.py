@@ -14,6 +14,7 @@ from app.utils import (
     get_check_models,
     log_user_request,
     merge_liftwing_responses,
+    check_unsupported_features,
 )
 
 logger = logging.getLogger(__name__)
@@ -80,7 +81,7 @@ async def root(request: Request):
     },
 )
 @log_user_request
-async def list_available_scores(request: Request):
+async def list_available_scores(request: Request, model_info: str = None):
     """
     **Implementation Notes**
 
@@ -88,6 +89,7 @@ async def list_available_scores(request: Request):
     context and a context is expressed as the database name of the wiki. For example "enwiki" is
     English Wikipedia and "wikidatawiki" is Wikidata
     """
+    check_unsupported_features(model_info=model_info)
     return available_models
 
 
@@ -113,6 +115,7 @@ async def get_scores(
     models: str = None,
     revids: Union[str, None] = None,
     features: bool = False,
+    model_info: str = None,
 ):
     """
     **Implementation Notes**
@@ -121,6 +124,7 @@ async def get_scores(
     exploring information about {models} available within a {context} or scoring one or more {
     revids} using one or more {models} at the same time.
     """
+    check_unsupported_features(model_info=model_info)
     models_list, models_in_context = get_check_models(context, models)
     revids_list = list(map(int, revids.split("|") if revids else []))
     lw_request_limit = os.getenv("LW_REQUEST_LIMIT", 50)
@@ -170,7 +174,9 @@ async def get_context_scores(
     request: Request,
     models: str = None,
     features: bool = False,
+    model_info: str = None,
 ):
+    check_unsupported_features(model_info=model_info)
     models_list, _ = get_check_models(context, models)
     responses = await make_liftiwing_calls(
         context, models_list, [revid], features, liftwing_url
@@ -196,8 +202,15 @@ async def get_context_scores(
 )
 @log_user_request
 async def get_model_scores(
-    context: str, revid: int, model: str, request: Request, features: bool = False
+    context: str,
+    revid: int,
+    model: str,
+    request: Request,
+    features: bool = False,
+    model_info: str = None,
+    inject=None,
 ):
+    check_unsupported_features(model_info=model_info, inject=inject)
     responses = await make_liftiwing_calls(
         context, [model], [revid], features, liftwing_url
     )
