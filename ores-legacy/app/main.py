@@ -123,6 +123,21 @@ async def get_scores(
     """
     models_list, models_in_context = get_check_models(context, models)
     revids_list = list(map(int, revids.split("|") if revids else []))
+    lw_request_limit = os.getenv("LW_REQUEST_LIMIT", 50)
+    number_of_requests = len(revids_list) * len(models_list)
+    if number_of_requests > lw_request_limit:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "error": {
+                    "code": "too many requests",
+                    "message": f"Scoring more than {lw_request_limit} is not supported anymore by this endpoint. "
+                    f"You are requesting {number_of_requests} ORES scores which is above the supported limit of {lw_request_limit} for a single request. "
+                    f"Please break down your request into smaller chunks or consider using the /v3/scores/{{context}}/{{revid}} endpoint to score one revision at a time. "
+                    f"For more information please visit https://wikitech.wikimedia.org/wiki/ORES",
+                }
+            },
+        )
     responses = await make_liftiwing_calls(
         context, models_list, revids_list, features, liftwing_url
     )
