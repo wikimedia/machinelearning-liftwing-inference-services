@@ -200,7 +200,7 @@ async def send_event(
                 "UserAgent": user_agent,
             },
         ) as resp:
-            logging.debug(
+            logging.error(
                 "Sent the following event to "
                 "EventGate, that returned a HTTP response with status "
                 f"{resp.status} and text '{await resp.text()}'"
