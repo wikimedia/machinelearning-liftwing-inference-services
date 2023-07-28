@@ -127,7 +127,7 @@ async def get_scores(
     check_unsupported_features(model_info=model_info)
     models_list, models_in_context = get_check_models(context, models)
     revids_list = list(map(int, revids.split("|") if revids else []))
-    lw_request_limit = os.getenv("LW_REQUEST_LIMIT", 50)
+    lw_request_limit = int(os.getenv("LW_REQUEST_LIMIT", 20))
     number_of_requests = len(revids_list) * len(models_list)
     if number_of_requests > lw_request_limit:
         raise HTTPException(
