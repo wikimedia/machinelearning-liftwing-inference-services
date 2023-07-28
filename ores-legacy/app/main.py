@@ -4,7 +4,7 @@ import os
 from typing import Union
 
 import yaml
-from fastapi import FastAPI, Request, HTTPException, status
+from fastapi import FastAPI, Request, HTTPException, status, Query
 from starlette.responses import RedirectResponse
 
 from app.liftwing.response import make_liftiwing_calls
@@ -81,7 +81,9 @@ async def root(request: Request):
     },
 )
 @log_user_request
-async def list_available_scores(request: Request, model_info: str = None):
+async def list_available_scores(
+    request: Request, model_info: str = Query(None, include_in_schema=False)
+):
     """
     **Implementation Notes**
 
@@ -115,7 +117,7 @@ async def get_scores(
     models: str = None,
     revids: Union[str, None] = None,
     features: bool = False,
-    model_info: str = None,
+    model_info: str = Query(None, include_in_schema=False),
 ):
     """
     **Implementation Notes**
@@ -174,7 +176,7 @@ async def get_context_scores(
     request: Request,
     models: str = None,
     features: bool = False,
-    model_info: str = None,
+    model_info: str = Query(None, include_in_schema=False),
 ):
     check_unsupported_features(model_info=model_info)
     models_list, _ = get_check_models(context, models)
@@ -207,8 +209,8 @@ async def get_model_scores(
     model: str,
     request: Request,
     features: bool = False,
-    model_info: str = None,
-    inject=None,
+    model_info: str = Query(None, include_in_schema=False),
+    inject: str = Query(None, include_in_schema=False),
 ):
     check_unsupported_features(model_info=model_info, inject=inject)
     responses = await make_liftiwing_calls(
