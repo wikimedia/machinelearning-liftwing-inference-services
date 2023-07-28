@@ -200,12 +200,16 @@ async def send_event(
                 "UserAgent": user_agent,
             },
         ) as resp:
-            logging.error(
+            log_msg = (
                 "Sent the following event to "
                 "EventGate, that returned a HTTP response with status "
                 f"{resp.status} and text '{await resp.text()}'"
                 f":\n{event}"
             )
+            if resp.status >= 400:
+                logging.error(log_msg)
+            else:
+                logging.debug(log_msg)
     except aiohttp.ClientResponseError as e:
         logging.error(
             "The event has been rejected by EventGate, "
