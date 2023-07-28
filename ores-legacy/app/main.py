@@ -125,6 +125,10 @@ async def get_scores(
     This route provides access to all {models} within a {context}. This path is useful for either
     exploring information about {models} available within a {context} or scoring one or more {
     revids} using one or more {models} at the same time.
+    **Warning**
+    Scoring more than 20 scores in a single request is not supported anymore by this endpoint.
+    In case you need to score more please break down your request into smaller chunks or consider using the /v3/scores/{context}/{revid} endpoint to score one revision at a time.
+    For more information please visit https://wikitech.wikimedia.org/wiki/ORES
     """
     check_unsupported_features(model_info=model_info)
     models_list, models_in_context = get_check_models(context, models)
@@ -137,7 +141,7 @@ async def get_scores(
             detail={
                 "error": {
                     "code": "too many requests",
-                    "message": f"Scoring more than {lw_request_limit} is not supported anymore by this endpoint. "
+                    "message": f"Scoring more than {lw_request_limit} scores is not supported anymore by this endpoint. "
                     f"You are requesting {number_of_requests} ORES scores which is above the supported limit of {lw_request_limit} for a single request. "
                     f"Please break down your request into smaller chunks or consider using the /v3/scores/{{context}}/{{revid}} endpoint to score one revision at a time. "
                     f"For more information please visit https://wikitech.wikimedia.org/wiki/ORES",
