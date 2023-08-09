@@ -102,7 +102,7 @@ class OutlinkTransformer(kserve.Model):
             threshold = 0.0
         if self.EVENT_KEY in inputs:
             self.source_event = inputs[self.EVENT_KEY]
-            if not preprocess_utils.is_domain_wikipedia[self.source_event]:
+            if not preprocess_utils.is_domain_wikipedia(self.source_event):
                 raise HTTPException(
                     status_code=HTTPStatus.BAD_REQUEST,
                     detail=(
