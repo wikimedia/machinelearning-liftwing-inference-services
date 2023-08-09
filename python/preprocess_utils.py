@@ -6,7 +6,14 @@ from typing import Dict
 from kserve.errors import InvalidInput
 
 
-def get_lang(inputs: Dict, event_input_key) -> Dict:
+def is_domain_wikipedia(event: Dict) -> bool:
+    if "meta" in event and "domain" in event["meta"]:
+        return "wikipedia" in event["meta"]["domain"]
+    else:
+        return False
+
+
+def get_lang(inputs: Dict, event_input_key) -> str:
     try:
         if event_input_key in inputs:
             if inputs[event_input_key]["$schema"].startswith(
@@ -37,7 +44,7 @@ def get_lang(inputs: Dict, event_input_key) -> Dict:
     return lang
 
 
-def get_page_title(inputs: Dict, event_input_key) -> Dict:
+def get_page_title(inputs: Dict, event_input_key) -> str:
     try:
         if event_input_key in inputs:
             if inputs[event_input_key]["$schema"].startswith(

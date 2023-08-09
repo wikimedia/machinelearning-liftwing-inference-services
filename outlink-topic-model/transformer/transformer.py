@@ -11,6 +11,8 @@ import logging_utils
 import preprocess_utils
 
 from kserve.errors import InferenceError, InvalidInput
+from http import HTTPStatus
+from fastapi import HTTPException
 
 logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
 
@@ -100,7 +102,17 @@ class OutlinkTransformer(kserve.Model):
             threshold = 0.0
         if self.EVENT_KEY in inputs:
             self.source_event = inputs[self.EVENT_KEY]
+            if not preprocess_utils.is_domain_wikipedia[self.source_event]:
+                raise HTTPException(
+                    status_code=HTTPStatus.BAD_REQUEST,
+                    detail=(
+                        "This model is not recommended for use in projects outside of Wikipedia"
+                        " — e.g. Wiktionary, Wikinews, etc."
+                    ),
+                )
         if "features_str" in inputs:
+            # If the features are already provided in the input,
+            # we don't need to call the MW API to get features
             features_str = inputs["features_str"]
         else:
             try:
