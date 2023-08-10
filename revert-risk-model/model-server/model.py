@@ -8,6 +8,7 @@ import mwapi
 
 from knowledge_integrity.revision import get_current_revision
 from kserve.errors import InvalidInput, InferenceError
+from preprocess_utils import check_input_param
 from http import HTTPStatus
 from fastapi import HTTPException
 
@@ -40,6 +41,25 @@ class RevisionRevertRiskModel(kserve.Model):
             )
         return self._http_client_session[endpoint]
 
+    def get_mediawiki_host(self, lang):
+        if model_name == "revertrisk-wikidata":
+            return "https://www.wikidata.org"
+        else:
+            # See https://phabricator.wikimedia.org/T340830
+            if lang == "be-x-old":
+                return "https://be-tarask.wikipedia.org"
+            else:
+                return f"https://{lang}.wikipedia.org"
+
+    def validate_inputs(self, lang, rev_id):
+        check_input_param(lang=lang, rev_id=rev_id)
+        if (
+            hasattr(self.model, "supported_wikis")
+            and lang not in self.model.supported_wikis
+        ):
+            logging.error(f"Unsupported lang: {lang}.")
+            raise InvalidInput(f"Unsupported lang: {lang}.")
+
     def load(self) -> None:
         self.model = KI_module.load_model("/mnt/models/model.pkl")
         self.ready = True
@@ -49,35 +69,17 @@ class RevisionRevertRiskModel(kserve.Model):
     ) -> Dict[str, Any]:
         lang = inputs.get("lang")
         rev_id = inputs.get("rev_id")
-        if lang is None:
-            logging.error("Missing lang in input data.")
-            raise InvalidInput("The parameter lang is required.")
-        if rev_id is None:
-            logging.error("Missing rev_id in input data.")
-            raise InvalidInput("The parameter rev_id is required.")
-        if model_name != "revertrisk-wikidata":
-            if lang not in self.model.supported_wikis:
-                logging.error(f"Unsupported lang: {lang}.")
-                raise InvalidInput(f"Unsupported lang: {lang}.")
-            # See https://phabricator.wikimedia.org/T340830
-            if lang == "be-x-old":
-                mw_host = "https://be-tarask.wikipedia.org"
-            else:
-                mw_host = f"https://{lang}.wikipedia.org"
-        else:
-            mw_host = "https://www.wikidata.org"
+        self.validate_inputs(lang, rev_id)
+        mw_host = self.get_mediawiki_host(lang)
         session = mwapi.AsyncSession(
-            # host is set to http://api-ro.discovery.wmnet
-            # for accessing MediaWiki APIs within WMF networks
-            # in Lift Wing. But it can also be set to URLs like
-            # https://en.wikipedia.org in non-LW environment
-            # that call MediaWiki APIs in a public manner.
+            # Host is set to http://api-ro.discovery.wmnet within WMF
+            # network in Lift Wing. Alternatively, it can be set to
+            # https://{lang}.wikipedia.org to call MW API publicly.
             host=self.WIKI_URL or mw_host,
             user_agent="WMF ML Team revert-risk-model isvc",
             session=self.get_http_client_session("mwapi"),
         )
-        # an additional HTTP Host header must be set for the session
-        # when the host is set to http://api-ro.discovery.wmnet
+        # Additional HTTP Host header must be set if the host is http://api-ro.discovery.wmnet
         session.headers["Host"] = mw_host.replace("https://", "")
         try:
             rev = await get_current_revision(session, rev_id, lang)

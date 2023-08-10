@@ -25,6 +25,9 @@ variants:
       - from: local
         source: revert-risk-model/model-server
         destination: model-server
+      - from: local
+        source: python/*.py
+        destination: model-server/
       - from: build
         source: /opt/lib/python/site-packages
         destination: /opt/lib/python/site-packages

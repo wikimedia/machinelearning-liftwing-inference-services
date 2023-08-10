@@ -1,7 +1,7 @@
 import re
 import logging
 
-from typing import Dict
+from typing import Any, Dict
 
 from kserve.errors import InvalidInput
 
@@ -11,6 +11,13 @@ def is_domain_wikipedia(event: Dict) -> bool:
         return "wikipedia" in event["meta"]["domain"]
     else:
         return False
+
+
+def check_input_param(**kwargs: Dict[str, Any]):
+    for key, value in kwargs.items():
+        if value is None:
+            logging.error(f"Missing {key} in input data.")
+            raise InvalidInput(f"The parameter {key} is required.")
 
 
 def get_lang(inputs: Dict, event_input_key) -> str:
