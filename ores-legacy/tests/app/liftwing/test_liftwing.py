@@ -2,7 +2,7 @@ import json
 import os
 import pytest
 from unittest import mock
-from app.liftwing.response import get_liftwing_response
+from app.liftwing.response import get_liftwing_response, get_lw_namespace
 import aiohttp
 
 with open(
@@ -24,15 +24,13 @@ async def test_get_liftwing_response(mock_post):
     mock_post.return_value.__aenter__.return_value.json.return_value = lw_responses[
         "articlequality"
     ]
-    async with aiohttp.ClientSession() as session:
-        response_dict = await get_liftwing_response(
-            session=session,
-            db="enwiki",
-            model_name="articlequality",
-            rev_id=1234,
-            features=False,
-            liftwing_url="http://dummy.url",
-        )
+    response_dict = await get_liftwing_response(
+        db="enwiki",
+        model_name="articlequality",
+        rev_id=1234,
+        features=False,
+        liftwing_url="http://dummy.url",
+    )
     assert response_dict == lw_responses["articlequality"]
 
 
@@ -50,15 +48,13 @@ async def test_get_liftwing_wp10_decorator_response(mock_post):
     mock_post.return_value.__aenter__.return_value.json.return_value = lw_responses[
         "articlequality"
     ]
-    async with aiohttp.ClientSession() as session:
-        response_dict = await get_liftwing_response(
-            session=session,
-            db="enwiki",
-            model_name="wp10",
-            rev_id=1097728152,  # need the correct rev_id as we search for it in the response
-            features=False,
-            liftwing_url="http://dummy.url",
-        )
+    response_dict = await get_liftwing_response(
+        db="enwiki",
+        model_name="wp10",
+        rev_id=1097728152,  # need the correct rev_id as we search for it in the response
+        features=False,
+        liftwing_url="http://dummy.url",
+    )
     assert response_dict == lw_responses["wp10"]
 
 
@@ -70,15 +66,13 @@ async def test_get_liftwing_response_400_response(mock_post):
     mock_post.return_value.__aenter__.return_value.json.return_value = {
         "error": "Some error message"
     }
-    async with aiohttp.ClientSession() as session:
-        response_dict = await get_liftwing_response(
-            session=session,
-            db="enwiki",
-            model_name="articlequality",
-            rev_id=11422868611312312,
-            features=False,
-            liftwing_url="http://dummy.url",
-        )
+    response_dict = await get_liftwing_response(
+        db="enwiki",
+        model_name="articlequality",
+        rev_id=11422868611312312,
+        features=False,
+        liftwing_url="http://dummy.url",
+    )
     response_msg = response_dict["enwiki"]["scores"][str(11422868611312312)][
         "articlequality"
     ]
@@ -93,16 +87,26 @@ async def test_get_liftwing_response_400_response(mock_post):
 )
 @pytest.mark.asyncio
 async def test_get_liftwing_wrong_url_response(mock_post):
-    async with aiohttp.ClientSession() as session:
-        response_dict = await get_liftwing_response(
-            session=session,
-            db="enwiki",
-            model_name="articlequality",
-            rev_id=11422868611312312,
-            features=False,
-            liftwing_url="http://dummy.url",
-        )
+    response_dict = await get_liftwing_response(
+        db="enwiki",
+        model_name="articlequality",
+        rev_id=11422868611312312,
+        features=False,
+        liftwing_url="http://dummy.url",
+    )
     response_msg = response_dict["enwiki"]["scores"][str(11422868611312312)][
         "articlequality"
     ]
     assert response_msg["error"]["type"] == "ClientError"
+
+
+def test_get_lw_namespace():
+    assert get_lw_namespace("itemquality") == "revscoring-articlequality"
+    assert get_lw_namespace("itemtopic") == "revscoring-articletopic"
+    assert get_lw_namespace("damaging") == "revscoring-editquality-damaging"
+    assert get_lw_namespace("goodfaith") == "revscoring-editquality-goodfaith"
+    assert get_lw_namespace("reverted") == "revscoring-editquality-reverted"
+    assert get_lw_namespace("articlequality") == "revscoring-articlequality"
+    assert get_lw_namespace("articletopic") == "revscoring-articletopic"
+    assert get_lw_namespace("draftquality") == "revscoring-draftquality"
+    assert get_lw_namespace("drafttopic") == "revscoring-drafttopic"
