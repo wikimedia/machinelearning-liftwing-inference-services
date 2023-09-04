@@ -24,8 +24,10 @@ function init(args)
      file = io.open(args[1], "r");
      data = {}
      for line in file:lines() do
-          _, _, rev_id = string.find(line, "(%d+)")
-          table.insert(data, '{"rev_id": ' .. rev_id ..'}');
+          if (line ~= nil and line ~= '') then
+              _, _, rev_id = string.find(line, "(%d+)")
+              table.insert(data, '{"rev_id": ' .. rev_id ..'}');
+          end
      end
      file:close();
      requests  = 0
