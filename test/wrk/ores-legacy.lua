@@ -1,4 +1,4 @@
-wrk.method = "POST"
+wrk.headers["User-Agent"] = "WMF ML team"
 wrk.headers["Content-Type"] = "application/json"
 
 -- give each thread an id
@@ -15,11 +15,11 @@ end
 -- create a log file for each thread
 function init(args)
      file = io.open(args[1], "r");
-     data = {}
+     path = {}
      for line in file:lines() do
           if (line ~= nil and line ~= '') then
-              _, _, rev_id = string.find(line, "(%d+)")
-              table.insert(data, '{"rev_id": ' .. rev_id ..'}');
+              _, _, context, models, rev_ids = string.find(line, "(%w+)%s([%w|]+)%s([%w|]+)")
+              table.insert(path, "/v3/scores/" .. context .. "?models=" .. models .. "&revids=" .. rev_ids );
           end
      end
      file:close();
@@ -41,11 +41,11 @@ i = 0
 function request()
      requests = requests + 1
      -- circle back to the first when used up the data
-     if i == #data then
+     if i == #path then
           i = 0
      end
      i = i + 1
-     return wrk.format(nil, nil, nil, data[i])
+     return wrk.format("GET", path[i], nil, nil)
 end
 
 function response(status, headers, body)

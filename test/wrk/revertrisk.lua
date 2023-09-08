@@ -1,10 +1,3 @@
---[[
-     Usage:
-          wrk -c 4 -t 2 --timeout 5s -s revertrisk.lua \
-          https://inference.svc.eqiad.wmnet:30443/v1/models/revert-risk-model:predict \
-          --header "Host: revert-risk-model.experimental.wikimedia.org" --latency \
-          -- revertrisk.input
---]]
 wrk.method = "POST"
 wrk.headers["Content-Type"] = "application/json"
 
