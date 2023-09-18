@@ -108,7 +108,7 @@ class RevscoringModel(kserve.Model):
             with open("/mnt/models/model.bin") as f:
                 return Model.load(f)
 
-    async def set_extractor(self, inputs, rev_id):
+    async def get_extractor(self, inputs, rev_id):
         # The postprocess() function needs to parse the revision_create_event
         # given as input (if any).
         self.revision_create_event = self.get_revision_event(inputs, self.EVENT_KEY)
@@ -131,7 +131,7 @@ class RevscoringModel(kserve.Model):
         )
 
         # Create the revscoring's extractor with the MWAPICache built above.
-        self.extractor = api.Extractor(
+        return api.Extractor(
             mwapi.Session(wiki_url, user_agent=self.CUSTOM_UA),
             http_cache=mw_http_cache,
         )
@@ -141,7 +141,7 @@ class RevscoringModel(kserve.Model):
         of edit text based on its revision id"""
         rev_id = self.get_rev_id(inputs, self.EVENT_KEY)
         extended_output = inputs.get("extended_output", False)
-        await self.set_extractor(inputs, rev_id)
+        extractor = await self.get_extractor(inputs, rev_id)
 
         # The idea of this cache variable is to avoid extra cpu-bound
         # computations when executing fetch_features in the extended_output
@@ -158,13 +158,13 @@ class RevscoringModel(kserve.Model):
         cache = {}
 
         inputs[self.FEATURE_VAL_KEY] = self.fetch_features(
-            rev_id, self.model.features, self.extractor, cache
+            rev_id, self.model.features, extractor, cache
         )
 
         if extended_output:
             bare_model_features = list(trim(self.model.features))
             base_feature_values = self.fetch_features(
-                rev_id, bare_model_features, self.extractor, cache
+                rev_id, bare_model_features, extractor, cache
             )
             inputs[self.EXTENDED_OUTPUT_KEY] = {
                 str(f): v for f, v in zip(bare_model_features, base_feature_values)
