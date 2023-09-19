@@ -1,7 +1,8 @@
 import re
+import json
 import logging
 
-from typing import Any, Dict
+from typing import Any, Dict, Union
 
 from kserve.errors import InvalidInput
 
@@ -78,3 +79,20 @@ def get_page_title(inputs: Dict, event_input_key) -> str:
         logging.error("Missing page_title in input data.")
         raise InvalidInput('Missing "page_title" in input data.')
     return page_title
+
+
+def validate_input(inputs: Union[Dict, bytes]) -> Dict:
+    """
+    Transform inputs to a Dict if inputs are passed as bytes.
+    Kserve 0.11 introduced allows any content-type to be passed in the request.
+    Since we only use content-type application/json if it isn't provided as a header the body of the
+    request is read as bytes. This is added to avoid failures for users that have already been using
+    inference services without passing a header.
+    """
+    if isinstance(inputs, bytes):
+        try:
+            inputs = inputs.decode("utf-8")
+            inputs = json.loads(inputs)
+        except (AttributeError, json.decoder.JSONDecodeError):
+            raise InvalidInput("Please verify that request input is a json dict")
+    return inputs

@@ -13,6 +13,7 @@ from kserve.errors import InvalidInput
 from revscoring import Model
 from revscoring.extractors import api
 from revscoring.features import trim
+from preprocess_utils import validate_input
 
 import events
 import extractor_utils
@@ -139,6 +140,8 @@ class RevscoringModel(kserve.Model):
     async def preprocess(self, inputs: Dict, headers: Dict[str, str] = None) -> Dict:
         """Use MW API session and Revscoring API to extract feature values
         of edit text based on its revision id"""
+        inputs = validate_input(inputs)
+
         rev_id = self.get_rev_id(inputs, self.EVENT_KEY)
         extended_output = inputs.get("extended_output", False)
         extractor = await self.get_extractor(inputs, rev_id)
