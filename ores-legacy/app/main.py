@@ -1,6 +1,7 @@
 import json
 import logging.config
 import os
+from distutils.util import strtobool
 from typing import Union
 
 import yaml
@@ -148,7 +149,6 @@ async def get_scores(
     request: Request,
     models: str = None,
     revids: Union[str, None] = None,
-    features: bool = False,
     model_info: str = Query(None, include_in_schema=False),
 ):
     """
@@ -181,7 +181,7 @@ async def get_scores(
             },
         )
     responses = await make_liftiwing_calls(
-        context, models_list, revids_list, features, liftwing_url
+        context, models_list, revids_list, False, liftwing_url
     )
     responses = merge_liftwing_responses(context, responses)
     if responses:
@@ -227,9 +227,17 @@ async def get_context_scores(
     revid: int,
     request: Request,
     models: str = None,
-    features: bool = False,
+    features: str = None,
     model_info: str = Query(None, include_in_schema=False),
 ):
+    if features == "":
+        # adding this to support previous functionality of ores that was using ?features without
+        # specifying a boolean value
+        features = True
+    elif features is None:
+        features = False
+    else:
+        features = strtobool(features)
     check_unsupported_features(model_info=model_info)
     models_list, _ = get_check_models(context, models)
     responses = await make_liftiwing_calls(
@@ -276,10 +284,18 @@ async def get_model_scores(
     revid: int,
     model: str,
     request: Request,
-    features: bool = False,
+    features: str = None,
     model_info: str = Query(None, include_in_schema=False),
     inject: str = Query(None, include_in_schema=False),
 ):
+    if features == "":
+        # adding this to support previous functionality of ores that was using ?features without
+        # specifying a boolean value
+        features = True
+    elif features is None:
+        features = False
+    else:
+        features = strtobool(features)
     check_unsupported_features(model_info=model_info, inject=inject)
     responses = await make_liftiwing_calls(
         context, [model], [revid], features, liftwing_url
