@@ -44,7 +44,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://*.wikipedia.org", "https://*.wmflabs.org"],
+    allow_origins=[r"https://.*\.wikipedia\.org", r"https://.*\.wmflabs\.org"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
