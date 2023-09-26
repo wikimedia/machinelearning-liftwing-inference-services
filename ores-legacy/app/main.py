@@ -4,18 +4,18 @@ import os
 from typing import Union
 
 import yaml
-from fastapi import FastAPI, Request, HTTPException, status, Query
-from starlette.responses import RedirectResponse
-
 from app.liftwing.response import make_liftiwing_calls
 from app.response_models import ResponseModel
 from app.utils import (
     PrettyJSONResponse,
+    check_unsupported_features,
     get_check_models,
     log_user_request,
     merge_liftwing_responses,
-    check_unsupported_features,
 )
+from fastapi import FastAPI, HTTPException, Query, Request, status
+from fastapi.middleware.cors import CORSMiddleware
+from starlette.responses import RedirectResponse
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +42,13 @@ app = FastAPI(
     },
 )
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["https://*.wikipedia.org", "https://*.wmflabs.org"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 with open(
     os.path.join(
         os.path.dirname(os.path.abspath(__file__)), "config/available_models.yaml"
@@ -60,6 +67,7 @@ liftwing_url = os.environ.get("LIFTWING_URL")
 
 
 @app.get("/", include_in_schema=False)
+@app.get("", include_in_schema=False)
 @log_user_request
 async def root(request: Request):
     return RedirectResponse(url="/docs")
@@ -79,6 +87,22 @@ async def root(request: Request):
             },
         },
     },
+)
+@app.get(
+    "/v3/scores/",
+    response_class=PrettyJSONResponse,
+    response_model=ResponseModel,
+    responses={
+        200: {
+            "description": "Item requested by ID",
+            "content": {
+                "application/json": {
+                    "example": examples["list_available_scores"],
+                }
+            },
+        },
+    },
+    include_in_schema=False,
 )
 @log_user_request
 async def list_available_scores(
@@ -109,6 +133,22 @@ async def list_available_scores(
             },
         },
     },
+)
+@app.get(
+    "/v3/scores/{context}/",
+    response_class=PrettyJSONResponse,
+    response_model=ResponseModel,
+    responses={
+        200: {
+            "description": "Item requested by ID",
+            "content": {
+                "application/json": {
+                    "example": examples["get_scores"],
+                }
+            },
+        },
+    },
+    include_in_schema=False,
 )
 @log_user_request
 async def get_scores(
@@ -173,6 +213,22 @@ async def get_scores(
         },
     },
 )
+@app.get(
+    "/v3/scores/{context}/{revid}/",
+    response_class=PrettyJSONResponse,
+    response_model=ResponseModel,
+    responses={
+        200: {
+            "description": "Item requested by ID",
+            "content": {
+                "application/json": {
+                    "example": examples["get_context_scores"],
+                }
+            },
+        },
+    },
+    include_in_schema=False,
+)
 @log_user_request
 async def get_context_scores(
     context: str,
@@ -205,6 +261,22 @@ async def get_context_scores(
             },
         },
     },
+)
+@app.get(
+    "/v3/scores/{context}/{revid}/{model}/",
+    response_class=PrettyJSONResponse,
+    response_model=ResponseModel,
+    responses={
+        200: {
+            "description": "Item requested by ID",
+            "content": {
+                "application/json": {
+                    "example": examples["get_model_scores"],
+                }
+            },
+        },
+    },
+    include_in_schema=False,
 )
 @log_user_request
 async def get_model_scores(
