@@ -14,7 +14,6 @@ from app.utils import (
     merge_liftwing_responses,
 )
 from fastapi import FastAPI, HTTPException, Query, Request, status
-from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import RedirectResponse
 
 logger = logging.getLogger(__name__)
@@ -40,13 +39,6 @@ app = FastAPI(
         "name": "Apache 2.0",
         "url": "https://www.apache.org/licenses/LICENSE-2.0.html",
     },
-)
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[r"https://.*\.wikipedia\.org", r"https://.*\.wmflabs\.org"],
-    allow_methods=["*"],
-    allow_headers=["*"],
 )
 
 with open(
