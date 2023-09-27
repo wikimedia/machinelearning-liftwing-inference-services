@@ -113,6 +113,18 @@ async def test_get_scores_returns_400_when_models_do_not_exist_for_context(clien
 
 
 @pytest.mark.asyncio
+async def test_get_context_scores_returns_404_when_context_does_not_exist(client):
+    response = await client.get("/v3/scores/commonswiki/800966850")
+    assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_get_model_scores_returns_404_when_context_does_not_exist(client):
+    response = await client.get("/v3/scores/commonswiki/800966850/articletopic")
+    assert response.status_code == 404
+
+
+@pytest.mark.asyncio
 async def test_get_scores_returns_404_when_context_does_not_exist(client):
     response = await client.get("/v3/scores/whateverwiki")
     assert response.status_code == 404
