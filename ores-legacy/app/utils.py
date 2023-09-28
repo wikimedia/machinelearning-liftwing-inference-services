@@ -21,7 +21,23 @@ with open(
     available_models = yaml.safe_load(f)
 
 
-def get_check_models(context: str, models=None):
+def get_check_models(context: str, models: str = None):
+    """
+    Get and filter available models for a specified context.
+
+    :param str context: The context for which models are requested.
+    :param str models: Pipe-separated list of model names to filter the available models.
+                       If not provided, returns all available models for the specified context.
+                       (optional).
+
+    :return: A tuple containing:
+             - A list of model names after filtering (models_list).
+             - A dictionary containing information about available models for the specified context (models_in_context).
+
+    :raises HTTPException:
+        - 404 (Not Found): If the specified context is not found in available_models.
+        - 400 (Bad Request): If any of the requested models are not available for the specified context.
+    """
     try:
         models_in_context = copy(available_models[context])
     except KeyError:

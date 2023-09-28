@@ -297,7 +297,7 @@ async def get_model_scores(
     else:
         features = strtobool(features)
     check_unsupported_features(model_info=model_info, inject=inject)
-    get_check_models(context, [model])
+    get_check_models(context, model)
     responses = await make_liftiwing_calls(
         context, [model], [revid], features, liftwing_url
     )
