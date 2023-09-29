@@ -151,3 +151,18 @@ async def test_get_scores_unsupported_features(client):
         "/v3/scores/enwiki/12345/damaging?model_info=statistics"
     )
     assert response.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_get_scores_callback_param(client):
+    response = await client.get("/v3/scores/?callback=XXX")
+    assert response.status_code == 400
+
+    response = await client.get("/v3/scores/enwiki/?callback=XXX")
+    assert response.status_code == 400
+
+    response = await client.get("/v3/scores/enwiki/1/?callback=XXX")
+    assert response.status_code == 400
+
+    response = await client.get("/v3/scores/enwiki/1/damaging/?callback=XXX")
+    assert response.status_code == 400

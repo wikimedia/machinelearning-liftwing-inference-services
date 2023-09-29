@@ -9,6 +9,7 @@ from app.liftwing.response import make_liftiwing_calls
 from app.response_models import ResponseModel
 from app.utils import (
     PrettyJSONResponse,
+    check_callback_param,
     check_unsupported_features,
     get_check_models,
     log_user_request,
@@ -41,6 +42,7 @@ app = FastAPI(
         "url": "https://www.apache.org/licenses/LICENSE-2.0.html",
     },
 )
+app.middleware("http")(check_callback_param)
 
 with open(
     os.path.join(

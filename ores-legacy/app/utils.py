@@ -5,11 +5,11 @@ import time
 from collections import defaultdict
 from copy import copy
 from functools import wraps
-from typing import Any, List, Dict
+from typing import Any, Dict, List
 
 import yaml
-from fastapi import HTTPException, status
-from starlette.responses import Response
+from fastapi import HTTPException, Request, status
+from starlette.responses import JSONResponse, Response
 
 logger = logging.getLogger(__name__)
 
@@ -196,3 +196,24 @@ def check_unsupported_features(**kwargs: Dict[str, Any]):
                     }
                 },
             )
+
+
+async def check_callback_param(request: Request, call_next):
+    """
+    Returns a 400 Bad Request response if callback query parameter is found in the request.
+    Since we don't support JSONP requests users should either use CORS or standard requests.
+    """
+    callback_param = request.query_params.get("callback")
+    if callback_param:
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={
+                "error": {
+                    "code": "not found",
+                    "message": "Callback parameters are not allowed. The API will return only JSON"
+                    "responses.",
+                }
+            },
+        )
+    response = await call_next(request)
+    return response
