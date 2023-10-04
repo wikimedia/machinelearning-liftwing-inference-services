@@ -31,3 +31,10 @@ We use the following pre-commit hooks:
 * [ruff](https://github.com/charliermarsh/ruff) - ruff is a linting tool for Python
 
 A list of the out-of-the-box available pre-commit hooks can be found [here](https://pre-commit.com/hooks.html).
+
+## Running locally
+If you want to run the model servers locally you can do so by first adding the top level dir to the PYTHONPATH
+> export PYTHONPATH=$PYTHONPATH:
+>
+Then running:
+>  INFERENCE_NAME=enwiki-damaging MODEL_PATH=/path/to/model.bin WIKI_URL=https://en.wikipedia.org python revscoring_model/model.py

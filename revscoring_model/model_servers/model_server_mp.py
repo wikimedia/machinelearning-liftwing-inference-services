@@ -1,12 +1,11 @@
 import os
 from distutils.util import strtobool
 from model_servers import RevscoringModel, RevscoringModelType
-import process_utils
 from concurrent.futures.process import BrokenProcessPool
 from kserve.errors import InferenceError
 import logging
-import extractor_utils
-import preprocess_utils
+from revscoring_model.model_servers import extractor_utils
+from python import process_utils, preprocess_utils
 from revscoring.features import trim
 from typing import Dict
 

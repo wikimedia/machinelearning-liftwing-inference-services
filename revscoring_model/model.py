@@ -1,8 +1,11 @@
 import os
 
 import kserve
-from model_server_mp import RevscoringModelMP
-from model_servers import RevscoringModel, RevscoringModelType
+from revscoring_model.model_servers import (
+    RevscoringModel,
+    RevscoringModelMP,
+    RevscoringModelType,
+)
 from distutils.util import strtobool
 import enchant
 from pyenchant_utils import UTF16EnchantStr, EnchantStr

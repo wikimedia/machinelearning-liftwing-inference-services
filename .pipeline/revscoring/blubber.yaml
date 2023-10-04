@@ -1,8 +1,10 @@
-# syntax=docker-registry.wikimedia.org/repos/releng/blubber/buildkit:v0.15.0
+# syntax=docker-registry.wikimedia.org/repos/releng/blubber/buildkit:v0.21.1
 version: v4
-base: docker-registry.wikimedia.org/bullseye:20221218
+base: docker-registry.wikimedia.org/bullseye:20231001
 runs:
   insecurely: true
+  environment:
+    PYTHONPATH: /srv/rev
 
 lives:
   in: /srv/rev
@@ -25,27 +27,24 @@ variants:
     builders:
       - python:
           version: python3.9
-          requirements: [ revscoring/requirements.txt, python/requirements.txt ]
+          requirements: [ revscoring_model/requirements.txt ]
       - custom:
           command: ["python3", "-m", "nltk.downloader", "omw", "sentiwordnet", "stopwords", "wordnet", "omw-1.4"]
       - custom:
           command: [ ./get_embeddings.sh ]
           requirements:
             - from: local
-              source: revscoring/get_embeddings.sh
+              source: revscoring_model/get_embeddings.sh
               destination: get_embeddings.sh
 
   production:
     copies:
       - from: local
-        source: revscoring/
-        destination: model-server
+        source: revscoring_model/
+        destination: revscoring_model/
       - from: local
-        source: python/*.py
-        destination: model-server/
-      - from: local
-        source: python/revscoring/*.py
-        destination: model-server/
+        source: python
+        destination: python/
       - from: build
         source: /home/somebody/nltk_data
         destination: /home/somebody/nltk_data
@@ -108,7 +107,7 @@ variants:
         - hunspell-vi
         - voikko-fi
         - wmf-certificates
-    entrypoint: ["python3",  "model-server/model.py"]
+    entrypoint: ["python3",  "revscoring_model/model.py"]
 
   test:
     apt:
@@ -118,11 +117,11 @@ variants:
         - git
     copies:
       - from: local
-        source: revscoring/
-        destination: model-server
+        source: revscoring_model/
+        destination: revscoring_model/
       - from: local
         source: tox.ini
-        destination: model-server
+        destination: revscoring_model/
       - from: local
         source: .pre-commit-config.yaml
         destination: .
@@ -135,7 +134,7 @@ variants:
       - from: local
         source: requirements-test.txt
         destination: .
-    entrypoint: ["./entrypoint.sh", "model-server"]
+    entrypoint: ["./entrypoint.sh", "revscoring_model"]
     python:
       version: python3
       requirements: [requirements-test.txt]

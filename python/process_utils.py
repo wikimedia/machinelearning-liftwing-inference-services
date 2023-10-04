@@ -4,7 +4,7 @@ import logging
 from concurrent.futures import ProcessPoolExecutor
 from typing import Any
 
-from decorators import elapsed_time_async
+from .decorators import elapsed_time_async
 from kserve import utils as kserve_utils
 
 

@@ -13,11 +13,10 @@ from kserve.errors import InvalidInput
 from revscoring import Model
 from revscoring.extractors import api
 from revscoring.features import trim
-from preprocess_utils import validate_input
+from python.preprocess_utils import validate_input
 
-import events
-import extractor_utils
-import logging_utils
+from python import events, logging_utils
+from revscoring_model.model_servers import extractor_utils
 
 logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
 
@@ -73,6 +72,7 @@ class RevscoringModel(kserve.Model):
             self.extra_mw_api_calls = True
         else:
             self.extra_mw_api_calls = False
+        self.model_path = self.get_model_path()
         self.model = self.load()
         self.ready = True
         self.prediction_results = None
@@ -110,12 +110,21 @@ class RevscoringModel(kserve.Model):
             )
         return self._http_client_session[endpoint]
 
+    def get_model_path(self):
+        if "MODEL_PATH" in os.environ:
+            model_path = os.environ["MODEL_PATH"]
+        elif self.model_kind == RevscoringModelType.DRAFTQUALITY:
+            model_path = "/mnt/models/model.bz2"
+        else:
+            model_path = "/mnt/models/model.bin"
+        return model_path
+
     def load(self):
         if self.model_kind == RevscoringModelType.DRAFTQUALITY:
-            with bz2.open("/mnt/models/model.bz2") as f:
+            with bz2.open(self.model_path) as f:
                 return Model.load(f)
         else:
-            with open("/mnt/models/model.bin") as f:
+            with open(self.model_path) as f:
                 return Model.load(f)
 
     async def get_extractor(self, inputs, rev_id):
