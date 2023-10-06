@@ -53,6 +53,7 @@ class RevscoringModel(kserve.Model):
         self.name = name
         self.model_kind = model_kind
         self.ready = False
+        self.wiki_url = self._get_wiki_url()
         self.FEATURE_VAL_KEY = "feature_values"
         self.EXTENDED_OUTPUT_KEY = "extended_output"
         self.EVENT_KEY = "event"
@@ -79,6 +80,14 @@ class RevscoringModel(kserve.Model):
         # kserve.constants.KSERVE_LOGLEVEL (passing KSERVE_LOGLEVEL as env var)
         # but it doesn't seem to work.
         logging_utils.set_log_level()
+
+    def _get_wiki_url(self):
+        if "WIKI_URL" not in os.environ:
+            raise ValueError(
+                "The environment variable WIKI_URL is not set. Please set it before running the server."
+            )
+        wiki_url = os.environ.get("WIKI_URL")
+        return wiki_url
 
     def score(self, feature_values):
         return self.model.score(feature_values)
@@ -115,7 +124,6 @@ class RevscoringModel(kserve.Model):
         self.revision_create_event = self.get_revision_event(inputs, self.EVENT_KEY)
         if self.revision_create_event:
             inputs["rev_id"] = rev_id
-        wiki_url = os.environ.get("WIKI_URL")
         wiki_host = os.environ.get("WIKI_HOST")
 
         # This is a workaround to allow the revscoring's extractor to leverage
@@ -126,14 +134,14 @@ class RevscoringModel(kserve.Model):
             rev_id,
             self.CUSTOM_UA,
             self.get_http_client_session("mwapi"),
-            wiki_url=wiki_url,
+            wiki_url=self.wiki_url,
             wiki_host=wiki_host,
             fetch_extra_info=self.extra_mw_api_calls,
         )
 
         # Create the revscoring's extractor with the MWAPICache built above.
         return api.Extractor(
-            mwapi.Session(wiki_url, user_agent=self.CUSTOM_UA),
+            mwapi.Session(self.wiki_url, user_agent=self.CUSTOM_UA),
             http_cache=mw_http_cache,
         )
 
