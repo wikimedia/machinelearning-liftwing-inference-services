@@ -5,7 +5,8 @@ from concurrent.futures.process import BrokenProcessPool
 from kserve.errors import InferenceError
 import logging
 from revscoring_model.model_servers import extractor_utils
-from python import process_utils, preprocess_utils
+from python.preprocess_utils import validate_input
+from python import process_utils
 from revscoring.features import trim
 from typing import Dict
 
@@ -49,12 +50,13 @@ class RevscoringModelMP(RevscoringModel):
         else:
             return super().fetch_features(rev_id, features, extractor, cache)
 
-    async def preprocess(self, inputs: Dict) -> Dict:
+    async def preprocess(self, inputs: Dict, headers: Dict[str, str] = None) -> Dict:
         """Use MW API session and Revscoring API to extract feature values
         of edit text based on its revision id"""
-        rev_id = preprocess_utils.get_rev_id(inputs, self.EVENT_KEY)
+        inputs = validate_input(inputs)
+        rev_id = self.get_rev_id(inputs, self.EVENT_KEY)
         extended_output = inputs.get("extended_output", False)
-        await self.set_extractor(inputs, rev_id)
+        extractor = await self.get_extractor(inputs, rev_id)
 
         cache = {}
 
@@ -65,20 +67,20 @@ class RevscoringModelMP(RevscoringModel):
         # (still enabled/disabled as opt-in).
         # See: https://docs.python.org/3/library/asyncio-eventloop.html#executing-code-in-thread-or-process-pools
         inputs[self.FEATURE_VAL_KEY] = await self.fetch_features(
-            rev_id, self.model.features, self.extractor, cache
+            rev_id, self.model.features, extractor, cache
         )
 
         if extended_output:
             bare_model_features = list(trim(self.model.features))
             base_feature_values = await self.fetch_features(
-                rev_id, bare_model_features, self.extractor, cache
+                rev_id, bare_model_features, extractor, cache
             )
             inputs[self.EXTENDED_OUTPUT_KEY] = {
                 str(f): v for f, v in zip(bare_model_features, base_feature_values)
             }
         return inputs
 
-    async def predict(self, request: Dict) -> Dict:
+    async def predict(self, request: Dict, headers: Dict[str, str] = None) -> Dict:
         feature_values = request.get(self.FEATURE_VAL_KEY)
         extended_output = request.get(self.EXTENDED_OUTPUT_KEY)
         self.prediction_results = await self.score(feature_values)
