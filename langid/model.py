@@ -1,12 +1,12 @@
+import csv
 import logging
+import os
 from typing import Dict
 
-import fasttext
+from fasttext.FastText import _FastText
 from kserve import Model, ModelServer
 from kserve.errors import InvalidInput
-
-import csv
-import os
+from python.preprocess_utils import validate_input
 
 
 class LanguageIdentificationModel(Model):
@@ -15,6 +15,7 @@ class LanguageIdentificationModel(Model):
         self.name = name
         self.ready = False
         self.languages: Dict[str, str] = self.create_language_lookup()
+        self.model = self.load()
 
     def create_language_lookup(self) -> Dict[str, str]:
         current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -30,11 +31,13 @@ class LanguageIdentificationModel(Model):
             }
         return languages
 
-    def load(self):
-        self.model = fasttext.load_model("/mnt/models/lid201-model.bin")
+    def load(self) -> _FastText:
+        model = _FastText(os.environ.get("MODEL_PATH", "/mnt/models/lid201-model.bin"))
         self.ready = True
+        return model
 
     def predict(self, payload: Dict, headers: Dict[str, str] = None) -> Dict:
+        payload = validate_input(payload)
         text = payload.get("text", None)
 
         if text is None:
@@ -55,5 +58,4 @@ class LanguageIdentificationModel(Model):
 if __name__ == "__main__":
     model_name = os.environ.get("MODEL_NAME")
     model = LanguageIdentificationModel(model_name)
-    model.load()
     ModelServer(workers=1).start([model])

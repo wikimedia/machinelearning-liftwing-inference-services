@@ -1,8 +1,10 @@
-# syntax=docker-registry.wikimedia.org/repos/releng/blubber/buildkit:v0.15.0
+# syntax=docker-registry.wikimedia.org/repos/releng/blubber/buildkit:v0.21.1
 version: v4
-base: docker-registry.wikimedia.org/bullseye:20221218
+base: docker-registry.wikimedia.org/bullseye:20231001
 runs:
   insecurely: true
+  environment:
+    PYTHONPATH: /srv/app
 
 lives:
   in: /srv/app
@@ -26,7 +28,7 @@ variants:
     copies:
       - from: local
         source: langid/
-        destination: .
+        destination: langid/
       - from: build
         source: /opt/lib/python/site-packages
         destination: /opt/lib/python/site-packages
@@ -38,7 +40,7 @@ variants:
         - python3
         - python3-distutils
         - wmf-certificates
-    entrypoint: ["python3",  "model-server/model.py"]
+    entrypoint: ["python3",  "langid/model.py"]
 
   test:
     apt:
@@ -51,7 +53,7 @@ variants:
     copies:
       - from: local
         source: langid/
-        destination: .
+        destination: langid/
       - from: local
         source: requirements-test.txt
         destination: .
@@ -64,7 +66,7 @@ variants:
       - from: local
         source: ruff.toml
         destination: .
-    entrypoint: ["./entrypoint.sh", "."]
+    entrypoint: ["./langid/entrypoint.sh", "."]
     python:
       version: python3
       requirements: [requirements-test.txt, langid/requirements.txt]
