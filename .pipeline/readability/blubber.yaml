@@ -1,6 +1,6 @@
-# syntax=docker-registry.wikimedia.org/repos/releng/blubber/buildkit:v0.15.0
+# syntax=docker-registry.wikimedia.org/repos/releng/blubber/buildkit:v0.21.0
 version: v4
-base: docker-registry.wikimedia.org/bullseye:20230611
+base: docker-registry.wikimedia.org/bullseye:20231008
 runs:
   insecurely: true
 
@@ -37,6 +37,7 @@ variants:
       packages:
         - python3
         - python3-distutils
+        - python3-setuptools
         - wmf-certificates
     python:
       version: python3
