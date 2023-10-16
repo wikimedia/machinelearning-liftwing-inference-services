@@ -29,6 +29,9 @@ variants:
       - from: local
         source: langid/
         destination: langid/
+      - from: local
+        source: python
+        destination: python/
       - from: build
         source: /opt/lib/python/site-packages
         destination: /opt/lib/python/site-packages
