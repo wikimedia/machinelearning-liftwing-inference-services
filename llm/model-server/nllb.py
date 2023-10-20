@@ -23,9 +23,8 @@ class NLLB(LLM):
         return tokenizer
 
     def load(self) -> Tuple[AutoModelForSeq2SeqLM, AutoTokenizer]:
-        model_path = "/mnt/models/"
         model = AutoModelForSeq2SeqLM.from_pretrained(
-            model_path,
+            self.model_path,
             local_files_only=True,
             trust_remote_code=True,
             low_cpu_mem_usage=True,

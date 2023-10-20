@@ -1,11 +1,13 @@
-# syntax=docker-registry.wikimedia.org/repos/releng/blubber/buildkit:v0.15.0
+# syntax=docker-registry.wikimedia.org/repos/releng/blubber/buildkit:v0.21.1
 version: v4
 base: docker-registry.wikimedia.org/bullseye:20231015
 runs:
   insecurely: true
+  environment:
+    PYTHONPATH: /srv/app
 
 lives:
-  in: /srv/llm
+  in: /srv/app
 
 variants:
   build:
@@ -23,8 +25,8 @@ variants:
   production:
     copies:
       - from: local
-        source: llm/model-server
-        destination: model-server
+        source: llm/
+        destination: llm/
       - from: build
         source: /opt/lib/python/site-packages
         destination: /opt/lib/python/site-packages
@@ -38,7 +40,7 @@ variants:
     python:
       version: python3
       use-system-flag: false
-    entrypoint: ["python3",  "model-server/model.py"]
+    entrypoint: ["python3",  "llm/model-server/model.py"]
 
   test:
     apt:
@@ -48,11 +50,11 @@ variants:
         - git
     copies:
       - from: local
-        source: llm/model-server
-        destination: model-server
+        source: llm/
+        destination: llm/
       - from: local
         source: tox.ini
-        destination: model-server
+        destination: .
       - from: local
         source: .pre-commit-config.yaml
         destination: .
@@ -65,7 +67,7 @@ variants:
       - from: local
         source: requirements-test.txt
         destination: .
-    entrypoint: ["./entrypoint.sh", "model-server"]
+    entrypoint: ["./entrypoint.sh", "."]
     python:
       version: python3
       use-system-flag: false

@@ -16,7 +16,7 @@ logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
 class LLM(kserve.Model):
     def __init__(self, model_name: str) -> None:
         super().__init__(model_name)
-        self.model_path = "/mnt/models/"
+        self.model_path = os.environ.get("MODEL_PATH", "/mnt/models/")
         self.quantized = strtobool(os.environ.get("QUANTIZED", "False"))
         self.tokenizer = None
         self.model = None
