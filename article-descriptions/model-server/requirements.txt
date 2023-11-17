@@ -1,0 +1,7 @@
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.0.1
+wheel==0.41.2
+kserve==0.11.2
+mwapi==0.6.1
+transformers==4.35.0
+sentencepiece==0.1.95

@@ -205,3 +205,22 @@ pipelines:
           image:
             name: '${setup.project}-langid'
             tags: [stable]
+
+  article-descriptions:
+    blubberfile: article-descriptions/blubber.yaml
+    stages:
+      - name: run-test
+        build: test
+        run: true
+      - name: production
+        build: production
+
+  article-descriptions-publish:
+    blubberfile: article-descriptions/blubber.yaml
+    stages:
+      - name: publish
+        build: production
+        publish:
+          image:
+            name: '${setup.project}-article-descriptions'
+            tags: [stable]
