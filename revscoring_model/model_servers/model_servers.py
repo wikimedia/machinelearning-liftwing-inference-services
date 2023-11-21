@@ -2,7 +2,7 @@ import bz2
 import logging
 import os
 
-from typing import Dict, Optional
+from typing import Any, Dict, Optional
 from enum import Enum
 
 import aiohttp
@@ -191,7 +191,7 @@ class RevscoringModel(kserve.Model):
             }
         return inputs
 
-    def get_revision_score_event(self, rev_create_event) -> Dict:
+    def get_revision_score_event(self, rev_create_event: Dict[str, Any]) -> Dict:
         return events.generate_revision_score_event(
             rev_create_event,
             self.EVENTGATE_STREAM,
