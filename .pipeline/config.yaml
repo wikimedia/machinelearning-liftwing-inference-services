@@ -207,7 +207,7 @@ pipelines:
             tags: [stable]
 
   article-descriptions:
-    blubberfile: article-descriptions/blubber.yaml
+    blubberfile: article_descriptions/blubber.yaml
     stages:
       - name: run-test
         build: test
@@ -216,7 +216,7 @@ pipelines:
         build: production
 
   article-descriptions-publish:
-    blubberfile: article-descriptions/blubber.yaml
+    blubberfile: article_descriptions/blubber.yaml
     stages:
       - name: publish
         build: production

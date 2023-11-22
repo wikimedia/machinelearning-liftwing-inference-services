@@ -2,14 +2,15 @@ import logging
 import os
 import re
 import time
-from typing import Any, Dict
+from typing import Any, Dict, Optional
+from urllib.parse import urljoin
 
 import aiohttp
 import kserve
 import mwapi
+from kserve.errors import InferenceError, InvalidInput
 
-from kserve.errors import InvalidInput, InferenceError
-from utils import lang_dict, ModelLoader
+from utils import ModelLoader, lang_dict
 
 logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
 
@@ -26,12 +27,13 @@ class ArticleDescriptionsModel(kserve.Model):
         self.model_path = os.environ.get("MODEL_PATH", "/mnt/models/")
         self.wiki_url = os.environ.get("WIKI_URL")
         self.rest_gateway_endpoint = os.environ.get("REST_GATEWAY_ENDPOINT")
+        self.low_cpu_mem_usage = os.environ.get("LOW_CPU_MEM_USAGE", False)
         self.model = ModelLoader()
         self.ready = False
         self.load()
 
     def load(self) -> None:
-        self.model.load_model(self.model_path)
+        self.model.load_model(self.model_path, self.low_cpu_mem_usage)
         self.ready = True
 
     async def preprocess(
@@ -126,12 +128,13 @@ class ArticleDescriptionsModel(kserve.Model):
 
     async def get_groundtruth(self, lang: str, title: str) -> str:
         """Get existing article description (groundtruth)."""
+        mw_host, host_header = self.get_mw_host_and_header(lang)
         session = mwapi.AsyncSession(
-            host=self.wiki_url,
+            host=self.wiki_url or mw_host,
             user_agent=self.user_agent,
             session=self.get_http_client_session("mwapi"),
         )
-        session.headers["Host"] = f"{lang}.wikipedia.org"
+        session.headers["Host"] = host_header
         # English has a prop that takes into account shortdescs (local override) that other languages don't
         if lang == "en":
             try:
@@ -171,10 +174,18 @@ class ArticleDescriptionsModel(kserve.Model):
 
     async def get_first_paragraph(self, lang: str, title: str) -> str:
         """Get plain-text extract of article"""
+        mw_host, host_header = self.get_mw_host_and_header(lang)
+        base_url = urljoin(self.rest_gateway_endpoint, self.wiki_url or mw_host)
         try:
+            # this is an implicit way of understanding whether we are using
+            # the REST API or the REST gateway
+            url = urljoin(
+                base_url,
+                f"{'v1' if self.wiki_url else 'api/rest_v1'}/page/summary/{title}",
+            )
             async with self.get_http_client_session("restgateway") as session:
                 async with session.get(
-                    f"{self.rest_gateway_endpoint}/{lang}.wikipedia.org/v1/page/summary/{title}",
+                    url,
                     headers={
                         "User-Agent": self.user_agent,
                     },
@@ -187,12 +198,13 @@ class ArticleDescriptionsModel(kserve.Model):
 
     async def get_wikidata_info(self, lang: str, title: str) -> Dict[str, Any]:
         """Get article descriptions from Wikidata"""
+        mw_host, host_header = self.get_mw_host_and_header()
         session = mwapi.AsyncSession(
-            host=self.wiki_url,
+            host=self.wiki_url or mw_host,
             user_agent=self.user_agent,
             session=self.get_http_client_session("mwapi"),
         )
-        session.headers["Host"] = "www.wikidata.org"
+        session.headers["Host"] = host_header
         try:
             result = await session.get(
                 action="wbgetentities",
@@ -240,6 +252,13 @@ class ArticleDescriptionsModel(kserve.Model):
                 "if the issue persists."
             )
         return descriptions, sitelinks, blp
+
+    @staticmethod
+    def get_mw_host_and_header(lang: Optional[str] = None) -> (str, str):
+        """Get the MediaWiki host for the given language"""
+        if not lang:
+            return "https://www.wikidata.org", "www.wikidata.org"
+        return f"https://{lang}.wikipedia.org", f"{lang}.wikipedia.org"
 
     def get_http_client_session(self, endpoint):
         """
