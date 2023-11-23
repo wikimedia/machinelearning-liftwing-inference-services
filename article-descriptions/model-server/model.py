@@ -9,7 +9,7 @@ import kserve
 import mwapi
 
 from kserve.errors import InvalidInput, InferenceError
-from utils import LANG_DICT, ModelLoader
+from utils import lang_dict, ModelLoader
 
 logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
 
@@ -19,17 +19,17 @@ class ArticleDescriptionsModel(kserve.Model):
         super().__init__(name)
         self.name = name
         self._http_client_session = {}
-        self.DATE_REGEX = re.compile("\\d{4}")
-        self.AIOHTTP_CLIENT_TIMEOUT = os.environ.get("AIOHTTP_CLIENT_TIMEOUT", 5)
-        self.USER_AGENT = "WMF ML Team article-description model inference (LiftWing)"
-        self.SUPPORTED_WIKIPEDIA_LANGUAGE_CODES = list(LANG_DICT.keys())
-        self.MODEL = ModelLoader()
+        self.date_regex = re.compile("\\d{4}")
+        self.aiohttp_client_timeout = os.environ.get("AIOHTTP_CLIENT_TIMEOUT", 5)
+        self.user_agent = "WMF ML Team article-description model inference (LiftWing)"
+        self.supported_wikipedia_language_codes = list(lang_dict.keys())
+        self.model_path = os.environ.get("MODEL_PATH", "/mnt/models/")
+        self.model = ModelLoader()
         self.ready = False
         self.load()
 
     def load(self) -> None:
-        model_path = "/mnt/models/"
-        self.MODEL.load_model(model_path)
+        self.model.load_model(self.model_path)
         self.ready = True
 
     async def preprocess(
@@ -85,7 +85,7 @@ class ArticleDescriptionsModel(kserve.Model):
         blp = preprocessed_data["blp"]
         groundtruth_desc = preprocessed_data["groundtruth_desc"]
         features = preprocessed_data["features"]
-        prediction = self.MODEL.predict(
+        prediction = self.model.predict(
             first_paragraphs,
             descriptions,
             lang,
@@ -96,12 +96,12 @@ class ArticleDescriptionsModel(kserve.Model):
             time.time() - starttime - execution_times["total network (s)"]
         )
         for desc in descriptions:
-            dates.update(self.DATE_REGEX.findall(desc))
+            dates.update(self.date_regex.findall(desc))
         for parag in first_paragraphs:
-            dates.update(self.DATE_REGEX.findall(parag))
+            dates.update(self.date_regex.findall(parag))
         filtered_predictions = []
         for pred in prediction:
-            dates_in_p = self.DATE_REGEX.findall(pred)
+            dates_in_p = self.date_regex.findall(pred)
             keep = True
             for date in dates_in_p:
                 if date not in dates:
@@ -126,7 +126,7 @@ class ArticleDescriptionsModel(kserve.Model):
         """Get existing article description (groundtruth)."""
         session = mwapi.AsyncSession(
             host=f"https://{lang}.wikipedia.org",
-            user_agent=self.USER_AGENT,
+            user_agent=self.user_agent,
             session=self.get_http_client_session("mwapi"),
         )
         # English has a prop that takes into account shortdescs (local override) that other languages don't
@@ -173,7 +173,7 @@ class ArticleDescriptionsModel(kserve.Model):
             async with self.get_http_client_session(base_url) as session:
                 async with session.get(
                     f"{base_url}/api/rest_v1/page/summary/{title}",
-                    headers={"User-Agent": self.USER_AGENT},
+                    headers={"User-Agent": self.user_agent},
                 ) as resp:
                     paragraph = await resp.json()
                     return paragraph["extract"]
@@ -185,7 +185,7 @@ class ArticleDescriptionsModel(kserve.Model):
         """Get article descriptions from Wikidata"""
         session = mwapi.AsyncSession(
             host="https://wikidata.org",
-            user_agent=self.USER_AGENT,
+            user_agent=self.user_agent,
             session=self.get_http_client_session("mwapi"),
         )
         try:
@@ -195,9 +195,9 @@ class ArticleDescriptionsModel(kserve.Model):
                 titles=title,
                 redirects="yes",
                 props="descriptions|claims|sitelinks",
-                languages="|".join(self.SUPPORTED_WIKIPEDIA_LANGUAGE_CODES),
+                languages="|".join(self.supported_wikipedia_language_codes),
                 sitefilter="|".join(
-                    [f"{lng}wiki" for lng in self.SUPPORTED_WIKIPEDIA_LANGUAGE_CODES]
+                    [f"{lng}wiki" for lng in self.supported_wikipedia_language_codes]
                 ),
                 format="json",
                 formatversion=2,
@@ -242,7 +242,7 @@ class ArticleDescriptionsModel(kserve.Model):
         We need to do it since sharing a single session leads to unexpected
         side effects (like sharing headers, most notably the Host one).
         """
-        timeout = aiohttp.ClientTimeout(total=self.AIOHTTP_CLIENT_TIMEOUT)
+        timeout = aiohttp.ClientTimeout(total=self.aiohttp_client_timeout)
         if (
             self._http_client_session.get(endpoint, None) is None
             or self._http_client_session[endpoint].closed
@@ -258,14 +258,14 @@ class ArticleDescriptionsModel(kserve.Model):
         if not lang:
             logging.error("Missing lang in input data.")
             raise InvalidInput("The parameter lang is required.")
-        elif lang not in self.SUPPORTED_WIKIPEDIA_LANGUAGE_CODES:
+        elif lang not in self.supported_wikipedia_language_codes:
             logging.error(
                 f"Unsupported lang: {lang}. \
-                The supported ones are: {self.SUPPORTED_WIKIPEDIA_LANGUAGE_CODES}."
+                The supported ones are: {self.supported_wikipedia_language_codes}."
             )
             raise InvalidInput(
                 f"Unsupported lang: {lang}. \
-                The supported ones are: {self.SUPPORTED_WIKIPEDIA_LANGUAGE_CODES}."
+                The supported ones are: {self.supported_wikipedia_language_codes}."
             )
         if not title:
             logging.error("Missing title in input data.")

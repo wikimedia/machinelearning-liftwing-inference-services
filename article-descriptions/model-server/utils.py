@@ -1,3 +1,5 @@
+import os
+
 import torch
 from transformers import MBartTokenizer
 from transformers import BertModel, BertTokenizer
@@ -6,8 +8,7 @@ from transformers import MBartConfig
 
 from descartes.src.models.descartes_mbart import MBartForConditionalGenerationDescartes
 
-BERT_PATH = "bert-base-multilingual-uncased"
-LANG_DICT = {
+lang_dict = {
     "en": "en_XX",
     "fr": "fr_XX",
     "it": "it_IT",
@@ -76,16 +77,18 @@ class ModelLoader:
         self.tokenizer_bert = None
         self.device = None
 
-    def load_model(self, output_dir):
+    def load_model(self, model_path):
         """Load model from the specified directory."""
-        config = MBartConfig.from_pretrained(output_dir)
+        model_dir = os.path.join(model_path, "mbart-large-cc25/")
+        bert_dir = os.path.join(model_path, "bert-base-multilingual-uncased/")
+        config = MBartConfig.from_pretrained(model_dir, local_files_only=True)
         config.graph_embd_length = 128
         model = MBartForConditionalGenerationDescartes.from_pretrained(
-            output_dir, config=config
+            model_dir, config=config, local_files_only=True
         )
-        tokenizer = MBartTokenizer.from_pretrained(output_dir)
-        tokenizer_bert = BertTokenizer.from_pretrained(BERT_PATH)
-        bert_model = BertModel.from_pretrained(BERT_PATH)
+        tokenizer = MBartTokenizer.from_pretrained(model_dir, local_files_only=True)
+        tokenizer_bert = BertTokenizer.from_pretrained(bert_dir, local_files_only=True)
+        bert_model = BertModel.from_pretrained(bert_dir, local_files_only=True)
         model.model_bert = bert_model
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         model = model.to(device)
@@ -102,7 +105,7 @@ class ModelLoader:
         input_ids = {}
         attention_mask = {}
         # process first paragraphs
-        for lang, lang_code in LANG_DICT.items():
+        for lang, lang_code in lang_dict.items():
             if lang in sources:
                 source = sources[lang]
             else:
@@ -135,8 +138,8 @@ class ModelLoader:
             length_penalty=2.0,
             num_beams=num_beams,
             early_stopping=True,
-            target_lang=LANG_DICT[tgt_lang],
-            decoder_start_token_id=self.tokenizer.lang_code_to_id[LANG_DICT[tgt_lang]],
+            target_lang=lang_dict[tgt_lang],
+            decoder_start_token_id=self.tokenizer.lang_code_to_id[lang_dict[tgt_lang]],
             num_return_sequences=num_return_sequences
         )
         output = self.tokenizer.batch_decode(tokens, skip_special_tokens=True)
