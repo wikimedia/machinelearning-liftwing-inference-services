@@ -19,3 +19,27 @@ We can run the server locally with:
 
 On a separate terminal we can make a request to the server with:
 > curl -s localhost:8080/v1/models/revertrisk-language-agnostic:predict -X POST -d '{"lang": "en", "rev_id": 12345}' -i --header "Content-type: application/json"
+
+If you want to use batch inference to request multiple predictions using a single request, set the `USE_BATCHER` environment variable to True when launching the model server:
+
+> MODEL_PATH=<PATH_TO_MODEL_DIR/model.pkl> MODEL_NAME=revertrisk-language-agnostic USE_BATCHER=True python revert_risk_model/model_server/model.py
+
+We have a different input schema for batch inference. For example, the input should be in JSON format as shown below:
+```json
+{
+    "instances": [
+      {
+        "lang": "en",
+        "rev_id": 123456
+      },
+      {
+        "lang": "en",
+        "rev_id": 23456
+      },
+      {
+        "lang": "en",
+        "rev_id": 12345
+      }
+    ]
+}
+```
