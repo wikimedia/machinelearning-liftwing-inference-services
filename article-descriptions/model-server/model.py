@@ -24,6 +24,7 @@ class ArticleDescriptionsModel(kserve.Model):
         self.user_agent = "WMF ML Team article-description model inference (LiftWing)"
         self.supported_wikipedia_language_codes = list(lang_dict.keys())
         self.model_path = os.environ.get("MODEL_PATH", "/mnt/models/")
+        self.wiki_url = os.environ.get("WIKI_URL")
         self.model = ModelLoader()
         self.ready = False
         self.load()
@@ -125,9 +126,10 @@ class ArticleDescriptionsModel(kserve.Model):
     async def get_groundtruth(self, lang: str, title: str) -> str:
         """Get existing article description (groundtruth)."""
         session = mwapi.AsyncSession(
-            host=f"https://{lang}.wikipedia.org",
+            host=self.wiki_url,
             user_agent=self.user_agent,
             session=self.get_http_client_session("mwapi"),
+            headers={"Host": f"https://{lang}.wikipedia.org"},
         )
         # English has a prop that takes into account shortdescs (local override) that other languages don't
         if lang == "en":
@@ -169,11 +171,13 @@ class ArticleDescriptionsModel(kserve.Model):
     async def get_first_paragraph(self, lang: str, title: str) -> str:
         """Get plain-text extract of article"""
         try:
-            base_url = f"https://{lang}.wikipedia.org"
-            async with self.get_http_client_session(base_url) as session:
+            async with self.get_http_client_session("mwapi") as session:
                 async with session.get(
-                    f"{base_url}/api/rest_v1/page/summary/{title}",
-                    headers={"User-Agent": self.user_agent},
+                    f"{self.wiki_url}/api/rest_v1/page/summary/{title}",
+                    headers={
+                        "Host": f"https://{lang}.wikipedia.org",
+                        "User-Agent": self.user_agent,
+                    },
                 ) as resp:
                     paragraph = await resp.json()
                     return paragraph["extract"]
@@ -184,9 +188,10 @@ class ArticleDescriptionsModel(kserve.Model):
     async def get_wikidata_info(self, lang: str, title: str) -> Dict[str, Any]:
         """Get article descriptions from Wikidata"""
         session = mwapi.AsyncSession(
-            host="https://wikidata.org",
+            host=self.wiki_url,
             user_agent=self.user_agent,
             session=self.get_http_client_session("mwapi"),
+            headers={"Host": "wikidata.org"},
         )
         try:
             result = await session.get(
