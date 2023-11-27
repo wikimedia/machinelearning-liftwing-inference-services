@@ -129,8 +129,8 @@ class ArticleDescriptionsModel(kserve.Model):
             host=self.wiki_url,
             user_agent=self.user_agent,
             session=self.get_http_client_session("mwapi"),
-            headers={"Host": f"https://{lang}.wikipedia.org"},
         )
+        session.headers["Host"] = f"{lang}.wikipedia.org"
         # English has a prop that takes into account shortdescs (local override) that other languages don't
         if lang == "en":
             try:
@@ -175,7 +175,7 @@ class ArticleDescriptionsModel(kserve.Model):
                 async with session.get(
                     f"{self.wiki_url}/api/rest_v1/page/summary/{title}",
                     headers={
-                        "Host": f"https://{lang}.wikipedia.org",
+                        "Host": f"{lang}.wikipedia.org",
                         "User-Agent": self.user_agent,
                     },
                 ) as resp:
@@ -191,8 +191,8 @@ class ArticleDescriptionsModel(kserve.Model):
             host=self.wiki_url,
             user_agent=self.user_agent,
             session=self.get_http_client_session("mwapi"),
-            headers={"Host": "wikidata.org"},
         )
+        session.headers["Host"] = "www.wikidata.org"
         try:
             result = await session.get(
                 action="wbgetentities",
