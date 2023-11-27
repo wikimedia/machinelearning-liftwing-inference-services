@@ -84,11 +84,18 @@ class ModelLoader:
         config = MBartConfig.from_pretrained(model_dir, local_files_only=True)
         config.graph_embd_length = 128
         model = MBartForConditionalGenerationDescartes.from_pretrained(
-            model_dir, config=config, local_files_only=True
+            model_dir,
+            config=config,
+            local_files_only=True,
+            low_cpu_mem_usage=True,
         )
         tokenizer = MBartTokenizer.from_pretrained(model_dir, local_files_only=True)
         tokenizer_bert = BertTokenizer.from_pretrained(bert_dir, local_files_only=True)
-        bert_model = BertModel.from_pretrained(bert_dir, local_files_only=True)
+        bert_model = BertModel.from_pretrained(
+            bert_dir,
+            local_files_only=True,
+            low_cpu_mem_usage=True,
+        )
         model.model_bert = bert_model
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         model = model.to(device)

@@ -1,3 +1,4 @@
+accelerate==0.24.1
 --extra-index-url https://download.pytorch.org/whl/cpu
 torch==2.0.1
 wheel==0.41.2
