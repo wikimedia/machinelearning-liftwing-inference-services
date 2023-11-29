@@ -25,6 +25,7 @@ class ArticleDescriptionsModel(kserve.Model):
         self.supported_wikipedia_language_codes = list(lang_dict.keys())
         self.model_path = os.environ.get("MODEL_PATH", "/mnt/models/")
         self.wiki_url = os.environ.get("WIKI_URL")
+        self.rest_gateway_endpoint = os.environ.get("REST_GATEWAY_ENDPOINT")
         self.model = ModelLoader()
         self.ready = False
         self.load()
@@ -173,7 +174,7 @@ class ArticleDescriptionsModel(kserve.Model):
         try:
             async with self.get_http_client_session("mwapi") as session:
                 async with session.get(
-                    f"{self.wiki_url}/api/rest_v1/page/summary/{title}",
+                    f"{self.rest_gateway_endpoint}/{lang}.wikipedia.org/v1/page/summary/{title}",
                     headers={
                         "Host": f"{lang}.wikipedia.org",
                         "User-Agent": self.user_agent,
