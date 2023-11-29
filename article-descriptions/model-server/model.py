@@ -172,7 +172,7 @@ class ArticleDescriptionsModel(kserve.Model):
     async def get_first_paragraph(self, lang: str, title: str) -> str:
         """Get plain-text extract of article"""
         try:
-            async with self.get_http_client_session("mwapi") as session:
+            async with self.get_http_client_session("restgateway") as session:
                 async with session.get(
                     f"{self.rest_gateway_endpoint}/{lang}.wikipedia.org/v1/page/summary/{title}",
                     headers={
