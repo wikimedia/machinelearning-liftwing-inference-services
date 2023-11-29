@@ -176,7 +176,6 @@ class ArticleDescriptionsModel(kserve.Model):
                 async with session.get(
                     f"{self.rest_gateway_endpoint}/{lang}.wikipedia.org/v1/page/summary/{title}",
                     headers={
-                        "Host": f"{lang}.wikipedia.org",
                         "User-Agent": self.user_agent,
                     },
                 ) as resp:
