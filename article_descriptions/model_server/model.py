@@ -2,6 +2,7 @@ import logging
 import os
 import re
 import time
+from distutils.util import strtobool
 from typing import Any, Dict, Optional
 from urllib.parse import urljoin
 
@@ -9,7 +10,6 @@ import aiohttp
 import kserve
 import mwapi
 from kserve.errors import InferenceError, InvalidInput
-
 from utils import ModelLoader, lang_dict
 
 logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
@@ -27,7 +27,7 @@ class ArticleDescriptionsModel(kserve.Model):
         self.model_path = os.environ.get("MODEL_PATH", "/mnt/models/")
         self.wiki_url = os.environ.get("WIKI_URL")
         self.rest_gateway_endpoint = os.environ.get("REST_GATEWAY_ENDPOINT")
-        self.low_cpu_mem_usage = os.environ.get("LOW_CPU_MEM_USAGE", False)
+        self.low_cpu_mem_usage = strtobool(os.environ.get("LOW_CPU_MEM_USAGE", "True"))
         self.model = ModelLoader()
         self.ready = False
         self.load()
