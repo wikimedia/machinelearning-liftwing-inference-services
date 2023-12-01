@@ -1,17 +1,17 @@
 # syntax=docker-registry.wikimedia.org/repos/releng/blubber/buildkit:v0.21.0
 version: v4
-base: docker-registry.wikimedia.org/bullseye:20231015
+base: docker-registry.wikimedia.org/bullseye:20231126
 runs:
   insecurely: true
 
 lives:
-  in: /srv/revert-risk-model
+  in: /srv/revert_risk_model
 
 variants:
   build:
     python:
       version: python3
-      requirements: [revert-risk-model/model-server/revertrisk/requirements.txt]
+      requirements: [revert_risk_model/model_server/revertrisk/requirements.txt]
     apt:
       packages:
         - build-essential
@@ -23,11 +23,11 @@ variants:
   production:
     copies:
       - from: local
-        source: revert-risk-model/model-server
-        destination: model-server
+        source: revert_risk_model/model_server
+        destination: model_server
       - from: local
-        source: python/*.py
-        destination: model-server/
+        source: python
+        destination: python/
       - from: build
         source: /opt/lib/python/site-packages
         destination: /opt/lib/python/site-packages
@@ -40,7 +40,7 @@ variants:
     python:
       version: python3
       use-system-flag: false
-    entrypoint: ["python3",  "model-server/model.py"]
+    entrypoint: ["python3",  "model_server/model.py"]
 
   test:
     apt:
@@ -50,11 +50,11 @@ variants:
         - git
     copies:
       - from: local
-        source: revert-risk-model/model-server
-        destination: model-server
+        source: revert_risk_model/model_server
+        destination: model_server
       - from: local
         source: tox.ini
-        destination: model-server
+        destination: model_server
       - from: local
         source: .pre-commit-config.yaml
         destination: .
@@ -67,7 +67,7 @@ variants:
       - from: local
         source: requirements-test.txt
         destination: .
-    entrypoint: ["./entrypoint.sh", "model-server"]
+    entrypoint: ["./entrypoint.sh", "model_server"]
     python:
       version: python3
       use-system-flag: false

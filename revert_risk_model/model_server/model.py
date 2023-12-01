@@ -8,7 +8,7 @@ import mwapi
 
 from knowledge_integrity.revision import get_current_revision
 from kserve.errors import InvalidInput, InferenceError
-from preprocess_utils import check_input_param
+from python.preprocess_utils import check_input_param
 from http import HTTPStatus
 from fastapi import HTTPException
 
@@ -16,13 +16,15 @@ logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
 
 
 class RevisionRevertRiskModel(kserve.Model):
-    def __init__(self, name: str) -> None:
+    def __init__(
+        self, name: str, model_path: str, wiki_url: str, aiohttp_client_timeout: int
+    ) -> None:
         super().__init__(name)
         self.name = name
         self.ready = False
-        self._http_client_session = {}
-        self.WIKI_URL = os.environ.get("WIKI_URL")
-        self.AIOHTTP_CLIENT_TIMEOUT = os.environ.get("AIOHTTP_CLIENT_TIMEOUT", 5)
+        self.model_path = model_path
+        self.wiki_url = wiki_url
+        self.aiohttp_client_timeout = aiohttp_client_timeout
         self._http_client_session = {}
         self.load()
 
@@ -30,7 +32,7 @@ class RevisionRevertRiskModel(kserve.Model):
         """Returns a aiohttp session for the specific endpoint passed as input.
         We need to do it since sharing a single session leads to unexpected
         side effects (like sharing headers, most notably the Host one)."""
-        timeout = aiohttp.ClientTimeout(total=self.AIOHTTP_CLIENT_TIMEOUT)
+        timeout = aiohttp.ClientTimeout(total=self.aiohttp_client_timeout)
         if (
             self._http_client_session.get(endpoint, None) is None
             or self._http_client_session[endpoint].closed
@@ -42,7 +44,7 @@ class RevisionRevertRiskModel(kserve.Model):
         return self._http_client_session[endpoint]
 
     def get_mediawiki_host(self, lang):
-        if model_name == "revertrisk-wikidata":
+        if self.name == "revertrisk-wikidata":
             return "https://www.wikidata.org"
         else:
             # See https://phabricator.wikimedia.org/T340830
@@ -61,7 +63,7 @@ class RevisionRevertRiskModel(kserve.Model):
             raise InvalidInput(f"Unsupported lang: {lang}.")
 
     def load(self) -> None:
-        self.model = KI_module.load_model("/mnt/models/model.pkl")
+        self.model = KI_module.load_model(self.model_path)
         self.ready = True
 
     async def preprocess(
@@ -75,7 +77,7 @@ class RevisionRevertRiskModel(kserve.Model):
             # Host is set to http://api-ro.discovery.wmnet within WMF
             # network in Lift Wing. Alternatively, it can be set to
             # https://{lang}.wikipedia.org to call MW API publicly.
-            host=self.WIKI_URL or mw_host,
+            host=self.wiki_url or mw_host,
             user_agent="WMF ML Team revert-risk-model isvc",
             session=self.get_http_client_session("mwapi"),
         )
@@ -143,11 +145,16 @@ class RevisionRevertRiskModel(kserve.Model):
 
 if __name__ == "__main__":
     model_name = os.environ.get("MODEL_NAME")
+    model_path = os.environ.get("MODEL_PATH", "/mnt/models/model.pkl")
+    wiki_url = os.environ.get("WIKI_URL")
+    aiohttp_client_timeout = os.environ.get("AIOHTTP_CLIENT_TIMEOUT", 5)
     if model_name == "revertrisk-wikidata":
         import knowledge_integrity.models.revertrisk_wikidata as KI_module
     elif model_name == "revertrisk-multilingual":
         import knowledge_integrity.models.revertrisk_multilingual as KI_module
     else:
         import knowledge_integrity.models.revertrisk as KI_module
-    model = RevisionRevertRiskModel(model_name)
+    model = RevisionRevertRiskModel(
+        model_name, model_path, wiki_url, aiohttp_client_timeout
+    )
     kserve.ModelServer(workers=1).start([model])
