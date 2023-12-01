@@ -3,6 +3,8 @@ version: v4
 base: docker-registry.wikimedia.org/bullseye:20231105
 runs:
   insecurely: true
+  environment:
+    PYTHONPATH: /srv/article_descriptions
 
 lives:
   in: /srv/article_descriptions
@@ -31,6 +33,9 @@ variants:
       - from: build
         source: /srv/article_descriptions/model_server/.
         destination: model_server
+      - from: local
+        source: python
+        destination: python/
       - from: build
         source: /opt/lib/python/site-packages
         destination: /opt/lib/python/site-packages
@@ -55,6 +60,9 @@ variants:
       - from: local
         source: article_descriptions/model_server
         destination: model_server
+      - from: local
+        source: python
+        destination: python/
       - from: local
         source: tox.ini
         destination: model_server

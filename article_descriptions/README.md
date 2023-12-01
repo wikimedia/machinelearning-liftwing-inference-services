@@ -1,4 +1,6 @@
 # How to run locally
+If you want to run the model servers locally you can do so by first adding the top level directory of the repo to the PYTHONPATH
+> export PYTHONPATH=$PYTHONPATH:.
 
 First we need to create a virtual environment and install the dependencies:
 This can be done with:
@@ -27,4 +29,4 @@ We can run the server locally with:
 > MODEL_PATH=PATH_TO_MODEL_DIR MODEL_NAME=article-descriptions python article_descriptions/model_server/model.py
 
  On a separate terminal we can make a request to the server with:
-> curl -s localhost:8080/v1/models/article-model:predict -X POST -d '{"lang": "en", "title": "Clandonald", "num_beams": 2}' -i --header "Content-type: application/json"
+> curl -s localhost:8080/v1/models/article-descriptions:predict -X POST -d '{"lang": "en", "title": "Clandonald", "num_beams": 2}' -i --header "Content-type: application/json"

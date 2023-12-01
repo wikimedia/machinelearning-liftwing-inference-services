@@ -4,13 +4,13 @@ import re
 import time
 from distutils.util import strtobool
 from typing import Any, Dict, Optional
-from urllib.parse import urljoin
 
 import aiohttp
 import kserve
 import mwapi
 from kserve.errors import InferenceError, InvalidInput
 from utils import ModelLoader, lang_dict
+from python.api_utils import get_rest_endpoint_page_summary
 
 logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
 
@@ -175,17 +175,13 @@ class ArticleDescriptionsModel(kserve.Model):
     async def get_first_paragraph(self, lang: str, title: str) -> str:
         """Get plain-text extract of article"""
         mw_host, host_header = self.get_mw_host_and_header(lang)
-        base_url = urljoin(self.rest_gateway_endpoint, self.wiki_url or mw_host)
+        rest_url = get_rest_endpoint_page_summary(
+            self.rest_gateway_endpoint, mw_host, host_header, title
+        )
         try:
-            # this is an implicit way of understanding whether we are using
-            # the REST API or the REST gateway
-            url = urljoin(
-                base_url,
-                f"{'v1' if self.wiki_url else 'api/rest_v1'}/page/summary/{title}",
-            )
             async with self.get_http_client_session("restgateway") as session:
                 async with session.get(
-                    url,
+                    rest_url,
                     headers={
                         "User-Agent": self.user_agent,
                     },
