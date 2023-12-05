@@ -3,6 +3,8 @@ version: v4
 base: docker-registry.wikimedia.org/bullseye:20231126
 runs:
   insecurely: true
+  environment:
+    PYTHONPATH: /srv/revert_risk_model
 
 lives:
   in: /srv/revert_risk_model
