@@ -5,7 +5,7 @@ from typing import Any, Dict, Tuple
 from kserve.errors import InferenceError
 from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 
-from model import LLM
+from llm.model import LLM
 
 
 class NLLB(LLM):

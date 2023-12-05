@@ -121,14 +121,14 @@ if __name__ == "__main__":
     that the class LLM is used which supports most LLMs out of the box.
     """
     model_name = os.environ.get("MODEL_NAME")
-    llm_class_name = os.environ.get("LLM_CLASS", "model.LLM")
+    llm_class_name = os.environ.get("LLM_CLASS", "llm.LLM")
     try:
         module_name, class_name = llm_class_name.split(".")
         module = importlib.import_module(module_name)
         llm_class = getattr(module, class_name)
     except (ImportError, AttributeError):
         raise ImportError(
-            f"Unable to load class: {llm_class_name}. LLM_CLASS envrionment variable must be set,"
+            f"Unable to load class: {llm_class_name}. LLM_CLASS environment variable must be set,"
             "and follow the format: module_name.class_name"
         )
     model = llm_class(model_name)
