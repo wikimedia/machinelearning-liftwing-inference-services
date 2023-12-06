@@ -81,7 +81,7 @@ def get_page_title(inputs: Dict, event_input_key) -> str:
     return page_title
 
 
-def validate_input(inputs: Union[Dict, bytes]) -> Dict:
+def validate_json_input(inputs: Union[Dict, bytes]) -> Dict:
     """
     Transform inputs to a Dict if inputs are passed as bytes.
     Kserve 0.11 introduced allows any content-type to be passed in the request.

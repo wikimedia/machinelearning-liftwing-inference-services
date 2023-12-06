@@ -5,7 +5,7 @@ from concurrent.futures.process import BrokenProcessPool
 from kserve.errors import InferenceError
 import logging
 from revscoring_model.model_servers import extractor_utils
-from python.preprocess_utils import validate_input
+from python.preprocess_utils import validate_json_input
 from python import process_utils
 from revscoring.features import trim
 from typing import Dict
@@ -53,7 +53,7 @@ class RevscoringModelMP(RevscoringModel):
     async def preprocess(self, inputs: Dict, headers: Dict[str, str] = None) -> Dict:
         """Use MW API session and Revscoring API to extract feature values
         of edit text based on its revision id"""
-        inputs = validate_input(inputs)
+        inputs = validate_json_input(inputs)
         rev_id = self.get_rev_id(inputs, self.EVENT_KEY)
         extended_output = inputs.get("extended_output", False)
         extractor = await self.get_extractor(inputs, rev_id)

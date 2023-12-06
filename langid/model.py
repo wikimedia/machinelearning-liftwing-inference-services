@@ -6,7 +6,7 @@ from typing import Dict
 from fasttext.FastText import _FastText
 from kserve import Model, ModelServer
 from kserve.errors import InvalidInput
-from python.preprocess_utils import validate_input
+from python.preprocess_utils import validate_json_input
 
 
 class LanguageIdentificationModel(Model):
@@ -37,7 +37,7 @@ class LanguageIdentificationModel(Model):
         return model
 
     def predict(self, payload: Dict, headers: Dict[str, str] = None) -> Dict:
-        payload = validate_input(payload)
+        payload = validate_json_input(payload)
         text = payload.get("text", None)
 
         if text is None:
