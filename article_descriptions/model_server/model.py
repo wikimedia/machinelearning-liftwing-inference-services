@@ -11,6 +11,7 @@ import mwapi
 from kserve.errors import InferenceError, InvalidInput
 from utils import ModelLoader, lang_dict
 from python.api_utils import get_rest_endpoint_page_summary
+from python.preprocess_utils import validate_json_input
 
 logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
 
@@ -39,6 +40,7 @@ class ArticleDescriptionsModel(kserve.Model):
     async def preprocess(
         self, payload: Dict[str, Any], headers: Dict[str, str] = None
     ) -> Dict[str, Any]:
+        payload = validate_json_input(payload)
         lang = payload.get("lang")
         title = payload.get("title")
         num_beams = payload.get("num_beams")
