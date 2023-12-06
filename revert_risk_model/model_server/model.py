@@ -8,7 +8,7 @@ import mwapi
 
 from knowledge_integrity.revision import get_current_revision
 from kserve.errors import InvalidInput, InferenceError
-from python.preprocess_utils import check_input_param
+from python.preprocess_utils import check_input_param, validate_json_input
 from http import HTTPStatus
 from fastapi import HTTPException
 
@@ -69,6 +69,7 @@ class RevisionRevertRiskModel(kserve.Model):
     async def preprocess(
         self, inputs: Dict[str, Any], headers: Dict[str, str] = None
     ) -> Dict[str, Any]:
+        inputs = validate_json_input(inputs)
         lang = inputs.get("lang")
         rev_id = inputs.get("rev_id")
         self.validate_inputs(lang, rev_id)
