@@ -8,6 +8,7 @@ from typing import Any, Dict, Tuple
 import kserve
 import torch
 from kserve.errors import InferenceError
+from python.preprocess_utils import validate_json_input
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
@@ -71,6 +72,7 @@ class LLM(kserve.Model):
     ) -> Dict[str, Any]:
         try:
             self.check_gpu()
+            inputs = validate_json_input(inputs)
             prompt = inputs.get("prompt")
             result_length = inputs.get("result_length")
             inputs = self.tokenizer(prompt, return_tensors="pt")

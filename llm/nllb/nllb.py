@@ -3,6 +3,7 @@ import os
 from typing import Any, Dict, Tuple
 
 from kserve.errors import InferenceError
+from python.preprocess_utils import validate_json_input
 from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 
 from llm.model import LLM
@@ -45,6 +46,7 @@ class NLLB(LLM):
 
         try:
             self.check_gpu()
+            inputs = validate_json_input(inputs)
             prompt = inputs.get("prompt")
             tgt_lang = inputs.get("tgt_lang")
             result_length = inputs.get("result_length", 0)
