@@ -44,7 +44,8 @@ class ArticleDescriptionsModel(kserve.Model):
         lang = payload.get("lang")
         title = payload.get("title")
         num_beams = payload.get("num_beams")
-        self.validate_inputs(lang, title, num_beams)
+        debug = payload.get("debug", 0)  # default to non debug mode
+        self.validate_inputs(lang, title, num_beams, debug)
         execution_times = {}
         features = {}
         starttime = time.time()
@@ -74,6 +75,7 @@ class ArticleDescriptionsModel(kserve.Model):
             "blp": blp,
             "groundtruth_desc": groundtruth_desc,
             "features": features,
+            "debug": debug,
         }
         return preprocessed_data
 
@@ -91,6 +93,7 @@ class ArticleDescriptionsModel(kserve.Model):
         blp = preprocessed_data["blp"]
         groundtruth_desc = preprocessed_data["groundtruth_desc"]
         features = preprocessed_data["features"]
+        debug = preprocessed_data["debug"]
         prediction = self.model.predict(
             first_paragraphs,
             descriptions,
@@ -126,6 +129,12 @@ class ArticleDescriptionsModel(kserve.Model):
             "features": features,
             "prediction": prediction,
         }
+        # only include minimal fields when debug is not 1
+        if not debug:
+            prediction_data = {
+                key: prediction_data[key]
+                for key in ["prediction", "blp", "lang", "title", "num_beams"]
+            }
         return prediction_data
 
     async def get_groundtruth(self, lang: str, title: str) -> str:
@@ -275,7 +284,9 @@ class ArticleDescriptionsModel(kserve.Model):
             )
         return self._http_client_session[endpoint]
 
-    def validate_inputs(self, lang: str, title: str, num_beams: int) -> None:
+    def validate_inputs(
+        self, lang: str, title: str, num_beams: int, debug: int
+    ) -> None:
         """Validate the user inputs"""
         if not lang:
             logging.error("Missing lang in input data.")
@@ -298,6 +309,9 @@ class ArticleDescriptionsModel(kserve.Model):
         elif not isinstance(num_beams, int) or num_beams < 1:
             logging.error("num_beams in input data should be a positive number.")
             raise InvalidInput("The parameter num_beams should be a positive number.")
+        if debug not in [0, 1]:
+            logging.error("debug in input data should be either 0 or 1.")
+            raise InvalidInput("The parameter debug should be either 0 or 1.")
 
 
 if __name__ == "__main__":
