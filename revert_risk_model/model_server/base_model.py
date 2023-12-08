@@ -10,6 +10,7 @@ from fastapi import HTTPException
 from knowledge_integrity.revision import get_current_revision
 from kserve.errors import InferenceError, InvalidInput
 
+from python.config_utils import get_config
 from python.preprocess_utils import check_input_param, validate_json_input
 
 logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
@@ -35,6 +36,7 @@ class RevisionRevertRiskModel(kserve.Model):
         self.wiki_url = wiki_url
         self.force_http = force_http
         self.aiohttp_client_timeout = aiohttp_client_timeout
+        self.host_rewrite_config = get_config(key="mw_host_replace")
         self._http_client_session = {}
         self.load()
 
@@ -58,11 +60,8 @@ class RevisionRevertRiskModel(kserve.Model):
         if self.name == "revertrisk-wikidata":
             return f"{protocol}://www.wikidata.org"
         else:
-            # See https://phabricator.wikimedia.org/T340830
-            if lang == "be-x-old":
-                return f"{protocol}://be-tarask.wikipedia.org"
-            else:
-                return f"{protocol}://{lang}.wikipedia.org"
+            updated_lang = self.host_rewrite_config.get(lang, lang)
+            return f"{protocol}://{updated_lang}.wikipedia.org"
 
     def validate_inputs(self, lang, rev_id):
         check_input_param(lang=lang, rev_id=rev_id)
