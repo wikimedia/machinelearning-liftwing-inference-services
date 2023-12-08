@@ -16,7 +16,7 @@ https://huggingface.co/facebook/mbart-large-cc25
 https://huggingface.co/bert-base-multilingual-uncased
 
 We clone the descartes repository by running:
-> git clone https://github.com/wikimedia/descartes.git --branch 1.0.0 article_descriptions/model_server/descartes
+> git clone https://github.com/wikimedia/descartes.git --branch 1.0.1 article_descriptions/model_server/descartes
 
 Now our PATH_TO_MODEL_DIR directory contains the models and has the following structure:
 ```
