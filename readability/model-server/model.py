@@ -1,16 +1,16 @@
-import os
 import logging
+import os
+from http import HTTPStatus
 from typing import Any, Dict
 
 import aiohttp
 import kserve
 import mwapi
-
-from knowledge_integrity.revision import get_current_revision
-from readability.models.readability_bert import classify, load_model
-from kserve.errors import InvalidInput, InferenceError
-from http import HTTPStatus
 from fastapi import HTTPException
+from knowledge_integrity.revision import get_current_revision
+from kserve.errors import InferenceError, InvalidInput
+from python.preprocess_utils import validate_json_input
+from readability.models.readability_bert import classify, load_model
 
 logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
 
@@ -48,6 +48,7 @@ class ReadabilityModel(kserve.Model):
     async def preprocess(
         self, inputs: Dict[str, Any], headers: Dict[str, str] = None
     ) -> Dict[str, Any]:
+        inputs = validate_json_input(inputs)
         lang = inputs.get("lang")
         rev_id = inputs.get("rev_id")
         if lang is None:
