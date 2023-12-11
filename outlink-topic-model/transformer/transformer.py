@@ -87,6 +87,7 @@ class OutlinkTransformer(kserve.Model):
         return outlink_qids
 
     async def preprocess(self, inputs: Dict, headers: Dict[str, str] = None) -> Dict:
+        inputs = preprocess_utils.validate_json_input(inputs)
         lang = preprocess_utils.get_lang(inputs, self.EVENT_KEY)
         page_title = preprocess_utils.get_page_title(inputs, self.EVENT_KEY)
         threshold = inputs.get("threshold", 0.5)
