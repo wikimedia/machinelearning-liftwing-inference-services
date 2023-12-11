@@ -1,6 +1,7 @@
-import requests
-from itertools import product
 import logging
+from itertools import product
+
+import requests
 from utils import load_data
 
 logging.basicConfig(level=logging.INFO)

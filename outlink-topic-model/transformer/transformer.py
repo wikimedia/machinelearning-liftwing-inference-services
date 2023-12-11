@@ -1,18 +1,16 @@
-import os
-import logging
 import argparse
+import logging
+import os
+from http import HTTPStatus
 from typing import Dict, Set
 
-import kserve
-import mwapi
 import aiohttp
-
+import kserve
 import logging_utils
+import mwapi
 import preprocess_utils
-
-from kserve.errors import InferenceError, InvalidInput
-from http import HTTPStatus
 from fastapi import HTTPException
+from kserve.errors import InferenceError, InvalidInput
 
 logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
 

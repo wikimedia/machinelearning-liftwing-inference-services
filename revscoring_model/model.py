@@ -1,14 +1,15 @@
 import os
+from distutils.util import strtobool
 
+import enchant
 import kserve
+from pyenchant_utils import EnchantStr, UTF16EnchantStr
+
 from revscoring_model.model_servers import (
     RevscoringModel,
     RevscoringModelMP,
     RevscoringModelType,
 )
-from distutils.util import strtobool
-import enchant
-from pyenchant_utils import UTF16EnchantStr, EnchantStr
 
 # monkey patching enchant to support older binaries. There are some older models
 # which have been trained with older enchant binaries. By including additional classes from v2.0.0

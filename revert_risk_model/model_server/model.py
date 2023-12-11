@@ -1,8 +1,8 @@
-import os
 import logging
-import kserve
+import os
 from distutils.util import strtobool
 
+import kserve
 from base_model import RevisionRevertRiskModel
 from batch_model import RevisionRevertRiskModelBatch
 

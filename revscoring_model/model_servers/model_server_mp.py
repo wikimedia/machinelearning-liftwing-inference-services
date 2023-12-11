@@ -1,14 +1,16 @@
-import os
-from distutils.util import strtobool
-from model_servers import RevscoringModel, RevscoringModelType
-from concurrent.futures.process import BrokenProcessPool
-from kserve.errors import InferenceError
 import logging
-from revscoring_model.model_servers import extractor_utils
-from python.preprocess_utils import validate_json_input
-from python import process_utils
-from revscoring.features import trim
+import os
+from concurrent.futures.process import BrokenProcessPool
+from distutils.util import strtobool
 from typing import Dict
+
+from kserve.errors import InferenceError
+from model_servers import RevscoringModel, RevscoringModelType
+from python.preprocess_utils import validate_json_input
+from revscoring.features import trim
+
+from python import process_utils
+from revscoring_model.model_servers import extractor_utils
 
 
 class RevscoringModelMP(RevscoringModel):

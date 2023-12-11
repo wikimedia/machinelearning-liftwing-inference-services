@@ -1,11 +1,11 @@
 import asyncio
 import logging
-
 from concurrent.futures import ProcessPoolExecutor
 from typing import Any
 
-from .decorators import elapsed_time_async
 from kserve import utils as kserve_utils
+
+from .decorators import elapsed_time_async
 
 
 def create_process_pool(asyncio_aux_workers: int = None) -> ProcessPoolExecutor:

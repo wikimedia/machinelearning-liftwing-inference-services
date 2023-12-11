@@ -1,21 +1,19 @@
 import bz2
 import logging
 import os
-
-from typing import Any, Dict, Optional
 from enum import Enum
+from typing import Any, Dict, Optional
 
 import aiohttp
 import kserve
 import mwapi
-
 from kserve.errors import InvalidInput
-from revscoring import Model
+from python.preprocess_utils import validate_json_input
 from revscoring.extractors import api
 from revscoring.features import trim
-from python.preprocess_utils import validate_json_input
 
 from python import events, logging_utils
+from revscoring import Model
 from revscoring_model.model_servers import extractor_utils
 
 logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)

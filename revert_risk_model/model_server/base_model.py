@@ -1,16 +1,15 @@
-import logging
 import importlib
+import logging
+from http import HTTPStatus
 from typing import Any, Dict
 
 import aiohttp
 import kserve
 import mwapi
-
-from knowledge_integrity.revision import get_current_revision
-from kserve.errors import InvalidInput, InferenceError
-from python.preprocess_utils import check_input_param, validate_json_input
-from http import HTTPStatus
 from fastapi import HTTPException
+from knowledge_integrity.revision import get_current_revision
+from kserve.errors import InferenceError, InvalidInput
+from python.preprocess_utils import check_input_param, validate_json_input
 
 logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
 

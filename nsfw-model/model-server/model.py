@@ -1,15 +1,14 @@
-import io
 import base64
 import binascii
+import io
 from typing import Dict
-import PIL
 
 import kserve
-
-from kserve.errors import InvalidInput
-from keras.models import load_model
+import PIL
 from keras.applications.mobilenet import preprocess_input
+from keras.models import load_model
 from keras.preprocessing.image import img_to_array
+from kserve.errors import InvalidInput
 
 
 def preprocess(img):

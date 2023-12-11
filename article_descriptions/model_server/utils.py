@@ -1,12 +1,9 @@
 import os
 
 import torch
-from transformers import MBartTokenizer
-from transformers import BertModel, BertTokenizer
-from transformers.tokenization_utils_base import BatchEncoding
-from transformers import MBartConfig
-
 from descartes.src.models.descartes_mbart import MBartForConditionalGenerationDescartes
+from transformers import BertModel, BertTokenizer, MBartConfig, MBartTokenizer
+from transformers.tokenization_utils_base import BatchEncoding
 
 lang_dict = {
     "en": "en_XX",

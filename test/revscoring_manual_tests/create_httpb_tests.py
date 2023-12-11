@@ -1,8 +1,9 @@
-from utils import load_data
-import yaml
-from itertools import product
 import logging
 import pathlib
+from itertools import product
+
+import yaml
+from utils import load_data
 
 logging.basicConfig(level=logging.INFO)
 

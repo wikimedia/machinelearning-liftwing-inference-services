@@ -1,8 +1,9 @@
-import os
-import pytest
-from unittest import mock
-import yaml
 import json
+import os
+from unittest import mock
+
+import pytest
+import yaml
 
 with open(
     os.path.join(

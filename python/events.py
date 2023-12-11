@@ -1,10 +1,9 @@
-import uuid
-
-import aiohttp
 import logging
 import ssl
+import uuid
+from typing import Any, Dict
 
-from typing import Dict, Any
+import aiohttp
 
 
 def _meta(source_event: Dict[str, Any], eventgate_stream: str) -> Dict[str, Any]:

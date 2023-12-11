@@ -1,6 +1,7 @@
 import json
-import yaml
 from typing import Any, Dict, List, Tuple
+
+import yaml
 
 
 def load_data() -> Tuple[Dict[str, List[Dict[str, Any]]], Dict[str, Tuple[int, int]]]:

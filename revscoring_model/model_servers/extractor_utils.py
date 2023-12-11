@@ -1,12 +1,10 @@
-import aiohttp
 import asyncio
 import logging
-import mwapi
-
-
-from kserve.errors import InvalidInput, InferenceError
 from typing import Dict, Optional
 
+import aiohttp
+import mwapi
+from kserve.errors import InferenceError, InvalidInput
 from mwapi.errors import (
     APIError,
     ConnectionError,
@@ -14,9 +12,9 @@ from mwapi.errors import (
     TimeoutError,
     TooManyRedirectsError,
 )
-from revscoring.extractors.api import MWAPICache, Extractor
+from python.decorators import elapsed_time, elapsed_time_async
 from revscoring.errors import MissingResource, UnexpectedContentType
-from python.decorators import elapsed_time_async, elapsed_time
+from revscoring.extractors.api import Extractor, MWAPICache
 
 
 @elapsed_time_async

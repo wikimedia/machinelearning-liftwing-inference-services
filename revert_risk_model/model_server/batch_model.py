@@ -1,13 +1,13 @@
 import logging
+from http import HTTPStatus
 from typing import Any, Dict
-from base_model import RevisionRevertRiskModel
 
 import mwapi
+from base_model import RevisionRevertRiskModel
+from fastapi import HTTPException
 from knowledge_integrity.revision import get_current_revision
 from kserve.errors import InferenceError
 from python.preprocess_utils import validate_json_input
-from http import HTTPStatus
-from fastapi import HTTPException
 
 
 class RevisionRevertRiskModelBatch(RevisionRevertRiskModel):

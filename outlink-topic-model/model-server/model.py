@@ -1,13 +1,11 @@
-import aiohttp
-import os
 import logging
+import os
 from typing import Dict
 
-import kserve
-import fasttext
-
+import aiohttp
 import events
-
+import fasttext
+import kserve
 
 logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
 
