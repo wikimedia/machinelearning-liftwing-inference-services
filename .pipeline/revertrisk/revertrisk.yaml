@@ -55,6 +55,9 @@ variants:
         source: revert_risk_model/model_server
         destination: model_server
       - from: local
+        source: python
+        destination: python/
+      - from: local
         source: tox.ini
         destination: model_server
       - from: local

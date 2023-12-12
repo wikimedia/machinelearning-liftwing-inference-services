@@ -9,6 +9,7 @@ import mwapi
 from fastapi import HTTPException
 from knowledge_integrity.revision import get_current_revision
 from kserve.errors import InferenceError, InvalidInput
+
 from python.preprocess_utils import check_input_param, validate_json_input
 
 logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)

@@ -12,9 +12,10 @@ from mwapi.errors import (
     TimeoutError,
     TooManyRedirectsError,
 )
-from python.decorators import elapsed_time, elapsed_time_async
 from revscoring.errors import MissingResource, UnexpectedContentType
 from revscoring.extractors.api import Extractor, MWAPICache
+
+from python.decorators import elapsed_time, elapsed_time_async
 
 
 @elapsed_time_async

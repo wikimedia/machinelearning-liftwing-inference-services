@@ -1,4 +1,5 @@
 import pytest
+
 from python.api_utils import get_rest_endpoint_page_summary
 
 

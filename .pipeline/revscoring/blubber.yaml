@@ -120,6 +120,9 @@ variants:
         source: revscoring_model/
         destination: revscoring_model/
       - from: local
+        source: python
+        destination: python/
+      - from: local
         source: tox.ini
         destination: revscoring_model/
       - from: local

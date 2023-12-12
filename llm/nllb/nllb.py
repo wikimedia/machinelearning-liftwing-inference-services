@@ -3,10 +3,10 @@ import os
 from typing import Any, Dict, Tuple
 
 from kserve.errors import InferenceError
-from python.preprocess_utils import validate_json_input
 from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 
 from llm.model import LLM
+from python.preprocess_utils import validate_json_input
 
 
 class NLLB(LLM):

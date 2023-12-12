@@ -8,8 +8,9 @@ from typing import Any, Dict, Tuple
 import kserve
 import torch
 from kserve.errors import InferenceError
-from python.preprocess_utils import validate_json_input
 from transformers import AutoModelForCausalLM, AutoTokenizer
+
+from python.preprocess_utils import validate_json_input
 
 logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
 

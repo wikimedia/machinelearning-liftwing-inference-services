@@ -58,6 +58,9 @@ variants:
         source: readability/model-server
         destination: model-server
       - from: local
+        source: python
+        destination: python/
+      - from: local
         source: tox.ini
         destination: model-server
       - from: local

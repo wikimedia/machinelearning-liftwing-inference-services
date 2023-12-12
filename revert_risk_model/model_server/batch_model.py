@@ -7,6 +7,7 @@ from base_model import RevisionRevertRiskModel
 from fastapi import HTTPException
 from knowledge_integrity.revision import get_current_revision
 from kserve.errors import InferenceError
+
 from python.preprocess_utils import validate_json_input
 
 

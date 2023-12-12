@@ -58,6 +58,9 @@ variants:
         source: langid/
         destination: langid/
       - from: local
+        source: python
+        destination: python/
+      - from: local
         source: requirements-test.txt
         destination: .
       - from: local

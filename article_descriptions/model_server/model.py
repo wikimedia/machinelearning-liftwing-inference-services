@@ -9,9 +9,10 @@ import aiohttp
 import kserve
 import mwapi
 from kserve.errors import InferenceError, InvalidInput
+from utils import ModelLoader, lang_dict
+
 from python.api_utils import get_rest_endpoint_page_summary
 from python.preprocess_utils import validate_json_input
-from utils import ModelLoader, lang_dict
 
 logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
 

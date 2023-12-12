@@ -6,6 +6,7 @@ from typing import Dict
 from fasttext.FastText import _FastText
 from kserve import Model, ModelServer
 from kserve.errors import InvalidInput
+
 from python.preprocess_utils import validate_json_input
 
 

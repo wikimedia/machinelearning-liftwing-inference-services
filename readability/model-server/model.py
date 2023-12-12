@@ -9,8 +9,9 @@ import mwapi
 from fastapi import HTTPException
 from knowledge_integrity.revision import get_current_revision
 from kserve.errors import InferenceError, InvalidInput
-from python.preprocess_utils import validate_json_input
 from readability.models.readability_bert import classify, load_model
+
+from python.preprocess_utils import validate_json_input
 
 logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
 

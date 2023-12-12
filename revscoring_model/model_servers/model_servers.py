@@ -8,12 +8,12 @@ import aiohttp
 import kserve
 import mwapi
 from kserve.errors import InvalidInput
-from python.preprocess_utils import validate_json_input
+from revscoring import Model
 from revscoring.extractors import api
 from revscoring.features import trim
 
 from python import events, logging_utils
-from revscoring import Model
+from python.preprocess_utils import validate_json_input
 from revscoring_model.model_servers import extractor_utils
 
 logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
