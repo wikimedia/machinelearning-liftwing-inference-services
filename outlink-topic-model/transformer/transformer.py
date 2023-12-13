@@ -27,6 +27,7 @@ class OutlinkTransformer(kserve.Model):
         # kserve.constants.KSERVE_LOGLEVEL (passing KSERVE_LOGLEVEL as env var)
         # but it doesn't seem to work.
         logging_utils.set_log_level()
+        self.ready = True
 
     def get_http_client_session(self, endpoint):
         """Returns a aiohttp session for the specific endpoint passed as input.
