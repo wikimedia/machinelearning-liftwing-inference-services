@@ -1,9 +1,12 @@
+import logging
 import os
 
 import torch
 from descartes.src.models.descartes_mbart import MBartForConditionalGenerationDescartes
 from transformers import BertModel, BertTokenizer, MBartConfig, MBartTokenizer
 from transformers.tokenization_utils_base import BatchEncoding
+
+from python.resource_utils import get_cpu_count
 
 lang_dict = {
     "en": "en_XX",
@@ -73,6 +76,13 @@ class ModelLoader:
         self.tokenizer = None
         self.tokenizer_bert = None
         self.device = None
+        if not os.environ.get("OMP_NUM_THREADS"):
+            cgroup_cpus = get_cpu_count()
+            logging.info(
+                "The OMP_NUM_THREADS env var wasn't provided, "
+                f"setting {cgroup_cpus} threads for torch."
+            )
+            torch.set_num_threads(cgroup_cpus)
 
     def load_model(self, model_path, low_cpu_mem_usage=False):
         """Load model from the specified directory."""
@@ -145,7 +155,7 @@ class ModelLoader:
             early_stopping=True,
             target_lang=lang_dict[tgt_lang],
             decoder_start_token_id=self.tokenizer.lang_code_to_id[lang_dict[tgt_lang]],
-            num_return_sequences=num_return_sequences
+            num_return_sequences=num_return_sequences,
         )
         output = self.tokenizer.batch_decode(tokens, skip_special_tokens=True)
         return output

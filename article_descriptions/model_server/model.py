@@ -13,7 +13,6 @@ from utils import ModelLoader, lang_dict
 
 from python.api_utils import get_rest_endpoint_page_summary
 from python.preprocess_utils import validate_json_input
-from python.resource_utils import get_cpu_count
 
 logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
 
@@ -31,11 +30,6 @@ class ArticleDescriptionsModel(kserve.Model):
         self.wiki_url = os.environ.get("WIKI_URL")
         self.rest_gateway_endpoint = os.environ.get("REST_GATEWAY_ENDPOINT")
         self.low_cpu_mem_usage = strtobool(os.environ.get("LOW_CPU_MEM_USAGE", "True"))
-        # Needed to automatically set libgomp's max threads if not
-        # explicitly provided (libgomp is not cgroup aware, so it uses
-        # the cput count of the node).
-        if not os.environ.get("OMP_NUM_THREADS"):
-            os.environ["OMP_NUM_THREADS"] = str(get_cpu_count())
         self.model = ModelLoader()
         self.ready = False
         self.load()
