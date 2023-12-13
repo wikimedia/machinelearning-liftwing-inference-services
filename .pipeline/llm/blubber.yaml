@@ -27,6 +27,9 @@ variants:
       - from: local
         source: llm/
         destination: llm/
+      - from: local
+        source: python
+        destination: python
       - from: build
         source: /opt/lib/python/site-packages
         destination: /opt/lib/python/site-packages
