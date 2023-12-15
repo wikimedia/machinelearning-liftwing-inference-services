@@ -8,10 +8,13 @@ from kserve.errors import InferenceError
 
 from llm import NLLB
 from python.preprocess_utils import validate_json_input
+from python.resource_utils import get_cpu_count
 
 
 class NLLBCTranslate(NLLB):
     def __init__(self, model_name: str):
+        self.inter_threads = int(os.environ.get("CT2_INTER_THREADS", get_cpu_count()))
+        self.intra_threads = int(os.environ.get("CT2_INTRA_THREADS", 0))
         super().__init__(model_name)
 
     def load_tokenizer(self):
@@ -20,9 +23,17 @@ class NLLBCTranslate(NLLB):
         return tokenizer
 
     def load(self) -> Tuple[ctr2.Translator, spm.SentencePieceProcessor]:
-        model = ctr2.Translator(self.model_path)
+        model = ctr2.Translator(
+            self.model_path,
+            intra_threads=self.intra_threads,
+            inter_threads=self.inter_threads,
+        )
         tokenizer = self.load_tokenizer()
         self.ready = True
+        logging.info(
+            f"Ctranslate2 Model loaded using intra threads: {self.intra_threads} "
+            f"and inter threads: {self.inter_threads}"
+        )
         return model, tokenizer
 
     async def preprocess(
