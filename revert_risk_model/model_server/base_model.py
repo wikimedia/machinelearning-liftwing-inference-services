@@ -23,6 +23,7 @@ class RevisionRevertRiskModel(kserve.Model):
         model_path: str,
         wiki_url: str,
         aiohttp_client_timeout: int,
+        force_http: bool,
     ) -> None:
         super().__init__(name)
         self.name = name
@@ -32,6 +33,7 @@ class RevisionRevertRiskModel(kserve.Model):
         self.ready = False
         self.model_path = model_path
         self.wiki_url = wiki_url
+        self.force_http = force_http
         self.aiohttp_client_timeout = aiohttp_client_timeout
         self._http_client_session = {}
         self.load()
@@ -52,14 +54,15 @@ class RevisionRevertRiskModel(kserve.Model):
         return self._http_client_session[endpoint]
 
     def get_mediawiki_host(self, lang):
+        protocol = "http" if self.force_http else "https"
         if self.name == "revertrisk-wikidata":
-            return "https://www.wikidata.org"
+            return f"{protocol}://www.wikidata.org"
         else:
             # See https://phabricator.wikimedia.org/T340830
             if lang == "be-x-old":
-                return "https://be-tarask.wikipedia.org"
+                return f"{protocol}://be-tarask.wikipedia.org"
             else:
-                return f"https://{lang}.wikipedia.org"
+                return f"{protocol}://{lang}.wikipedia.org"
 
     def validate_inputs(self, lang, rev_id):
         check_input_param(lang=lang, rev_id=rev_id)
