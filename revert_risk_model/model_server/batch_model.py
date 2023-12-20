@@ -43,7 +43,9 @@ class RevisionRevertRiskModelBatch(RevisionRevertRiskModel):
                 session=self.get_http_client_session("mwapi"),
             )
             # Additional HTTP Host header must be set if the host is http://api-ro.discovery.wmnet
-            session.headers["Host"] = mw_host.replace("https://", "")
+            session.headers["Host"] = mw_host.replace("https://", "").replace(
+                "http://", ""
+            )
             try:
                 rev = await get_current_revision(session, rev_id, lang)
             except Exception as e:
