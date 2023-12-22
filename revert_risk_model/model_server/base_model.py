@@ -82,6 +82,7 @@ class RevisionRevertRiskModel(kserve.Model):
         inputs = validate_json_input(inputs)
         lang = inputs.get("lang")
         rev_id = inputs.get("rev_id")
+        logging.info(f"Received request for revision {rev_id} ({lang}).")
         self.validate_inputs(lang, rev_id)
         mw_host = self.get_mediawiki_host(lang)
         session = mwapi.AsyncSession(
