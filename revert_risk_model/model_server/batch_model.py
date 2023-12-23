@@ -85,19 +85,9 @@ class RevisionRevertRiskModelBatch(RevisionRevertRiskModel):
         logging.info(f"Getting {num_inst} rev_ids in the request")
         for i in range(num_inst):
             result = self.ModelLoader.classify(self.model, request["revision"][i])
-            edit_summary = request["revision"][i].comment
-            if not result:
-                logging.info(
-                    f"Edit type {edit_summary} is not supported at the moment."
-                )
-                raise HTTPException(
-                    status_code=HTTPStatus.BAD_REQUEST,
-                    detail=(
-                        "Prediction for this type of edit is not supported "
-                        "at the moment. Currently only 'claim' edits and "
-                        "'description' edits are supported."
-                    ),
-                )
+            if self.name == "revertrisk-wikidata":
+                edit_summary = request["revision"][i].comment
+                self.check_wikidata_result(result, edit_summary)
             prediction = {
                 "model_name": self.name,
                 "model_version": str(self.model.model_version),

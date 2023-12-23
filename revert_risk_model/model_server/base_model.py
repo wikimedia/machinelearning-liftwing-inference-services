@@ -124,11 +124,7 @@ class RevisionRevertRiskModel(kserve.Model):
         inputs["revision"] = rev
         return inputs
 
-    def predict(
-        self, request: Dict[str, Any], headers: Dict[str, str] = None
-    ) -> Dict[str, Any]:
-        result = self.ModelLoader.classify(self.model, request["revision"])
-        edit_summary = request["revision"].comment
+    def check_wikidata_result(self, result, edit_summary):
         if not result:
             logging.info(f"Edit type {edit_summary} is not supported at the moment.")
             raise HTTPException(
@@ -139,6 +135,14 @@ class RevisionRevertRiskModel(kserve.Model):
                     "'description' edits are supported."
                 ),
             )
+
+    def predict(
+        self, request: Dict[str, Any], headers: Dict[str, str] = None
+    ) -> Dict[str, Any]:
+        result = self.ModelLoader.classify(self.model, request["revision"])
+        if self.name == "revertrisk-wikidata":
+            edit_summary = request["revision"].comment
+            self.check_wikidata_result(result, edit_summary)
         output = {
             "prediction": result.prediction,
             "probabilities": {
