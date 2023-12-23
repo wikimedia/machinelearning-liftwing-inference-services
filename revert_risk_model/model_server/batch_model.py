@@ -19,9 +19,10 @@ class RevisionRevertRiskModelBatch(RevisionRevertRiskModel):
         model_path: str,
         wiki_url: str,
         aiohttp_client_timeout: int,
+        force_http: bool,
     ) -> None:
         super().__init__(
-            name, module_name, model_path, wiki_url, aiohttp_client_timeout
+            name, module_name, model_path, wiki_url, aiohttp_client_timeout, force_http
         )
 
     async def preprocess(
