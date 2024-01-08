@@ -33,8 +33,25 @@ We use the following pre-commit hooks:
 A list of the out-of-the-box available pre-commit hooks can be found [here](https://pre-commit.com/hooks.html).
 
 ## Running locally
-If you want to run the model servers locally you can do so by first adding the top level dir to the PYTHONPATH
-> export PYTHONPATH=$PYTHONPATH:
->
-Then running:
->  INFERENCE_NAME=enwiki-damaging MODEL_PATH=/path/to/model.bin WIKI_URL=https://en.wikipedia.org python revscoring_model/model.py
+To start a model server locally, run the `make` command. At present, this only supports the revertrisk-language-agnostic model. The MakeFile includes all required commands to download the model from the public repository (analytics.wikimedia.org), create a virtual environment and install the necessary packages for the model.
+
+If the model server is running, you will see something similar to the following:
+```
+...
+2024-01-19 16:04:34.830 uvicorn.error INFO:     Application startup complete.
+2024-01-19 16:04:34.831 uvicorn.error INFO:     Uvicorn running on http://0.0.0.0:8080 (Press CTRL+C to quit)
+```
+
+Send a test inference request in another terminal:
+> curl localhost:8080/v1/models/revertrisk-language-agnostic:predict -i -X POST -d '{"lang": "en", "rev_id": 12345}'
+
+Expected Output:
+```
+HTTP/1.1 200 OK
+date: Fri, 19 Jan 2024 08:03:18 GMT
+server: uvicorn
+content-length: 206
+content-type: application/json
+
+{"model_name":"revertrisk-language-agnostic","model_version":"3","wiki_db":"enwiki","revision_id":12345,"output":{"prediction":false,"probabilities":{"true":0.17687281966209412,"false":0.8231271803379059}}}
+```
