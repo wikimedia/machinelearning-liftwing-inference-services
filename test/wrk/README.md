@@ -37,7 +37,12 @@ wrk -c 8 -t 4 --timeout 3s -s revertrisk.lua https://inference-staging.svc.codfw
 
 ORES legacy:
 ```bash
-wrk -c 1 -t 1 -d 10s -s ores-legacy.lua https://ores-legacy.wikimedia.org --latency -- ores-legacy.input
+wrk -c 1 -t 1 -d 10s -s ores_legacy.lua https://ores-legacy.wikimedia.org --latency -- ores_legacy.input
+```
+
+langid:
+```bash
+wrk -c 8 -t 1 --timeout 50s -s langid.lua https://inference.svc.codfw.wmnet:30443/v1/models/langid:predict --latency  -- langid.input
 ```
 
 The scripts also generate log files named `wrk_N.log` to record the returned status codes and responses.

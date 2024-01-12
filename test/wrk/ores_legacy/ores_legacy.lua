@@ -1,14 +1,14 @@
+-- add the parent directory to the package path in order to load the utils module
+package.path = package.path .. ";../?.lua"
+-- load the utils module
+local utils = require("utils")
+
 wrk.headers["User-Agent"] = "WMF ML team"
 wrk.headers["Content-Type"] = "application/json"
 
--- give each thread an id
-local counter = 1
-local threads = {}
-
+-- initialize a thread
 function setup(thread)
-     thread:set("id", counter)
-     table.insert(threads, thread)
-     counter = counter + 1
+    return utils.setup(thread)
 end
 
 -- read an input file from command line arguments, parse it and store the data into an array of payloads
@@ -31,9 +31,9 @@ function init(args)
      print(msg:format(id, id))
 end
 
--- (optional) add a random 10-50ms delay before each request
+-- add a random 10-50ms delay before each request
 function delay()
-     return math.random(10, 50)
+    return utils.delay(10, 50)
 end
 
 -- change the body with different payload for each request
@@ -48,17 +48,12 @@ function request()
      return wrk.format("GET", path[i], nil, nil)
 end
 
+-- process each response
 function response(status, headers, body)
-     responses = responses + 1
-     logfile:write("status:" .. status .. "\n" .. body .. "\n-------------------------------------------------\n");
+    return utils.response(status, headers, body)
 end
 
+-- print summary statistics for each thread
 function done(summary, latency, requests)
-     for index, thread in ipairs(threads) do
-        local id        = thread:get("id")
-        local requests  = thread:get("requests")
-        local responses = thread:get("responses")
-        local msg = "thread %d made %d requests and got %d responses"
-        print(msg:format(id, requests, responses))
-     end
+    return utils.done(summary, latency, requests)
 end
