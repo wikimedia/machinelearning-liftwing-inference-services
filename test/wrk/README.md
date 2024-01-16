@@ -45,4 +45,9 @@ langid:
 wrk -c 8 -t 1 --timeout 50s -s langid.lua https://inference.svc.codfw.wmnet:30443/v1/models/langid:predict --latency  -- langid.input
 ```
 
+outlink:
+```bash
+wrk -c 1 -t 1 --timeout 3s -s outlink.lua https://inference-staging.svc.codfw.wmnet:30443/v1/models/outlink-topic-model:predict --header "Host: outlink-topic-model.articletopic-outlink.wikimedia.org" --latency -- outlink.input
+```
+
 The scripts also generate log files named `wrk_N.log` to record the returned status codes and responses.
