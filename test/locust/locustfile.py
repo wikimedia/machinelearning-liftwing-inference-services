@@ -1,7 +1,10 @@
-import os
 import importlib
-from locust import events
+import os
+
 import pandas as pd
+
+from locust import events
+from utils import load_all_results_to_df
 
 model = os.environ.get("MODEL", None)
 if model:
@@ -19,8 +22,7 @@ def on_test_end(environment, **_kwargs):
     This function will run after the load test is done, hence we use it to compare the results
     against the stats we have saved in the repository.
     """
-    old_results = pd.read_csv("results_stats.csv")
-
+    old_results = load_all_results_to_df("results")
     stats_data = []
 
     for key, entry in environment.stats.entries.items():
@@ -85,4 +87,7 @@ def print_rows_above_threshold(result: pd.DataFrame, threshold_value: int = 10):
     rows_above_threshold = result[
         ~(result.drop("Name", axis=1) < threshold_value).all(axis=1)
     ]
-    print(rows_above_threshold)
+    if rows_above_threshold.empty:
+        print("Load test results are within the threshold")
+    else:
+        raise AssertionError(rows_above_threshold)

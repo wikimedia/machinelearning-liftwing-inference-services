@@ -1,4 +1,4 @@
- _# Load testing with locust
+ # Load testing with locust
  [![locust](https://img.shields.io/badge/locust-2.20.1-blue.svg)](https://locust.io/)
  [![python](https://img.shields.io/badge/python-3.9-blue.svg)](https://www.python.org/)
 
@@ -6,27 +6,20 @@ We are using [locust](https://locust.io/) to do load testing.
 
 The load test class for each model server is defined in a file under /models directory.
 All load tests are run from the same locustfile.py script.
-We enable a load test for a model server to run just by adding the top level import statement for the load test file in locustfile.py.
-e.g.
-```python
-from models.revertrisk import RevertriskLanguageAgnostic, RevertriskMultilingual  # noqa
-```
-(Note: the `#noqa` is to suppress the unused import warning, otherwise ruff will erase this line)
+We enable a load test for a model server to run just by adding the top level import statement for the load test file in
+locustfile.py.
+In our case we are automatically adding the import statements for all load test files under the model/ directory as long
+as they are declared as python modules and their __init__.py has the appropriate import statement.
 
-The first time we run the load tests for all model servers we run the following command which will produce
-a csv file with the results for each model server.
-```bash
-locust --csv results
-```
-This will produce the following files: results_stats.csv, results_stats_history.csv,
-results_failures.csv, results_exceptions.csv.
-
-We commit only the file `results_stats.csv` to the repo which we will use in subsequent runs to compare the results.
-
-Next time we introduce a change and want to run a load test we run the following command:
+### Running all load tests
+In order to run all load tests we run the following command:
 ```bash
 locust
 ```
+This will provide the load test results in the console and it will also run a comparison with the
+previous recorded results (the ones that exist under the results/ directory).
+
+
 ### Running a specific load test
 Our load tests are defined in an hierarchical structure.
 That means that by default all load tests are run.
@@ -36,3 +29,34 @@ For example if we want to run the load tests for revertrisk models we run the fo
 ```bash
 MODEL=revertrisk locust
 ```
+
+### Adding a new test
+The first time we introduce a model server we need to do the following:
+1. Create a new file under the models directory with the load test class and declare it as a python module
+   by adding the appropriate import statement in the __init__.py file. (check the existing models for examples)
+2. Run the load test and commit the `***_stats.csv` file under the results directory.
+
+#### Example:
+We add a new model named `mycoolmodel` under the models directory. The load test class is defined in the file
+`mycoolmodel.py` and is named `MyCoolModelTest`. We add the following import statement in the __init__.py file:
+```python
+from .mycoolmodel import MyCoolModelTest  # noqa
+```
+We run the load test and commit the `mycoolmodel_stats.csv` file under the results directory.
+```bash
+MODEL=mycoolmodel locust --csv results/mycoolmodel
+```
+
+In a similar way we produced the results for the existing model servers with the following commands:
+```bash
+MODEL=revscoring locust --csv results/revscoring
+MODEL=revertrisk locust --csv results/revertrisk
+```
+
+### Updating results after a change
+In the case where we want to update the load test results for a specific server because we made a change in the
+model server code that affects load and/or latencies we run the following command:
+```bash
+MODEL=revertrisk locust --csv results/revertrisk
+```
+and then commit the updated `revertrisk_stats.csv` file under the results directory.

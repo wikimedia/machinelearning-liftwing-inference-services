@@ -1,5 +1,6 @@
 import pandas as pd
-from locust import FastHttpUser, task, between
+
+from locust import FastHttpUser, between, task
 
 rev_ids = pd.read_csv("inputs/revertrisk.input", delimiter="\t", header=None)
 
@@ -19,7 +20,7 @@ class RevertriskLanguageAgnostic(FastHttpUser):
     def get_prediction(self):
         lang, rev_id = get_random_sample_from_df_input(rev_ids)
         self.client.post(
-            "/service/lw/inference/v1/models/revertrisk-language-agnostic:predict",
+            "/v1/models/revertrisk-language-agnostic:predict",
             json={"rev_id": int(rev_id), "lang": lang},
         )
 
@@ -34,6 +35,6 @@ class RevertriskMultilingual(FastHttpUser):
     def get_prediction(self):
         lang, rev_id = get_random_sample_from_df_input(rev_ids)
         self.client.post(
-            "/service/lw/inference/v1/models/revertrisk-multilingual:predict",
+            "/v1/models/revertrisk-multilingual:predict",
             json={"rev_id": int(rev_id), "lang": lang},
         )

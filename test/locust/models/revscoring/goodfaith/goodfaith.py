@@ -1,5 +1,6 @@
 import pandas as pd
-from locust import FastHttpUser, task, between
+
+from locust import FastHttpUser, between, task
 
 rev_ids = pd.read_csv("inputs/enwiki_revids.input", delimiter="\t", header=None)
 
@@ -19,6 +20,6 @@ class EnwikiGoodfaith(FastHttpUser):
     def get_prediction(self):
         rev_id = get_random_sample_from_df_input(rev_ids)
         self.client.post(
-            "/service/lw/inference/v1/models/enwiki-goodfaith:predict",
+            "/v1/models/enwiki-goodfaith:predict",
             json={"rev_id": int(rev_id)},
         )
