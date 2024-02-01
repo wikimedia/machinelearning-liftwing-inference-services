@@ -17,6 +17,7 @@ run: $(VENV)/bin/activate $(MODEL_DIR)/models/model.pkl
 
 $(VENV)/bin/activate: $(MODEL_DIR)/model_server/$(DEP_DIR)/requirements.txt
 	python3 -m venv $(VENV)
+	$(PIP) install --upgrade pip
 	$(PIP) install -r $(MODEL_DIR)/model_server/$(DEP_DIR)/requirements.txt
 
 $(MODEL_DIR)/models/model.pkl:
