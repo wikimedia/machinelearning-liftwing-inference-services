@@ -5,7 +5,7 @@ PYTHON_PATH = .
 
 export PYTHONPATH := $(PYTHON_PATH):$(PYTHONPATH)
 
-.PHONY: run article-descriptions revertrisk-language-agnostic clean
+.PHONY: run article-descriptions revertrisk-language-agnostic revertrisk-multilingual clean
 
 # Default run command for revertrisk-language-agnostic
 run: revertrisk-language-agnostic
@@ -17,6 +17,16 @@ revertrisk-language-agnostic:
 	MODEL_SERVER_PARENT_DIR="revert_risk_model" \
 	MODEL_PATH="models/revertrisk/language-agnostic/20231117132654/model.pkl" \
 	DEP_DIR="revertrisk" \
+	CUT_DIRS=2 \
+	ACCEPT_REGEX="."
+
+# Command for revertrisk-multilingual model-server
+revertrisk-multilingual:
+	@$(MAKE) run-server MODEL_NAME="revertrisk-multilingual" \
+	MODEL_URL="revertrisk/multilingual/20230810110019/model.pkl" \
+	MODEL_SERVER_PARENT_DIR="revert_risk_model" \
+	MODEL_PATH="models/revertrisk/multilingual/20230810110019/model.pkl" \
+	DEP_DIR="multilingual" \
 	CUT_DIRS=2 \
 	ACCEPT_REGEX="."
 
