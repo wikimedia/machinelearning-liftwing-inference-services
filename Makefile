@@ -5,7 +5,12 @@ PYTHON_PATH = .
 
 export PYTHONPATH := $(PYTHON_PATH):$(PYTHONPATH)
 
-.PHONY: run article-descriptions revertrisk-language-agnostic revertrisk-multilingual clean
+.PHONY: run \
+revertrisk-language-agnostic \
+revertrisk-multilingual \
+article-descriptions \
+language-identification \
+clean
 
 # Default run command for revertrisk-language-agnostic
 run: revertrisk-language-agnostic
@@ -16,6 +21,7 @@ revertrisk-language-agnostic:
 	MODEL_URL="revertrisk/language-agnostic/20231117132654/model.pkl" \
 	MODEL_SERVER_PARENT_DIR="revert_risk_model" \
 	MODEL_PATH="models/revertrisk/language-agnostic/20231117132654/model.pkl" \
+	MODEL_SERVER_DIR="model_server" \
 	DEP_DIR="revertrisk" \
 	CUT_DIRS=2 \
 	ACCEPT_REGEX="."
@@ -26,6 +32,7 @@ revertrisk-multilingual:
 	MODEL_URL="revertrisk/multilingual/20230810110019/model.pkl" \
 	MODEL_SERVER_PARENT_DIR="revert_risk_model" \
 	MODEL_PATH="models/revertrisk/multilingual/20230810110019/model.pkl" \
+	MODEL_SERVER_DIR="model_server" \
 	DEP_DIR="multilingual" \
 	CUT_DIRS=2 \
 	ACCEPT_REGEX="."
@@ -36,9 +43,21 @@ article-descriptions: clone-descartes
 	MODEL_URL="article-descriptions/" \
 	MODEL_SERVER_PARENT_DIR="article_descriptions" \
 	MODEL_PATH="models/article-descriptions/" \
+	MODEL_SERVER_DIR="model_server" \
 	DEP_DIR="." \
 	CUT_DIRS=2 \
 	ACCEPT_REGEX="'(bert-base-multilingual-uncased|mbart-large-cc25)'"
+
+# Command for language-identification model-server
+language-identification:
+	@$(MAKE) run-server MODEL_NAME="langid" \
+	MODEL_URL="langid/lid201-model.bin" \
+	MODEL_SERVER_PARENT_DIR="langid" \
+	MODEL_PATH="models/langid/lid201-model.bin" \
+	MODEL_SERVER_DIR="." \
+	DEP_DIR="." \
+	CUT_DIRS=2 \
+	ACCEPT_REGEX="."
 
 # Clone descartes repository if not already present
 clone-descartes:
@@ -48,13 +67,13 @@ clone-descartes:
 
 # Generic command to run any model server
 run-server: $(VENV)/bin/activate $(MODEL_PATH)
-	MODEL_PATH=$(MODEL_PATH) MODEL_NAME=$(MODEL_NAME) $(PYTHON) $(MODEL_SERVER_PARENT_DIR)/model_server/model.py
+	MODEL_PATH=$(MODEL_PATH) MODEL_NAME=$(MODEL_NAME) $(PYTHON) $(MODEL_SERVER_PARENT_DIR)/$(MODEL_SERVER_DIR)/model.py
 
 # Create virtual environment and install dependencies
-$(VENV)/bin/activate: $(MODEL_SERVER_PARENT_DIR)/model_server/$(DEP_DIR)/requirements.txt
+$(VENV)/bin/activate: $(MODEL_SERVER_PARENT_DIR)/$(MODEL_SERVER_DIR)/$(DEP_DIR)/requirements.txt
 	python3 -m venv $(VENV)
 	$(PIP) install --upgrade pip
-	$(PIP) install -r $(MODEL_SERVER_PARENT_DIR)/model_server/$(DEP_DIR)/requirements.txt
+	$(PIP) install -r $(MODEL_SERVER_PARENT_DIR)/$(MODEL_SERVER_DIR)/$(DEP_DIR)/requirements.txt
 
 # Download the model file(s)
 $(MODEL_PATH):
