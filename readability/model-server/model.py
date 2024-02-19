@@ -24,8 +24,8 @@ class ReadabilityModel(kserve.Model):
         self.ready = False
         self._http_client_session = {}
         self.WIKI_URL = os.environ.get("WIKI_URL")
+        self.model_path = os.environ.get("MODEL_PATH", "/mnt/models/model.pkl")
         self.AIOHTTP_CLIENT_TIMEOUT = os.environ.get("AIOHTTP_CLIENT_TIMEOUT", 5)
-        self._http_client_session = {}
         self.load()
         self.thread_count = thread_count
         logging.info(f"ReadabilityModel initialized with {self.thread_count} threads.")
@@ -46,7 +46,7 @@ class ReadabilityModel(kserve.Model):
         return self._http_client_session[endpoint]
 
     def load(self) -> None:
-        self.model = load_model("/mnt/models/model.pkl")
+        self.model = load_model(self.model_path)
         self.ready = True
 
     async def preprocess(
