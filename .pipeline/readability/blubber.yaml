@@ -11,7 +11,7 @@ variants:
   build:
     python:
       version: python3
-      requirements: [readability/model-server/requirements.txt]
+      requirements: [readability_model/model_server/requirements.txt]
     apt:
       packages:
         - build-essential
@@ -25,8 +25,8 @@ variants:
   production:
     copies:
       - from: local
-        source: readability/model-server
-        destination: model-server
+        source: readability_model/model_server
+        destination: model_server
       - from: local
         source: python
         destination: python
@@ -45,7 +45,7 @@ variants:
     python:
       version: python3
       use-system-flag: false
-    entrypoint: ["python3", "model-server/model.py"]
+    entrypoint: ["python3", "model_server/model.py"]
 
   test:
     apt:
@@ -55,14 +55,14 @@ variants:
         - git
     copies:
       - from: local
-        source: readability/model-server
-        destination: model-server
+        source: readability_model/model_server
+        destination: model_server
       - from: local
         source: python
         destination: python/
       - from: local
         source: tox.ini
-        destination: model-server
+        destination: model_server
       - from: local
         source: .pre-commit-config.yaml
         destination: .
@@ -75,7 +75,7 @@ variants:
       - from: local
         source: requirements-test.txt
         destination: .
-    entrypoint: ["./entrypoint.sh", "model-server"]
+    entrypoint: ["./entrypoint.sh", "model_server"]
     python:
       version: python3
       use-system-flag: false

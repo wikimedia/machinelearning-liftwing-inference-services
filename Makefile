@@ -64,9 +64,9 @@ language-identification:
 readability:
 	@$(MAKE) download-nltk-punkt run-server MODEL_NAME="readability" \
 	MODEL_URL="readability/multilingual/20230824102026/model.pkl" \
-	MODEL_SERVER_PARENT_DIR="readability" \
+	MODEL_SERVER_PARENT_DIR="readability_model" \
 	MODEL_PATH="models/readability/multilingual/20230824102026/model.pkl" \
-	MODEL_SERVER_DIR="model-server" \
+	MODEL_SERVER_DIR="model_server" \
 	DEP_DIR="." \
 	CUT_DIRS=2 \
 	ACCEPT_REGEX="."
