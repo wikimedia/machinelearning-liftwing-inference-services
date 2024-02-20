@@ -10,6 +10,7 @@ revertrisk-language-agnostic \
 revertrisk-multilingual \
 article-descriptions \
 language-identification \
+readability \
 clean
 
 # Default run command for revertrisk-language-agnostic
@@ -58,6 +59,21 @@ language-identification:
 	DEP_DIR="." \
 	CUT_DIRS=2 \
 	ACCEPT_REGEX="."
+
+# Command for readability model-server
+readability:
+	@$(MAKE) download-nltk-punkt run-server MODEL_NAME="readability" \
+	MODEL_URL="readability/multilingual/20230824102026/model.pkl" \
+	MODEL_SERVER_PARENT_DIR="readability" \
+	MODEL_PATH="models/readability/multilingual/20230824102026/model.pkl" \
+	MODEL_SERVER_DIR="model-server" \
+	DEP_DIR="." \
+	CUT_DIRS=2 \
+	ACCEPT_REGEX="."
+
+# Download NLTK Punkt sentence tokenizer used by readability
+download-nltk-punkt: $(VENV)/bin/activate
+	@$(PYTHON) -m nltk.downloader punkt
 
 # Clone descartes repository if not already present
 clone-descartes:
