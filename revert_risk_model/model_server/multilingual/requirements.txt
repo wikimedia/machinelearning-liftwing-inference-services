@@ -1,4 +1,6 @@
---extra-index-url https://download.pytorch.org/whl/rocm5.4.2
-knowledge_integrity[revertrisk-multilingual] @ git+https://gitlab.wikimedia.org/repos/research/knowledge_integrity.git@v0.3.0
 kserve==0.11.2
 PyYAML==6.0.1
+--extra-index-url https://download.pytorch.org/whl/rocm5.4.2
+torch==1.13.1
+transformers==4.25.1
+knowledge_integrity[revertrisk-multilingual] @ git+https://gitlab.wikimedia.org/repos/research/knowledge_integrity.git@v0.3.0
