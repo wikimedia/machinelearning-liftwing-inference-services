@@ -52,14 +52,14 @@ class ArticleDescriptionsModel(kserve.Model):
         starttime = time.time()
         # Retrieve Wikidata info
         descriptions, sitelinks, blp = await self.get_wikidata_info(lang, title)
-        wd_time = time.time()
-        execution_times["wikidata-info (s)"] = wd_time - starttime
+        execution_times["wikidata-info (s)"] = time.time() - starttime
         features["descriptions"] = descriptions
         # Retrieve first paragraphs
         first_paragraphs = {}
         for lng in sitelinks:
             first_paragraph = await self.get_first_paragraph(lng, sitelinks[lng])
             first_paragraphs[lng] = first_paragraph
+        execution_times["mwapi - first paragraphs (s)"] = time.time() - starttime
         # Retrieve groundtruth description
         groundtruth_desc = await self.get_groundtruth(lang, title)
         execution_times["total network (s)"] = time.time() - starttime
