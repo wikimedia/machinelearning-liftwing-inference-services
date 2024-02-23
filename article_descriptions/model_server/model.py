@@ -6,6 +6,7 @@ from distutils.util import strtobool
 from typing import Any, Dict, Optional
 
 import aiohttp
+import asyncio
 import kserve
 import mwapi
 from kserve.errors import InferenceError, InvalidInput
@@ -55,10 +56,14 @@ class ArticleDescriptionsModel(kserve.Model):
         execution_times["wikidata-info (s)"] = time.time() - starttime
         features["descriptions"] = descriptions
         # Retrieve first paragraphs
-        first_paragraphs = {}
-        for lng in sitelinks:
-            first_paragraph = await self.get_first_paragraph(lng, sitelinks[lng])
-            first_paragraphs[lng] = first_paragraph
+        async with self.get_http_client_session("restgateway") as session:
+            tasks = [
+                self.get_first_paragraph(lng, sitelinks[lng], session)
+                for lng in sitelinks
+            ]
+            results = await asyncio.gather(*tasks)
+        first_paragraphs = dict(zip(sitelinks.keys(), results))
+
         execution_times["mwapi - first paragraphs (s)"] = time.time() - starttime
         # Retrieve groundtruth description
         groundtruth_desc = await self.get_groundtruth(lang, title)
@@ -184,22 +189,23 @@ class ArticleDescriptionsModel(kserve.Model):
                 )
                 return None
 
-    async def get_first_paragraph(self, lang: str, title: str) -> str:
+    async def get_first_paragraph(
+        self, lang: str, title: str, session: aiohttp.ClientSession
+    ) -> str:
         """Get plain-text extract of article"""
         mw_host, host_header = self.get_mw_host_and_header(lang)
         rest_url = get_rest_endpoint_page_summary(
             self.rest_gateway_endpoint, mw_host, host_header, title
         )
         try:
-            async with self.get_http_client_session("restgateway") as session:
-                async with session.get(
-                    rest_url,
-                    headers={
-                        "User-Agent": self.user_agent,
-                    },
-                ) as resp:
-                    paragraph = await resp.json()
-                    return paragraph["extract"]
+            async with session.get(
+                rest_url,
+                headers={
+                    "User-Agent": self.user_agent,
+                },
+            ) as resp:
+                paragraph = await resp.json()
+                return paragraph["extract"]
         except Exception as e:
             logging.error(f"Failed to retrieve first paragraph: {e}")
             return ""
