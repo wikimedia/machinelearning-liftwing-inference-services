@@ -38,6 +38,8 @@ variants:
         - python3
         - python3-distutils
         - wmf-certificates
+        - python3-setuptools
+        - libdrm-amdgpu1
     python:
       version: python3
       use-system-flag: false
