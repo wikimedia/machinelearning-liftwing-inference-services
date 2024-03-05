@@ -13,7 +13,7 @@ variants:
   build:
     python:
       version: python3
-      requirements: [revert_risk_model/model_server/wikidata/requirements.txt]
+      requirements: ["revert_risk_model/model_server/wikidata/requirements.txt", "python/requirements.txt"]
     apt:
       packages:
         - build-essential

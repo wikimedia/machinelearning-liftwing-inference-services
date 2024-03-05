@@ -6,7 +6,6 @@ from typing import Any, Dict
 import aiohttp
 import kserve
 import mwapi
-import torch
 from fastapi import HTTPException
 from knowledge_integrity.revision import get_current_revision
 from kserve.errors import InferenceError, InvalidInput
@@ -78,32 +77,9 @@ class RevisionRevertRiskModel(kserve.Model):
         self.model = self.ModelLoader.load_model(self.model_path)
         self.ready = True
 
-    def check_gpu(self):
-        """
-        Loads the model in the GPU's memory and updates its reference.
-        This function needs to run after the webserver's initialization
-        (that forks and creates new processes, see https://github.com/pytorch/pytorch/issues/83973).
-        """
-        if not self.device and self.name == "revertrisk-multilingual":
-            # The cuda keyword is internally translated to hip and rocm is used if available.
-            # https://pytorch.org/docs/stable/notes/hip.html
-            self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-            logging.info(f"Using device: {self.device}")
-            # loading model to GPU
-            self.model.title_model.model.to(self.device)
-            self.model.insert_model.model.to(self.device)
-            self.model.remove_model.model.to(self.device)
-            self.model.change_model.model.to(self.device)
-            # changing the device of the pipeline
-            self.model.title_model.device = self.device
-            self.model.insert_model.device = self.device
-            self.model.remove_model.device = self.device
-            self.model.change_model.device = self.device
-
     async def preprocess(
         self, inputs: Dict[str, Any], headers: Dict[str, str] = None
     ) -> Dict[str, Any]:
-        self.check_gpu()
         inputs = validate_json_input(inputs)
         lang = inputs.get("lang")
         rev_id = inputs.get("rev_id")

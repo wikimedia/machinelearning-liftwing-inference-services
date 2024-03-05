@@ -23,7 +23,12 @@ class RevisionRevertRiskModelBatch(RevisionRevertRiskModel):
         force_http: bool,
     ) -> None:
         super().__init__(
-            name, module_name, model_path, wiki_url, aiohttp_client_timeout, force_http
+            name,
+            module_name,
+            model_path,
+            wiki_url,
+            aiohttp_client_timeout,
+            force_http,
         )
 
     async def get_current_revisions(
