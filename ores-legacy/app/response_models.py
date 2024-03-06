@@ -1,11 +1,20 @@
 from typing import Any, Dict, List, Optional, Union
 
-from pydantic import BaseModel
+from pydantic import BaseModel, validator
 
 
 class Score(BaseModel):
-    prediction: Union[bool, str, List[str]]
+    prediction: Union[str, List[str]]
     probability: Dict[str, float]
+
+    @validator("prediction", pre=False)
+    def parse_bool_if_string(cls, v):
+        if isinstance(v, str):
+            if v.lower() == "true":
+                return True
+            elif v.lower() == "false":
+                return False
+        return v
 
 
 class ModelInfo(BaseModel):
