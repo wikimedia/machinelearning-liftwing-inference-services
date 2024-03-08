@@ -50,10 +50,6 @@ source .venv/bin/activate
 pip install -r revert_risk_model/model_server/revertrisk/requirements.txt
 ```
 
-Clone the descartes repository by running:
-```console
-git clone https://github.com/wikimedia/descartes.git --branch 1.0.1 article_descriptions/model_server/descartes
-```
 
 ### 2.2. Download the model
 Download the `model.pkl` from the link below and place it in the same directory named PATH_TO_MODEL_DIR.
