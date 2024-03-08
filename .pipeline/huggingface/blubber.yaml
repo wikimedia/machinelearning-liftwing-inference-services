@@ -1,0 +1,78 @@
+# syntax=docker-registry.wikimedia.org/repos/releng/blubber/buildkit:v0.22.0
+version: v4
+base: docker-registry.wikimedia.org/amd-pytorch21:2.1.2rocm5.5-1
+
+runs:
+  insecurely: true
+  environment:
+    PYTHONPATH: /srv/app
+    MODEL_DIR: /mnt/models
+
+lives:
+  in: /srv/app
+
+variants:
+  build:
+    apt:
+      packages:
+        - build-essential
+        - git
+    builders:
+      - custom:
+          # At the moment we clone the kserve repo to get the huggingface server from the master branch as various
+          # fixes are introduced. In the future we'll either clone a specific release or commit the code in our repo.
+          command: [ "git", "clone",  "--branch", "liftwing", "https://github.com/wikimedia/kserve.git", "kserve_repo" ]
+      - python:
+          version: python3
+          no-deps: true
+          requirements: [ huggingface_modelserver/requirements.txt ]
+
+
+  production:
+    copies:
+      - from: build
+        source: /opt/lib/python/site-packages
+        destination: /opt/lib/python/site-packages
+      - from: build
+        source: /srv/app/kserve_repo/python/huggingfaceserver
+        destination: .
+      - from: local
+        source: huggingface_modelserver/entrypoint.sh
+        destination: .
+
+    python:
+      version: python3
+      use-system-flag: false
+    entrypoint: ["./entrypoint.sh"]
+
+
+  test:
+    apt:
+      packages:
+        - python3-pip
+        - python3-setuptools
+        - git
+    copies:
+      - from: local
+        source: huggingface_modelserver/
+        destination: huggingface_modelserver/
+      - from: local
+        source: tox.ini
+        destination: .
+      - from: local
+        source: .pre-commit-config.yaml
+        destination: .
+      - from: local
+        source: ci_entrypoint.sh
+        destination: ci_entrypoint.sh
+      - from: local
+        source: ruff.toml
+        destination: .
+      - from: local
+        source: requirements-test.txt
+        destination: .
+    entrypoint: ["./ci_entrypoint.sh", "."]
+    python:
+      version: python3
+      use-system-flag: false
+      requirements: [requirements-test.txt]

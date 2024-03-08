@@ -224,3 +224,22 @@ pipelines:
           image:
             name: '${setup.project}-article-descriptions'
             tags: [stable]
+
+  huggingface:
+    blubberfile: huggingface/blubber.yaml
+    stages:
+      - name: run-test
+        build: test
+        run: true
+      - name: production
+        build: production
+
+  huggingface-publish:
+    blubberfile: huggingface/blubber.yaml
+    stages:
+      - name: publish
+        build: production
+        publish:
+          image:
+            name: '${setup.project}-huggingface'
+            tags: [stable]
