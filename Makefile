@@ -89,6 +89,7 @@ run-server: $(VENV)/bin/activate $(MODEL_PATH)
 $(VENV)/bin/activate: $(MODEL_SERVER_PARENT_DIR)/$(MODEL_SERVER_DIR)/$(DEP_DIR)/requirements.txt
 	python3 -m venv $(VENV)
 	$(PIP) install --upgrade pip
+	$(PIP) install -r python/requirements.txt
 	$(PIP) install -r $(MODEL_SERVER_PARENT_DIR)/$(MODEL_SERVER_DIR)/$(DEP_DIR)/requirements.txt
 
 # Download the model file(s)
