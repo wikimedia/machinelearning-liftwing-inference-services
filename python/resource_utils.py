@@ -1,5 +1,6 @@
 import logging
 import os
+import pyopencl
 
 
 def get_cpu_count():
@@ -45,3 +46,19 @@ def get_cpu_count():
                 "defaulting to the host's cpu count."
             )
     return host_cpu_count
+
+
+def gpu_is_available():
+    try:
+        platforms = pyopencl.get_platforms()
+        for platform in platforms:
+            devices = platform.get_devices(device_type=pyopencl.device_type.GPU)
+            if devices:
+                logging.info(f"Found GPU: {devices[0].name}")
+                return True
+        logging.info("Not found GPU.")
+    except Exception as e:
+        logging.exception(
+            f"Exception occurred when detecting whether a GPU is available. Reason: {e}"
+        )
+    return False
