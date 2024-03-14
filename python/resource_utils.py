@@ -62,3 +62,20 @@ def gpu_is_available():
             f"Exception occurred when detecting whether a GPU is available. Reason: {e}"
         )
     return False
+
+
+def set_omp_num_threads():
+    """
+    Set the OMP_NUM_THREADS environment variable (if not already present)
+    using the result of get_cpu_count().
+    """
+    num_threads = os.environ.get("OMP_NUM_THREADS")
+    if num_threads:
+        logging.info(
+            f"The OMP_NUM_THREADS is already set to {num_threads}, "
+            "not going to override it with the container's cpu count."
+        )
+        return
+    cpu_count = str(get_cpu_count())
+    os.environ["OMP_NUM_THREADS"] = cpu_count
+    logging.info(f"Set OMP_NUM_THREADS to {cpu_count}.")

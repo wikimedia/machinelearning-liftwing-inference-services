@@ -1,8 +1,10 @@
+import os
+
 from unittest import mock
 
 import pytest
 
-from python.resource_utils import get_cpu_count
+from python.resource_utils import get_cpu_count, set_omp_num_threads
 
 
 def test_get_cpu_count():
@@ -58,6 +60,22 @@ def test_get_cpu_count():
         with mock.patch("os.cpu_count", mock_cpu_count):
             with mock.patch("os.path.exists", mock_path_exists):
                 assert get_cpu_count() == 8
+
+
+def test_omp_num_threads():
+    mock_cpu_count = mock.Mock(return_value=8)
+
+    # In the base case the OMP_NUM_THREADS env variable needs to be set
+    # to the appropriate value.
+    with mock.patch("python.resource_utils.get_cpu_count", mock_cpu_count):
+        set_omp_num_threads()
+        assert os.environ["OMP_NUM_THREADS"] == "8"
+
+        # If OMP_NUM_THREADS is already set, check that the current value
+        # is preserved.
+        with mock.patch.dict("os.environ", {"OMP_NUM_THREADS": "42"}):
+            set_omp_num_threads()
+            assert os.environ["OMP_NUM_THREADS"] == "42"
 
 
 if __name__ == "__main__":
