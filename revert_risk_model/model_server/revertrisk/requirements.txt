@@ -1,3 +1,3 @@
-knowledge_integrity[revertrisk] @ git+https://gitlab.wikimedia.org/repos/research/knowledge_integrity.git@026c11a7b3bdb6bd16ef8826bc23b782e8c4e8c8
-kserve==0.11.2
+knowledge_integrity[revertrisk] @ git+https://gitlab.wikimedia.org/repos/research/knowledge_integrity.git@v0.6.0
+kserve @ git+https://github.com/kserve/kserve.git@426fe21da0612ea6ef4a116b5114270313e02bbb#egg=kserve&subdirectory=python/kserve
 PyYAML==6.0.1

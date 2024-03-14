@@ -6,7 +6,8 @@ from typing import Any, List, Dict, Sequence, Optional
 import mwapi
 from base_model import RevisionRevertRiskModel
 from fastapi import HTTPException
-from knowledge_integrity.revision import CurrentRevision, get_current_revision
+from knowledge_integrity.mediawiki import get_revision
+from knowledge_integrity.schema import Revision
 from kserve.errors import InferenceError, InvalidInput
 
 from python.preprocess_utils import validate_json_input
@@ -33,8 +34,8 @@ class RevisionRevertRiskModelBatch(RevisionRevertRiskModel):
 
     async def get_current_revisions(
         self, session: mwapi.AsyncSession, rev_ids: List[int], lang: str
-    ) -> Optional[Sequence[CurrentRevision]]:
-        tasks = [get_current_revision(session, rev_id, lang) for rev_id in rev_ids]
+    ) -> Optional[Sequence[Revision]]:
+        tasks = [get_revision(session, rev_id, lang) for rev_id in rev_ids]
         return await asyncio.gather(*tasks)
 
     async def preprocess(
@@ -83,7 +84,7 @@ class RevisionRevertRiskModelBatch(RevisionRevertRiskModel):
         # TODO: same as above
         if rev is None:
             logging.error(
-                "get_current_revision returned empty results "
+                "get_revision returned empty results "
                 f"for revision {rev_ids} ({lang})"
             )
             raise HTTPException(

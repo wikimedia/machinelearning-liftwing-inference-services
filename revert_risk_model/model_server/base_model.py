@@ -7,7 +7,7 @@ import aiohttp
 import kserve
 import mwapi
 from fastapi import HTTPException
-from knowledge_integrity.revision import get_current_revision
+from knowledge_integrity.mediawiki import get_revision
 from kserve.errors import InferenceError, InvalidInput
 
 from python.config_utils import get_config
@@ -97,7 +97,7 @@ class RevisionRevertRiskModel(kserve.Model):
         # Additional HTTP Host header must be set if the host is http://api-ro.discovery.wmnet
         session.headers["Host"] = mw_host.replace("https://", "").replace("http://", "")
         try:
-            rev = await get_current_revision(session, rev_id, lang)
+            rev = await get_revision(session, rev_id, lang)
         except Exception as e:
             logging.error(
                 "An error has occurred while fetching info for revision: "
@@ -110,8 +110,7 @@ class RevisionRevertRiskModel(kserve.Model):
             )
         if rev is None:
             logging.error(
-                "get_current_revision returned empty results "
-                f"for revision {rev_id} ({lang})"
+                f"get_revision returned empty results for revision {rev_id} ({lang})"
             )
             raise HTTPException(
                 status_code=HTTPStatus.BAD_REQUEST,
