@@ -6,6 +6,7 @@ from typing import Any, Dict
 import aiohttp
 import kserve
 import mwapi
+import torch
 from fastapi import HTTPException
 from knowledge_integrity.revision import get_current_revision
 from kserve.errors import InferenceError, InvalidInput
@@ -131,5 +132,10 @@ class ReadabilityModel(kserve.Model):
 if __name__ == "__main__":
     model_name = os.environ.get("MODEL_NAME")
     thread_count = int(os.environ.get("NUM_THREADS", get_cpu_count()))
+    # Set the number of Torch threads
+    # See https://pytorch.org/docs/stable/notes/cpu_threading_torchscript_inference.html
+    torch.set_num_interop_threads = thread_count
+    torch.set_num_threads = thread_count
+    logging.info(f"Set torch's threads to {thread_count}")
     model = ReadabilityModel(name=model_name, thread_count=thread_count)
     kserve.ModelServer(workers=1).start([model])
