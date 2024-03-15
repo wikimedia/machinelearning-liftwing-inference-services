@@ -7,7 +7,7 @@ import aiohttp
 import kserve
 import mwapi
 from fastapi import HTTPException
-from knowledge_integrity.mediawiki import get_revision
+from knowledge_integrity.mediawiki import get_revision, Error
 from kserve.errors import InferenceError, InvalidInput
 
 from python.config_utils import get_config
@@ -108,19 +108,6 @@ class RevisionRevertRiskModel(kserve.Model):
                 "from the MediaWiki API, please contact the ML-Team "
                 "if the issue persists."
             )
-        if rev is None:
-            logging.error(
-                f"get_revision returned empty results for revision {rev_id} ({lang})"
-            )
-            raise HTTPException(
-                status_code=HTTPStatus.BAD_REQUEST,
-                detail=(
-                    "The necessary features cannot be obtained from the "
-                    "MediaWiki API. It can be the revision, parent revision, "
-                    "page information, or user information. This could be "
-                    "because the data does not exist or has been deleted."
-                ),
-            )
         inputs["revision"] = rev
         return inputs
 
@@ -139,21 +126,34 @@ class RevisionRevertRiskModel(kserve.Model):
     def predict(
         self, request: Dict[str, Any], headers: Dict[str, str] = None
     ) -> Dict[str, Any]:
-        result = self.ModelLoader.classify(self.model, request["revision"])
-        if self.name == "revertrisk-wikidata":
-            edit_summary = request["revision"].comment
-            self.check_wikidata_result(result, edit_summary)
-        output = {
-            "prediction": result.prediction,
-            "probabilities": {
-                "true": result.probability,
-                "false": 1 - result.probability,
-            },
-        }
+        rev_id = request.get("rev_id")
+        lang = request.get("lang")
+        rev = request.get("revision")
+        if isinstance(rev, Error):
+            logging.info(f"revision {rev_id} ({lang}): {rev.code.value}")
+            raise HTTPException(
+                status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
+                detail=(
+                    f"Could not make prediction for revision {rev_id} ({lang})."
+                    f"Reason: {rev.code.value}"
+                ),
+            )
+        else:
+            result = self.ModelLoader.classify(self.model, rev)
+            if self.name == "revertrisk-wikidata":
+                edit_summary = request["revision"].comment
+                self.check_wikidata_result(result, edit_summary)
+            output = {
+                "prediction": result.prediction,
+                "probabilities": {
+                    "true": result.probability,
+                    "false": 1 - result.probability,
+                },
+            }
         return {
             "model_name": self.name,
             "model_version": str(self.model.model_version),
-            "wiki_db": request.get("lang") + "wiki",
-            "revision_id": request.get("rev_id"),
+            "wiki_db": lang + "wiki",
+            "revision_id": rev_id,
             "output": output,
         }

@@ -1,3 +1,5 @@
 knowledge_integrity[revertrisk] @ git+https://gitlab.wikimedia.org/repos/research/knowledge_integrity.git@v0.6.0
+# https://github.com/kserve/kserve/issues/3541
+ray[serve]<=2.9.3,>=2.9.2
 kserve @ git+https://github.com/kserve/kserve.git@426fe21da0612ea6ef4a116b5114270313e02bbb#egg=kserve&subdirectory=python/kserve
 PyYAML==6.0.1
