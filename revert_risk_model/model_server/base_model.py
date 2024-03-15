@@ -64,8 +64,7 @@ class RevisionRevertRiskModel(kserve.Model):
             updated_lang = self.host_rewrite_config.get(lang, lang)
             return f"{protocol}://{updated_lang}.wikipedia.org"
 
-    def validate_inputs(self, lang, rev_id):
-        check_input_param(lang=lang, rev_id=rev_id)
+    def check_supported_wikis(self, lang):
         if (
             hasattr(self.model, "supported_wikis")
             and lang not in self.model.supported_wikis
@@ -84,7 +83,8 @@ class RevisionRevertRiskModel(kserve.Model):
         lang = inputs.get("lang")
         rev_id = inputs.get("rev_id")
         logging.info(f"Received request for revision {rev_id} ({lang}).")
-        self.validate_inputs(lang, rev_id)
+        check_input_param(lang=lang, rev_id=rev_id)
+        self.check_supported_wikis(lang)
         mw_host = self.get_mediawiki_host(lang)
         session = mwapi.AsyncSession(
             # Host is set to http://api-ro.discovery.wmnet within WMF
@@ -135,7 +135,7 @@ class RevisionRevertRiskModel(kserve.Model):
                 status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
                 detail=(
                     f"Could not make prediction for revision {rev_id} ({lang})."
-                    f"Reason: {rev.code.value}"
+                    f" Reason: {rev.code.value}"
                 ),
             )
         else:

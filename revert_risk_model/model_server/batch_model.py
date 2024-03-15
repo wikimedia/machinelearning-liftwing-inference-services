@@ -4,13 +4,14 @@ from http import HTTPStatus
 from typing import Any, List, Dict, Sequence, Optional
 
 import mwapi
-from base_model import RevisionRevertRiskModel
 from fastapi import HTTPException
-from knowledge_integrity.mediawiki import get_revision
+from fastapi.responses import JSONResponse
+from base_model import RevisionRevertRiskModel
+from knowledge_integrity.mediawiki import get_revision, Error
 from knowledge_integrity.schema import Revision
 from kserve.errors import InferenceError, InvalidInput
 
-from python.preprocess_utils import validate_json_input
+from python.preprocess_utils import check_input_param, validate_json_input
 
 
 class RevisionRevertRiskModelBatch(RevisionRevertRiskModel):
@@ -32,28 +33,35 @@ class RevisionRevertRiskModelBatch(RevisionRevertRiskModel):
             force_http,
         )
 
-    async def get_current_revisions(
+    async def get_revisions(
         self, session: mwapi.AsyncSession, rev_ids: List[int], lang: str
     ) -> Optional[Sequence[Revision]]:
         tasks = [get_revision(session, rev_id, lang) for rev_id in rev_ids]
         return await asyncio.gather(*tasks)
 
-    async def preprocess(
-        self, inputs: Dict[str, Any], headers: Dict[str, str] = None
-    ) -> Dict[str, Any]:
-        inputs = validate_json_input(inputs)
-        # During the experimental phase, we only accept requesting multiple
-        # rev_ids with the same lang. This allows us to use the same async
-        # session.
-        if len({x.get("lang") for x in inputs["instances"]}) > 1:
+    def get_lang(self, lang_lst):
+        lang_set = set(lang_lst)
+        if len(lang_set) > 1:
             logging.error("More than one language in the request.")
             raise InvalidInput(
                 "Requesting multiple revisions should have the same language."
             )
-        rev_ids = [x.get("rev_id") for x in inputs["instances"]]
-        lang = inputs["instances"][0].get("lang")
-        # TODO:
-        # self.validate_inputs(lang, rev_id)
+        return lang_set.pop()
+
+    async def preprocess(
+        self, inputs: Dict[str, Any], headers: Dict[str, str] = None
+    ) -> Dict[str, Any]:
+        inputs = validate_json_input(inputs)
+        wiki_ids = []
+        rev_ids = []
+        for input in inputs["instances"]:
+            check_input_param(lang=input.get("lang"), rev_id=input.get("rev_id"))
+            wiki_ids.append(input.get("lang"))
+            rev_ids.append(input.get("rev_id"))
+        # Only accept user requesting multiple rev_ids with the same lang.
+        # This allows us to use the same async session.
+        lang = self.get_lang(wiki_ids)
+        self.check_supported_wikis(lang)
         mw_host = self.get_mediawiki_host(lang)
         session = mwapi.AsyncSession(
             # Host is set to http://api-ro.discovery.wmnet within WMF
@@ -66,14 +74,10 @@ class RevisionRevertRiskModelBatch(RevisionRevertRiskModel):
         # Additional HTTP Host header must be set if the host is http://api-ro.discovery.wmnet
         session.headers["Host"] = mw_host.replace("https://", "").replace("http://", "")
         try:
-            rev = await self.get_current_revisions(session, rev_ids, lang)
+            revisions = await self.get_revisions(session, rev_ids, lang)
         except Exception as e:
-            # TODO: think about how to do error handling for multiple rev_ids requests,
-            # For example, we want to (1) return predictions for the rest of valid
-            # revisions, even though there is one revision has problems (e.g. page
-            # missing), or (2) raise exception if any revision has problems
             logging.error(
-                "An error has occurred while fetching info for revision: "
+                "An error has occurred while fetching revisions: "
                 f" {rev_ids} ({lang}). Reason: {e}"
             )
             raise InferenceError(
@@ -81,47 +85,61 @@ class RevisionRevertRiskModelBatch(RevisionRevertRiskModel):
                 "from the MediaWiki API, please contact the ML-Team "
                 "if the issue persists."
             )
-        # TODO: same as above
-        if rev is None:
-            logging.error(
-                "get_revision returned empty results "
-                f"for revision {rev_ids} ({lang})"
-            )
-            raise HTTPException(
-                status_code=HTTPStatus.BAD_REQUEST,
-                detail=(
-                    "The necessary features cannot be obtained from the "
-                    "MediaWiki API. It can be the revision, parent revision, "
-                    "page information, or user information. This could be "
-                    "because the data does not exist or has been deleted."
-                ),
-            )
-        inputs["revision"] = rev
+        # {(rev_id, lang): revision, (rev_id, lang): revision, ...}
+        inputs["revision"] = {
+            (rev_ids[i], lang): revisions[i] for i in range(len(revisions))
+        }
         return inputs
 
     def predict(
         self, request: Dict[str, Any], headers: Dict[str, str] = None
     ) -> Dict[str, Any]:
-        n_rev = len(request["revision"])
-        logging.info(f"Getting {n_rev} rev_ids in the request")
-        results = self.ModelLoader.classify_batch(self.model, request["revision"])
-        if self.name == "revertrisk-wikidata":
-            for i, results in enumerate(results):
-                self.check_wikidata_result(results[i], request["revision"][i].comment)
-        predictions = [
-            {
-                "model_name": self.name,
-                "model_version": str(self.model.model_version),
-                "wiki_db": request["revision"][i].lang + "wiki",
-                "revision_id": request["revision"][i].id,
-                "output": {
-                    "prediction": results[i].prediction,
-                    "probabilities": {
-                        "true": results[i].probability,
-                        "false": 1 - results[i].probability,
+        valid_rev = {
+            k: v for k, v in request["revision"].items() if not isinstance(v, Error)
+        }
+        if len(valid_rev) == 0:
+            # all requests fail
+            rev_lang = request["revision"].keys()
+            error_msg = [e.code.value for e in request["revision"].values()]
+            raise HTTPException(
+                status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
+                detail=(
+                    f"Could not make prediction for revisions {rev_lang}."
+                    f" Reason: {error_msg}"
+                ),
+            )
+        num_rev = len(request["revision"])
+        logging.info(f"Getting {num_rev} rev_ids in the request")
+        results = self.ModelLoader.classify_batch(self.model, valid_rev.values())
+        rev_pred = {k: results[i] for i, k in enumerate(valid_rev.keys())}
+        predictions = []
+        for (rev_id, lang), result in rev_pred.items():
+            predictions.append(
+                {
+                    "model_name": self.name,
+                    "model_version": str(self.model.model_version),
+                    "wiki_db": lang + "wiki",
+                    "revision_id": rev_id,
+                    "output": {
+                        "prediction": result.prediction,
+                        "probabilities": {
+                            "true": result.probability,
+                            "false": 1 - result.probability,
+                        },
                     },
-                },
-            }
-            for i in range(len(results))
-        ]
+                }
+            )
+        if len(valid_rev) < num_rev:
+            # some requests succeed and others fail
+            error_msg = []
+            for (rev_id, lang), rev in request["revision"].items():
+                if isinstance(rev, Error):
+                    error_msg.append(
+                        f"Could not make prediction for revision {rev_id} ({lang})."
+                        f" Reason: {rev.code.value}"
+                    )
+            return JSONResponse(
+                status_code=HTTPStatus.MULTI_STATUS,
+                content={"predictions": predictions + error_msg},
+            )
         return {"predictions": predictions}
