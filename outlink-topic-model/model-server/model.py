@@ -23,6 +23,7 @@ class OutlinksTopicModel(kserve.Model):
         self.CUSTOM_UA = "WMF ML Team outlink-topic-model svc"
         self.AIOHTTP_CLIENT_TIMEOUT = os.environ.get("AIOHTTP_CLIENT_TIMEOUT", 5)
         self.MODEL_VERSION = os.environ.get("MODEL_VERSION")
+        self.model_path = os.environ.get("MODEL_PATH", "/mnt/models/model.bin")
         self._http_client_session = {}
         self.load()
 
@@ -42,7 +43,7 @@ class OutlinksTopicModel(kserve.Model):
         return self._http_client_session[endpoint]
 
     def load(self):
-        self.model = fasttext.load_model("/mnt/models/model.bin")
+        self.model = fasttext.load_model(self.model_path)
         self.ready = True
 
     async def send_event(self) -> None:
