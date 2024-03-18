@@ -11,7 +11,7 @@ variants:
   build:
     python:
       version: python3
-      requirements: [readability_model/model_server/requirements.txt]
+      requirements: ["readability_model/model_server/requirements.txt", "python/requirements.txt"]
     apt:
       packages:
         - build-essential
