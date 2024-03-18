@@ -6,20 +6,18 @@ from typing import Any, Dict
 import aiohttp
 import kserve
 import mwapi
-import torch
 from fastapi import HTTPException
 from knowledge_integrity.revision import get_current_revision
 from kserve.errors import InferenceError, InvalidInput
 from readability.models.readability_bert import classify, load_model
 
 from python.preprocess_utils import validate_json_input
-from python.resource_utils import get_cpu_count
 
 logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
 
 
 class ReadabilityModel(kserve.Model):
-    def __init__(self, name: str, thread_count: int) -> None:
+    def __init__(self, name: str) -> None:
         super().__init__(name)
         self.name = name
         self.ready = False
@@ -28,8 +26,6 @@ class ReadabilityModel(kserve.Model):
         self.model_path = os.environ.get("MODEL_PATH", "/mnt/models/model.pkl")
         self.AIOHTTP_CLIENT_TIMEOUT = os.environ.get("AIOHTTP_CLIENT_TIMEOUT", 5)
         self.load()
-        self.thread_count = thread_count
-        logging.info(f"ReadabilityModel initialized with {self.thread_count} threads.")
 
     def get_http_client_session(self, endpoint):
         """Returns a aiohttp session for the specific endpoint passed as input.
@@ -111,7 +107,7 @@ class ReadabilityModel(kserve.Model):
     def predict(
         self, request: Dict[str, Any], headers: Dict[str, str] = None
     ) -> Dict[str, Any]:
-        result = classify(self.model, request["revision"], self.thread_count)
+        result = classify(self.model, request["revision"])
         output = {
             "prediction": result.prediction,
             "probabilities": {
@@ -131,11 +127,5 @@ class ReadabilityModel(kserve.Model):
 
 if __name__ == "__main__":
     model_name = os.environ.get("MODEL_NAME")
-    thread_count = int(os.environ.get("NUM_THREADS", get_cpu_count()))
-    # Set the number of Torch threads
-    # See https://pytorch.org/docs/stable/notes/cpu_threading_torchscript_inference.html
-    torch.set_num_interop_threads = thread_count
-    torch.set_num_threads = thread_count
-    logging.info(f"Set torch's threads to {thread_count}")
-    model = ReadabilityModel(name=model_name, thread_count=thread_count)
+    model = ReadabilityModel(name=model_name)
     kserve.ModelServer(workers=1).start([model])

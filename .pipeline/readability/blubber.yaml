@@ -30,6 +30,9 @@ variants:
       - from: local
         source: python
         destination: python
+      - from: local
+        source: readability_model/entrypoint.sh
+        destination: entrypoint.sh
       - from: build
         source: /home/somebody/nltk_data
         destination: /home/somebody/nltk_data
@@ -45,7 +48,7 @@ variants:
     python:
       version: python3
       use-system-flag: false
-    entrypoint: ["python3", "model_server/model.py"]
+    entrypoint: ["./entrypoint.sh"]
 
   test:
     apt:
