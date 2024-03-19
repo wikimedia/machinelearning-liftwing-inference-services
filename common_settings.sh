@@ -1,7 +1,7 @@
-#!/bin/bash
-
-set -ex
-
+################################################################################
+# This file should contain only shared environment variables and settings
+# to use as standard defaults for libraries used by our model servers.
+################################################################################
 # Pytorch, numpy, etc.. rely by default on OpenMP (libomp) for parallel
 # execution of tasks. In https://phabricator.wikimedia.org/T360111
 # we investigated the use of specific functions like torch's set_num_threads,
@@ -15,6 +15,3 @@ set -ex
 CPU_COUNT=$(/usr/bin/python3 -c "from python.resource_utils import get_cpu_count; print(get_cpu_count())")
 echo "CPU count detected from get_cpu_count: ${CPU_COUNT}"
 export OMP_NUM_THREADS=$CPU_COUNT
-
-# Run the model server
-exec /usr/bin/python3 model_server/model.py

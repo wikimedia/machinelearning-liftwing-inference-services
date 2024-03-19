@@ -33,6 +33,12 @@ variants:
       - from: build
         source: /opt/lib/python/site-packages
         destination: /opt/lib/python/site-packages
+      - from: local
+        source: model_server_entrypoint.sh
+        destination: entrypoint.sh
+      - from: local
+        source: common_settings.sh
+        destination: common_settings.sh
     apt:
       packages:
         - python3
@@ -43,7 +49,7 @@ variants:
     python:
       version: python3
       use-system-flag: false
-    entrypoint: ["python3",  "llm/model.py"]
+    entrypoint: ["./entrypoint.sh",  "llm/model.py"]
 
   test:
     apt:

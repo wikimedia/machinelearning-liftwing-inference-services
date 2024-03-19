@@ -31,8 +31,11 @@ variants:
         source: python
         destination: python
       - from: local
-        source: readability_model/entrypoint.sh
+        source: model_server_entrypoint.sh
         destination: entrypoint.sh
+      - from: local
+        source: common_settings.sh
+        destination: common_settings.sh
       - from: build
         source: /home/somebody/nltk_data
         destination: /home/somebody/nltk_data
