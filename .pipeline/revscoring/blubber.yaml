@@ -129,8 +129,8 @@ variants:
         source: .pre-commit-config.yaml
         destination: .
       - from: local
-        source: entrypoint.sh
-        destination: .
+        source: ci_entrypoint.sh
+        destination: entrypoint.sh
       - from: local
         source: ruff.toml
         destination: .

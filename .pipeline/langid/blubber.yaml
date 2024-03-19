@@ -72,7 +72,7 @@ variants:
       - from: local
         source: ruff.toml
         destination: .
-    entrypoint: ["./langid/entrypoint.sh", "."]
+    entrypoint: ["./langid/ci_entrypoint.sh", "."]
     python:
       version: python3
       requirements: [requirements-test.txt, langid/requirements.txt]
