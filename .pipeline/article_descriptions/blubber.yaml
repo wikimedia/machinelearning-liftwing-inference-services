@@ -23,7 +23,7 @@ variants:
           command: ["git", "clone", "--branch", "1.0.1", "--depth", "1", "https://github.com/wikimedia/descartes.git", "model_server/descartes"]
       - python:
           version: python3
-          requirements: [article_descriptions/model_server/requirements.txt]
+          requirements: [article_descriptions/model_server/requirements.txt, python/requirements.txt]
 
   production:
     copies:

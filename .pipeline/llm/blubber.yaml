@@ -13,7 +13,7 @@ variants:
   build:
     python:
       version: python3
-      requirements: [llm/requirements.txt]
+      requirements: [llm/requirements.txt, python/requirements.txt]
     apt:
       packages:
         - build-essential
