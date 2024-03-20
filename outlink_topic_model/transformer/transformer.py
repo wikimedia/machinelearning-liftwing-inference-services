@@ -6,11 +6,17 @@ from typing import Dict, Set
 
 import aiohttp
 import kserve
-import logging_utils
 import mwapi
-import preprocess_utils
 from fastapi import HTTPException
 from kserve.errors import InferenceError, InvalidInput
+from python.logging_utils import set_log_level
+from python.preprocess_utils import (
+    get_lang,
+    get_page_title,
+    is_domain_wikipedia,
+    validate_json_input,
+)
+
 
 logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
 
@@ -26,7 +32,7 @@ class OutlinkTransformer(kserve.Model):
         # FIXME: this may not be needed, in theory we could simply rely on
         # kserve.constants.KSERVE_LOGLEVEL (passing KSERVE_LOGLEVEL as env var)
         # but it doesn't seem to work.
-        logging_utils.set_log_level()
+        set_log_level()
         self.ready = True
 
     def get_http_client_session(self, endpoint):
@@ -87,9 +93,9 @@ class OutlinkTransformer(kserve.Model):
         return outlink_qids
 
     async def preprocess(self, inputs: Dict, headers: Dict[str, str] = None) -> Dict:
-        inputs = preprocess_utils.validate_json_input(inputs)
-        lang = preprocess_utils.get_lang(inputs, self.EVENT_KEY)
-        page_title = preprocess_utils.get_page_title(inputs, self.EVENT_KEY)
+        inputs = validate_json_input(inputs)
+        lang = get_lang(inputs, self.EVENT_KEY)
+        page_title = get_page_title(inputs, self.EVENT_KEY)
         threshold = inputs.get("threshold", 0.5)
         if not isinstance(threshold, float):
             logging.error("Expected threshold to be a float")
@@ -102,7 +108,7 @@ class OutlinkTransformer(kserve.Model):
             threshold = 0.0
         if self.EVENT_KEY in inputs:
             self.source_event = inputs[self.EVENT_KEY]
-            if not preprocess_utils.is_domain_wikipedia(self.source_event):
+            if not is_domain_wikipedia(self.source_event):
                 raise HTTPException(
                     status_code=HTTPStatus.BAD_REQUEST,
                     detail=(

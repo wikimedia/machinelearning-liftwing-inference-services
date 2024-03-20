@@ -5,13 +5,13 @@ runs:
   insecurely: true
 
 lives:
-  in: /srv/outlink-topic-transformer
+  in: /srv/outlink_topic_transformer
 
 variants:
   build:
     python:
       version: python3
-      requirements: [outlink-topic-model/transformer/requirements.txt]
+      requirements: [outlink_topic_model/transformer/requirements.txt]
     apt:
       packages:
         - python3-pip
@@ -21,7 +21,7 @@ variants:
   production:
     copies:
       - from: local
-        source: outlink-topic-model/transformer
+        source: outlink_topic_model/transformer
         destination: transformer
       - from: local
         source: python/*.py
@@ -47,7 +47,7 @@ variants:
         - git
     copies:
       - from: local
-        source: outlink-topic-model/transformer
+        source: outlink_topic_model/transformer
         destination: transformer
       - from: local
         source: tox.ini

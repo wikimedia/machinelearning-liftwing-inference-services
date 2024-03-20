@@ -26,6 +26,7 @@ configparser==5.2.0
 cryptography==3.4.7
 Deprecated==1.2.13
 deprecation==2.1.0
+wheel
 fastapi>=0.95.0,<0.96.0
 fasttext==0.9.2
 filelock==3.4.0

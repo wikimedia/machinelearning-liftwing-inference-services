@@ -3,9 +3,9 @@ import os
 from typing import Dict
 
 import aiohttp
-import events
 import fasttext
 import kserve
+from python import events
 
 logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
 
