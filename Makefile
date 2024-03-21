@@ -11,6 +11,8 @@ revertrisk-multilingual \
 article-descriptions \
 language-identification \
 readability \
+articletopic-outlink-predictor \
+articletopic-outlink-transformer \
 clean
 
 # Default run command for revertrisk-language-agnostic
@@ -71,6 +73,24 @@ readability:
 	CUT_DIRS=2 \
 	ACCEPT_REGEX="."
 
+# Command for articletopic-outlink predictor
+articletopic-outlink-predictor:
+	@$(MAKE) run-server MODEL_NAME="outlink-topic-model" \
+	MODEL_URL="articletopic/outlink/20221111111111/model.bin" \
+	MODEL_SERVER_PARENT_DIR="outlink_topic_model" \
+	MODEL_PATH="models/articletopic/outlink/20221111111111/model.bin" \
+	MODEL_SERVER_DIR="model_server" \
+	DEP_DIR="." \
+	CUT_DIRS=2 \
+	ACCEPT_REGEX="." \
+	PREDICTOR_PORT=8181
+
+# Command for articletopic-outlink transformer
+articletopic-outlink-transformer:
+	. $(VENV)/bin/activate && \
+	$(PYTHON) outlink_topic_model/transformer/transformer.py \
+	--predictor_host="localhost:8181" --model_name="outlink-topic-model"
+
 # Download NLTK Punkt sentence tokenizer used by readability
 download-nltk-punkt: $(VENV)/bin/activate
 	@$(PYTHON) -m nltk.downloader punkt
@@ -81,9 +101,12 @@ clone-descartes:
 		git clone https://github.com/wikimedia/descartes.git --branch 1.0.1 article_descriptions/model_server/descartes; \
 	fi
 
-# Generic command to run any model server
+# Generic command to run any model server.
+# Adds port argument if defined (e.g articletopic-outlink defines it because it uses both a predictor and transformer)
 run-server: $(VENV)/bin/activate $(MODEL_PATH)
-	MODEL_PATH=$(MODEL_PATH) MODEL_NAME=$(MODEL_NAME) $(PYTHON) $(MODEL_SERVER_PARENT_DIR)/$(MODEL_SERVER_DIR)/model.py
+	MODEL_PATH=$(MODEL_PATH) MODEL_NAME=$(MODEL_NAME) \
+	$(PYTHON) $(MODEL_SERVER_PARENT_DIR)/$(MODEL_SERVER_DIR)/model.py \
+	$(if $(PREDICTOR_PORT), --http_port=$(PREDICTOR_PORT))
 
 # Create virtual environment and install dependencies
 $(VENV)/bin/activate: $(MODEL_SERVER_PARENT_DIR)/$(MODEL_SERVER_DIR)/$(DEP_DIR)/requirements.txt
