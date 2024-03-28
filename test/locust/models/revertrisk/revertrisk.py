@@ -13,28 +13,32 @@ def get_random_sample_from_df_input(df):
 class RevertriskLanguageAgnostic(FastHttpUser):
     wait_time = between(1, 5)
 
-    def on_start(self):
-        self.client.headers = {"Content-Type": "application/json"}
-
     @task(3)
     def get_prediction(self):
         lang, rev_id = get_random_sample_from_df_input(rev_ids)
+        headers = {
+            "Content-Type": "application/json",
+            "Host": "revertrisk-language-agnostic.revertrisk.wikimedia.org",
+        }
         self.client.post(
             "/v1/models/revertrisk-language-agnostic:predict",
             json={"rev_id": int(rev_id), "lang": lang},
+            headers=headers,
         )
 
 
 class RevertriskMultilingual(FastHttpUser):
     wait_time = between(1, 5)
 
-    def on_start(self):
-        self.client.headers = {"Content-Type": "application/json"}
-
     @task(3)
     def get_prediction(self):
         lang, rev_id = get_random_sample_from_df_input(rev_ids)
+        headers = {
+            "Content-Type": "application/json",
+            "Host": "revertrisk-multilingual.revertrisk.wikimedia.org",
+        }
         self.client.post(
             "/v1/models/revertrisk-multilingual:predict",
             json={"rev_id": int(rev_id), "lang": lang},
+            headers=headers,
         )
