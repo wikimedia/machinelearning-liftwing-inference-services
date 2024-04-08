@@ -1,5 +1,7 @@
---extra-index-url https://download.pytorch.org/whl/rocm5.4.2
-torch==2.0.1
-kserve==0.11.2
+--extra-index-url https://download.pytorch.org/whl/cpu
+knowledge_integrity[revertrisk-multilingual] @ git+https://gitlab.wikimedia.org/repos/research/knowledge_integrity.git@v0.6.0
+# we use a specific commit for kserve because it has necessary fixes, including
+# (1) support for pydantic v2 (https://github.com/kserve/kserve/pull/3374) which is used by knowledge_integrity v0.6
+# (2) fix for ray serve compatibility issue (https://github.com/kserve/kserve/pull/3556).
+kserve @ git+https://github.com/kserve/kserve.git@9026d8a9a55697bb9a6e524d91e7ec36ceb00f2a#egg=kserve&subdirectory=python/kserve
 PyYAML==6.0.1
-knowledge_integrity[revertrisk-multilingual] @ git+https://gitlab.wikimedia.org/repos/research/knowledge_integrity.git@46e1b69bf124006e222c67851379571c695f89c1
