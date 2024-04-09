@@ -1,6 +1,6 @@
-# syntax=docker-registry.wikimedia.org/repos/releng/blubber/buildkit:v0.21.0
+# syntax=docker-registry.wikimedia.org/repos/releng/blubber/buildkit:v0.22.0
 version: v4
-base: docker-registry.wikimedia.org/bullseye:20231126
+base: docker-registry.wikimedia.org/amd-pytorch22:2.2.1rocm5.7-3
 runs:
   insecurely: true
   environment:
