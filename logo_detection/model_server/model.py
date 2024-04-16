@@ -28,7 +28,7 @@ class LogoDetectionModel(kserve.Model):
         self.target = "logo"
         self.chunk_size = int(os.environ.get("CHUNK_SIZE", 1024))
         self.images_max_num = int(os.environ.get("IMAGES_MAX_NUM", 50))
-        self.image_max_size = int(os.environ.get("IMAGE_MAX_SIZE", 4194304)) # 4MBs
+        self.image_max_size = int(os.environ.get("IMAGE_MAX_SIZE", 4194304))  # 4MBs
         self.ready = False
         self.model = self.load()
 
@@ -77,7 +77,7 @@ class LogoDetectionModel(kserve.Model):
                     "filename": os.path.basename(file_path),
                     "target": self.target,
                     "prediction": round(float(raw_prediction[1]), ndigits=4),
-                    "out_of_domain": round(float(raw_prediction[0]), ndigits=4)
+                    "out_of_domain": round(float(raw_prediction[0]), ndigits=4),
                 }
                 predictions_response.append(prediction)
             predictions = {"predictions": predictions_response}
@@ -106,7 +106,11 @@ class LogoDetectionModel(kserve.Model):
             self.cleanup_temp_dir_on_error(temp_dir, error_message)
 
     async def download_image(
-        self, session: aiohttp.ClientSession, image_url: str, image_filename: str, temp_dir: str
+        self,
+        session: aiohttp.ClientSession,
+        image_url: str,
+        image_filename: str,
+        temp_dir: str,
     ) -> None:
         """
         Downloads an image from the specified URL asynchronously and
@@ -168,12 +172,8 @@ class LogoDetectionModel(kserve.Model):
         and their values are of the expected types.
         """
         if "instances" not in payload:
-            logging.error(
-                f"Missing required key 'instances' in input data."
-            )
-            raise InvalidInput(
-                f"Missing required key 'instances' in input data."
-            )
+            logging.error("Missing required key 'instances' in input data.")
+            raise InvalidInput("Missing required key 'instances' in input data.")
 
         input_data = payload.get("instances")
         # Check maximum number of images in input data
@@ -190,23 +190,19 @@ class LogoDetectionModel(kserve.Model):
             # Check if all required keys are present
             if not all(key in data for key in required_keys):
                 logging.error(
-                    f"Input data has invalid key(s). \
+                    "Input data has invalid key(s). \
                     Ensure each item contains: filename, url, and target."
                 )
                 raise InvalidInput(
-                    f"Input data has invalid key(s). \
+                    "Input data has invalid key(s). \
                     Ensure each item contains: filename, url, and target."
                 )
 
             # Check if values of required keys are strings
             for key in required_keys:
                 if not isinstance(data[key], str):
-                    logging.error(
-                        f"Value for key '{key}' should be a string."
-                    )
-                    raise InvalidInput(
-                        f"Value for key '{key}' should be a string."
-                    )
+                    logging.error(f"Value for key '{key}' should be a string.")
+                    raise InvalidInput(f"Value for key '{key}' should be a string.")
 
 
 if __name__ == "__main__":

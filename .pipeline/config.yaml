@@ -243,3 +243,22 @@ pipelines:
           image:
             name: '${setup.project}-huggingface'
             tags: [stable]
+
+  logo-detection:
+    blubberfile: logo_detection/blubber.yaml
+    stages:
+      - name: run-test
+        build: test
+        run: true
+      - name: production
+        build: production
+
+  logo-detection-publish:
+    blubberfile: logo_detection/blubber.yaml
+    stages:
+      - name: publish
+        build: production
+        publish:
+          image:
+            name: '${setup.project}-logo-detection'
+            tags: [stable]
