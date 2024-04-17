@@ -1,6 +1,7 @@
 import bz2
 import logging
 import os
+from distutils.util import strtobool
 from enum import Enum
 from typing import Any, Dict, Optional
 
@@ -60,6 +61,7 @@ class RevscoringModel(kserve.Model):
         self.CUSTOM_UA = f"WMF ML Team {model_kind.value} model svc"
         # Deployed via the wmf-certificates package
         self.TLS_CERT_BUNDLE_PATH = "/etc/ssl/certs/wmf-ca-certificates.crt"
+        self.LOG_JSON_PAYLOAD = strtobool(os.environ.get("LOG_JSON_PAYLOAD", "False"))
         self._http_client_session = {}
         if model_kind in [
             RevscoringModelType.EDITQUALITY_DAMAGING,
@@ -155,6 +157,8 @@ class RevscoringModel(kserve.Model):
     async def preprocess(self, inputs: Dict, headers: Dict[str, str] = None) -> Dict:
         """Use MW API session and Revscoring API to extract feature values
         of edit text based on its revision id"""
+        if self.LOG_JSON_PAYLOAD:
+            logging.info(f"JSON paylod for the request: {inputs}")
         inputs = validate_json_input(inputs)
 
         rev_id = self.get_rev_id(inputs, self.EVENT_KEY)
