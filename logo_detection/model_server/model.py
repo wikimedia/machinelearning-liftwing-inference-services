@@ -20,7 +20,7 @@ class LogoDetectionModel(kserve.Model):
     def __init__(self, name: str) -> None:
         super().__init__(name)
         self.name = name
-        self.model_path = os.environ.get("MODEL_PATH", "/mnt/models/")
+        self.model_path = os.environ.get("MODEL_PATH", "/mnt/models/logo_max_all.keras")
         self.batch_size = int(os.environ.get("BATCH_SIZE", 32))
         self.image_height = int(os.environ.get("IMAGE_HEIGHT", 224))
         self.image_width = int(os.environ.get("IMAGE_WIDTH", 224))
