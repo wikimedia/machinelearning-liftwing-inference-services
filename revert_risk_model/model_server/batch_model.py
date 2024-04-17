@@ -1,7 +1,7 @@
 import asyncio
 import logging
 from http import HTTPStatus
-from typing import Any, List, Dict, Sequence, Optional
+from typing import Any, List, Dict, Tuple, Sequence, Optional
 
 import mwapi
 from fastapi import HTTPException
@@ -39,7 +39,7 @@ class RevisionRevertRiskModelBatch(RevisionRevertRiskModel):
         tasks = [get_revision(session, rev_id, lang) for rev_id in rev_ids]
         return await asyncio.gather(*tasks)
 
-    def get_lang(self, lang_lst):
+    def get_lang(self, lang_lst: List[str]) -> str:
         lang_set = set(lang_lst)
         if len(lang_set) > 1:
             logging.error("More than one language in the request.")
@@ -48,19 +48,37 @@ class RevisionRevertRiskModelBatch(RevisionRevertRiskModel):
             )
         return lang_set.pop()
 
+    def prepare_batch_input(self, inputs: Dict[str, Any]) -> Tuple[List[int], str]:
+        wiki_ids = []
+        rev_ids = []
+        if "instances" not in inputs:
+            # payload like {"rev_id": 12345, "lang": "en"}
+            lang = inputs.get("lang")
+            rev_id = inputs.get("rev_id")
+            check_input_param(lang=lang, rev_id=rev_id)
+            rev_ids.append(rev_id)
+        else:
+            # payload like {"instances": [...]}
+            for input in inputs["instances"]:
+                check_input_param(lang=input.get("lang"), rev_id=input.get("rev_id"))
+                wiki_ids.append(input.get("lang"))
+                rev_ids.append(input.get("rev_id"))
+                if len(rev_ids) > 20:
+                    logging.error("Received request more than 20 rev_ids.")
+                    raise InvalidInput(
+                        "Only accept a maximum of 20 rev_ids in the request."
+                    )
+            # For now only accept the same language in batch inputs.
+            # This allows us to use the same async session.
+            lang = self.get_lang(wiki_ids)
+            logging.info(f"Received request for revision {rev_ids} ({lang}).")
+        return rev_ids, lang
+
     async def preprocess(
         self, inputs: Dict[str, Any], headers: Dict[str, str] = None
     ) -> Dict[str, Any]:
         inputs = validate_json_input(inputs)
-        wiki_ids = []
-        rev_ids = []
-        for input in inputs["instances"]:
-            check_input_param(lang=input.get("lang"), rev_id=input.get("rev_id"))
-            wiki_ids.append(input.get("lang"))
-            rev_ids.append(input.get("rev_id"))
-        # Only accept user requesting multiple rev_ids with the same lang.
-        # This allows us to use the same async session.
-        lang = self.get_lang(wiki_ids)
+        rev_ids, lang = self.prepare_batch_input(inputs)
         self.check_supported_wikis(lang)
         mw_host = self.get_mediawiki_host(lang)
         session = mwapi.AsyncSession(
@@ -142,4 +160,7 @@ class RevisionRevertRiskModelBatch(RevisionRevertRiskModel):
                 status_code=HTTPStatus.MULTI_STATUS,
                 content={"predictions": predictions + error_msg},
             )
+        if "instances" not in request:
+            # response for requests like {"rev_id": 12345, "lang": "en"}
+            return predictions[0]
         return {"predictions": predictions}
