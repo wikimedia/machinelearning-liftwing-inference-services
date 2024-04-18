@@ -158,7 +158,7 @@ class RevscoringModel(kserve.Model):
         """Use MW API session and Revscoring API to extract feature values
         of edit text based on its revision id"""
         if self.LOG_JSON_PAYLOAD:
-            logging.info(f"JSON paylod for the request: {inputs}")
+            logging.info(f"JSON payload for the request: {inputs}")
         inputs = validate_json_input(inputs)
 
         rev_id = self.get_rev_id(inputs, self.EVENT_KEY)
