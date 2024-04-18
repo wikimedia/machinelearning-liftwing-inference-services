@@ -5,7 +5,7 @@ from distutils.util import strtobool
 from typing import Dict
 
 from kserve.errors import InferenceError
-from model_servers import RevscoringModel, RevscoringModelType
+from .model_servers import RevscoringModel, RevscoringModelType
 from revscoring.features import trim
 
 from python import process_utils
