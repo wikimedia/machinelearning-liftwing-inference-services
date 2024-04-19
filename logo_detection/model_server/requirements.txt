@@ -1,4 +1,4 @@
-keras==3.0.4
+keras==3.2.1
 keras-cv==0.8.1
 tensorflow-cpu==2.16.1
 kserve==0.11.2
