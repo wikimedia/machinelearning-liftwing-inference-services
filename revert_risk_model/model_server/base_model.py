@@ -8,7 +8,7 @@ import kserve
 import mwapi
 from fastapi import HTTPException
 from knowledge_integrity.mediawiki import get_revision, Error
-from kserve.errors import InferenceError, InvalidInput
+from kserve.errors import InferenceError
 
 from python.config_utils import get_config
 from python.preprocess_utils import check_input_param, validate_json_input
@@ -69,8 +69,7 @@ class RevisionRevertRiskModel(kserve.Model):
             hasattr(self.model, "supported_wikis")
             and lang not in self.model.supported_wikis
         ):
-            logging.error(f"Unsupported lang: {lang}.")
-            raise InvalidInput(f"Unsupported lang: {lang}.")
+            logging.info(f"Unsupported lang: {lang}.")
 
     def load(self) -> None:
         self.model = self.ModelLoader.load_model(self.model_path)
