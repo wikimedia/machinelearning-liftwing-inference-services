@@ -10,12 +10,37 @@ The logo-detection inference service takes Wikimedia Commons image(s) and return
 
 
 ## How to run locally
-In order to run the logo-detection model server locally, please follow the instructions below:
+> [!NOTE]
+> Unfortunately, [tensorflow-cpu](https://pypi.org/project/tensorflow-cpu/) is not available for apple silicon. If you are a Mac user, please replace `tensorflow-cpu` with `tensorflow` in `logo_detection/model_server/requirements.txt`.
+
+In order to run the logo-detection model server locally, please choose one of the two options below:
 
 <details>
-<summary>1. Manual setup</summary>
+<summary>1. Automated setup using the Makefile</summary>
 
-### 1. Build Python venv and install dependencies
+### 1.1. Build
+In the first terminal run:
+```console
+make logo-detection
+```
+This build process will set up: a Python venv, install dependencies, download the model(s), and run the server.
+
+### 1.2. Query
+On the second terminal query the isvc using:
+```console
+curl -s localhost:8080/v1/models/logo-detection:predict -X POST -d '{"instances": [ { "filename": "Cambia_logo.png", "url": "http://commons.wikimedia.org/w/index.php?title=Special:FilePath&file=Cambia_logo.png&width=224", "target": "logo" }, { "filename": "Blooming_bush_(14248894271).jpg", "url": "http://commons.wikimedia.org/w/index.php?title=Special:FilePath&file=Blooming_bush_%2814248894271%29.jpg&width=224", "target": "logo" }, { "filename": "12_rue_de_Condé_-_detail.jpg", "url": "http://commons.wikimedia.org/w/index.php?title=Special:FilePath&file=12_rue_de_Cond%C3%A9_-_detail.jpg&width=224", "target": "logo" } ] }' -i --header "Content-type: application/json"
+```
+
+### 1.3. Remove
+If you would like to remove the setup run:
+```console
+MODEL_TYPE=logo-detection make clean
+```
+</details>
+<details>
+<summary>2. Manual setup</summary>
+
+### 2.1 Build Python venv and install dependencies
 First add the top level directory of the repo to the PYTHONPATH:
 ```console
 export PYTHONPATH=$PYTHONPATH:.
@@ -28,14 +53,18 @@ source .venv/bin/activate
 pip install -r logo_detection/model_server/requirements.txt
 ```
 
-### 1.2. Download the model
+### 2.2. Download the model
 Download the `logo_max_all.keras` model from the link below and place it in the same directory named PATH_TO_MODEL_DIR.
 https://analytics.wikimedia.org/published/wmf-ml-models/logo-detection/
 
-### 1.3. Run the server
+### 2.3. Run the server
 We can run the server locally with:
-> MODEL_PATH=PATH_TO_MODEL_DIR MODEL_NAME=logo-detection python3 logo_detection/model_server/model.py
+```console
+MODEL_PATH=PATH_TO_MODEL_DIR MODEL_NAME=logo-detection python3 logo_detection/model_server/model.py
+```
 
- On a separate terminal we can make a request to the server with:
-> curl -s localhost:8080/v1/models/logo-detection:predict -X POST -d '{"instances": [ { "filename": "Cambia_logo.png", "url": "https://phab.wmfusercontent.org/file/data/mb6wynlvf3bdfw5e443f/PHID-FILE-wc27fvtkl6yv4rjdlqzn/Cambia_logo.png", "target": "logo" }, { "filename": "Blooming_bush_(14248894271).jpg", "url": "https://phab.wmfusercontent.org/file/data/46i23voto2a4aqwo6iyb/PHID-FILE-eldmzjv4p3vwsiwsuxya/Blooming_bush_%2814248894271%29.jpg", "target": "logo" }, { "filename": "12_rue_de_Condé_-_detail.jpg", "url": "https://phab.wmfusercontent.org/file/data/wxtr7be45udzyjzrojr6/PHID-FILE-tnu6mrji2smn2hpm6nhv/12_rue_de_Cond%C3%A9_-_detail.jpg", "target": "logo" } ] }' -i --header "Content-type: application/json"
+On a separate terminal we can make a request to the server with:
+```console
+curl -s localhost:8080/v1/models/logo-detection:predict -X POST -d '{"instances": [ { "filename": "Cambia_logo.png", "url": "http://commons.wikimedia.org/w/index.php?title=Special:FilePath&file=Cambia_logo.png&width=224", "target": "logo" }, { "filename": "Blooming_bush_(14248894271).jpg", "url": "http://commons.wikimedia.org/w/index.php?title=Special:FilePath&file=Blooming_bush_%2814248894271%29.jpg&width=224", "target": "logo" }, { "filename": "12_rue_de_Condé_-_detail.jpg", "url": "http://commons.wikimedia.org/w/index.php?title=Special:FilePath&file=12_rue_de_Cond%C3%A9_-_detail.jpg&width=224", "target": "logo" } ] }' -i --header "Content-type: application/json"
+```
 </details>

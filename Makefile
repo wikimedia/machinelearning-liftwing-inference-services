@@ -13,6 +13,7 @@ language-identification \
 readability \
 articletopic-outlink-predictor \
 articletopic-outlink-transformer \
+logo-detection \
 clean
 
 # Default run command for revertrisk-language-agnostic
@@ -90,6 +91,17 @@ articletopic-outlink-transformer:
 	. $(VENV)/bin/activate && \
 	$(PYTHON) outlink_topic_model/transformer/transformer.py \
 	--predictor_host="localhost:8181" --model_name="outlink-topic-model"
+
+# Command for logo-detection model-server
+logo-detection:
+	@$(MAKE) run-server MODEL_NAME="logo-detection" \
+	MODEL_URL="logo-detection/20240417132942/logo_max_all.keras" \
+	MODEL_SERVER_PARENT_DIR="logo_detection" \
+	MODEL_PATH="models/logo-detection/20240417132942/logo_max_all.keras" \
+	MODEL_SERVER_DIR="model_server" \
+	DEP_DIR="." \
+	CUT_DIRS=2 \
+	ACCEPT_REGEX="."
 
 # Download NLTK Punkt sentence tokenizer used by readability
 download-nltk-punkt: $(VENV)/bin/activate
