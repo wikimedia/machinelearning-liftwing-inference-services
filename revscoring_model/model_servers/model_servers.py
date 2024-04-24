@@ -157,8 +157,11 @@ class RevscoringModel(kserve.Model):
     async def preprocess(self, inputs: Dict, headers: Dict[str, str] = None) -> Dict:
         """Use MW API session and Revscoring API to extract feature values
         of edit text based on its revision id"""
+        # This is the same request_id that kserve logs alongside with
+        # preprocess/process timings.
+        request_id = headers.get("x-request-id", "N.A.") if headers else "N.A."
         if self.LOG_JSON_PAYLOAD:
-            logging.info(f"JSON payload for the request: {inputs}")
+            logging.info(f"JSON payload for the request-id {request_id}: {inputs}")
         inputs = validate_json_input(inputs)
 
         rev_id = self.get_rev_id(inputs, self.EVENT_KEY)
