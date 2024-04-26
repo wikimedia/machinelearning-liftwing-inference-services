@@ -3,11 +3,13 @@ import logging
 from http import HTTPStatus
 from typing import Any, Dict
 
+import json
 import aiohttp
 import kserve
 import mwapi
 from fastapi import HTTPException
 from knowledge_integrity.mediawiki import get_revision, Error
+from knowledge_integrity.schema import Revision, InvalidJSONError
 from kserve.errors import InferenceError, InvalidInput
 
 from python.config_utils import get_config
@@ -25,6 +27,7 @@ class RevisionRevertRiskModel(kserve.Model):
         wiki_url: str,
         aiohttp_client_timeout: int,
         force_http: bool,
+        allow_revision_json_input: bool,
     ) -> None:
         super().__init__(name)
         self.name = name
@@ -35,6 +38,7 @@ class RevisionRevertRiskModel(kserve.Model):
         self.model_path = model_path
         self.wiki_url = wiki_url
         self.force_http = force_http
+        self.allow_revision_json_input = allow_revision_json_input
         self.aiohttp_client_timeout = aiohttp_client_timeout
         self.host_rewrite_config = get_config(key="mw_host_replace")
         self._http_client_session = {}
@@ -81,10 +85,38 @@ class RevisionRevertRiskModel(kserve.Model):
         self.model = self.ModelLoader.load_model(self.model_path)
         self.ready = True
 
+    def get_revision_from_input(self, inputs) -> Dict[str, Any]:
+        revision_json = json.dumps(inputs["revision_data"])
+        try:
+            inputs["revision"] = Revision.from_json(revision_json)
+        except InvalidJSONError:
+            logging.error("Missing some required fields.")
+            raise HTTPException(
+                status_code=HTTPStatus.BAD_REQUEST,
+                detail=(
+                    "Missing some required fields. Required fields"
+                    " are `id`, `lang`, `text`, `timestamp`, `bytes`,"
+                    " `page.id`, `page.title`, `page.first_edit_timestamp`,"
+                    " `parent.id`, `parent.lang`, `parent.text`,"
+                    " `parent.timestamp`, `parent.bytes`, `user.id`"
+                ),
+            )
+        inputs["lang"] = inputs["revision_data"]["lang"]
+        # We assign rev_id as -1 if it is a user-provided pre-saved edit that
+        # has not been saved in MediaWiki. This way we can distinguish it in
+        # the output from the requests for existing revisions.
+        inputs["rev_id"] = -1
+        return inputs
+
     async def preprocess(
         self, inputs: Dict[str, Any], headers: Dict[str, str] = None
     ) -> Dict[str, Any]:
         inputs = validate_json_input(inputs)
+        if "revision_data" in inputs and self.allow_revision_json_input:
+            logging.info(
+                "Received revision data. Bypassing data retrieval from the MW API."
+            )
+            return self.get_revision_from_input(inputs)
         lang = inputs.get("lang")
         rev_id = inputs.get("rev_id")
         logging.info(f"Received request for revision {rev_id} ({lang}).")

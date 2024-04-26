@@ -63,7 +63,7 @@ MODEL_PATH=<PATH_TO_MODEL_DIR/model.pkl> MODEL_NAME=revertrisk-language-agnostic
 
 On a separate terminal we can make a request to the server with:
 ```console
-curl -s localhost:8080/v1/models/revertrisk-language-agnostic:predict -X POST -d '{"lang": "en", "rev_id": 12345}' -i --header "Content-type: application/json"
+curl -s localhost:8080/v1/models/revertrisk-language-agnostic:predict -X POST -d '{"lang": "en", "rev_id": 12345}' --header "Content-type: application/json"
 ```
 
 ### 2.4. Batch inference
@@ -91,4 +91,40 @@ We have a different input schema for batch inference. For example, the input sho
     ]
 }
 ```
+
+### 2.5. Get prediction with revision data
+You can get revert risk predictions using revision data, instead of providing a revision ID. This way, the model server won't query the MediaWiki API to retrieve revision data.
+
+Required fields are `id`, `lang`, `text`, `timestamp`, `bytes`, `page.id`, `page.title`, `page.first_edit_timestamp`, `parent.id`, `parent.lang`, `parent.text`, `parent.timestamp`, `parent.bytes`, `user.id`.
+
+Example of a valid input:
+```json
+{
+   "revision_data":{
+      "id":1234,
+      "bytes":2800,
+      "comment":"Hello World",
+      "text":"I love Wikipedia. This is a lead.\n                == Section I ==\\n                Section I body. {{and a|template}}\\n                === Section I.A ===\\n                Section I.A [[body]].\\n                === Section I.B ===\\n                Section I.B body.\\n\\n                [[Category:bar]]\\n            ",
+      "timestamp":"2022-02-15T04:30:00Z",
+      "parent":{
+         "id":1200,
+         "bytes":2600,
+         "comment":"Added section I.B",
+         "text":"This is a lead.\n                == Section I ==\\n                Section I body. {{and a|template}}\\n                === Section I.A ===\\n                Section I.A [[body]].\\n                === Section I.B ===\\n                Section I.B body.\\n\\n                [[Category:bar]]\\n            ",
+         "timestamp":"2021-01-01T02:00:00Z",
+         "lang":"en"
+      },
+      "user":{
+         "id":0
+      },
+      "page":{
+         "id":1008,
+         "title":"this is a title",
+         "first_edit_timestamp":"2018-01-01T10:02:02Z"
+      },
+      "lang":"en"
+   }
+}
+```
+
 </details>

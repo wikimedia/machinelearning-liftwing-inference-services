@@ -10,12 +10,19 @@ logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
 
 if __name__ == "__main__":
     model_name = os.environ.get("MODEL_NAME")
+    module_name = (
+        "revertrisk"
+        if model_name == "revertrisk-language-agnostic"
+        else model_name.replace("-", "_")
+    )
     model_path = os.environ.get("MODEL_PATH", "/mnt/models/model.pkl")
     wiki_url = os.environ.get("WIKI_URL")
     force_http = strtobool(os.environ.get("FORCE_HTTP", "False"))
     aiohttp_client_timeout = os.environ.get("AIOHTTP_CLIENT_TIMEOUT", 5)
+    allow_revision_json_input = strtobool(
+        os.environ.get("ALLOW_REVISION_JSON_INPUT", "False")
+    )
     if model_name == "revertrisk-language-agnostic":
-        module_name = "revertrisk"
         model = RevisionRevertRiskModelBatch(
             model_name,
             module_name,
@@ -23,9 +30,9 @@ if __name__ == "__main__":
             wiki_url,
             aiohttp_client_timeout,
             force_http,
+            allow_revision_json_input,
         )
     else:
-        module_name = model_name.replace("-", "_")
         model = RevisionRevertRiskModel(
             model_name,
             module_name,
@@ -33,5 +40,6 @@ if __name__ == "__main__":
             wiki_url,
             aiohttp_client_timeout,
             force_http,
+            allow_revision_json_input,
         )
     kserve.ModelServer(workers=1).start([model])
