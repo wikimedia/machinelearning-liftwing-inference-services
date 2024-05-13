@@ -4,6 +4,6 @@ einops==0.7.0
 kserve==0.11.2
 sentencepiece==0.1.95
 scipy==1.11.0
---extra-index-url https://download.pytorch.org/whl/rocm5.7
-torch==2.2.1
+--extra-index-url https://download.pytorch.org/whl/rocm6.0
+torch==2.3.0
 transformers==4.36.2
