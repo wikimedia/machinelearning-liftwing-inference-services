@@ -1,11 +1,12 @@
+import asyncio
+import base64
 import logging
 import os
-import tempfile
 import shutil
+import tempfile
 from typing import Any, Dict, List, Tuple
 
 import aiohttp
-import asyncio
 import keras
 import kserve
 from kserve.errors import InferenceError, InvalidInput
@@ -44,8 +45,8 @@ class LogoDetectionModel(kserve.Model):
         self.validate_input_data(payload)
         # Create a request-specific temporary directory to store images
         temp_dir = tempfile.mkdtemp()
-        # Download images from URLs and save them to a temporary directory
-        await self.download_images_to_temp_dir(payload.get("instances"), temp_dir)
+        # Save base64 images to a temporary directory
+        await self.save_base64_images(payload.get("instances"), temp_dir)
         dataset = self.create_image_dataset(temp_dir)
         # Return both dataset and request-specific temp_dir
         return dataset, temp_dir
@@ -156,6 +157,42 @@ class LogoDetectionModel(kserve.Model):
                 tasks.append(task)
             await asyncio.gather(*tasks)
 
+    async def save_base64_image(self, data: Dict[str, str], temp_dir: str) -> None:
+        """
+        Saves base64 encoded image from input data to the specified
+        temporary directory.
+        """
+        image_name = data["filename"]
+
+        try:
+            # Decode base64 image string to bytes
+            image_bytes = base64.b64decode(data["image"])
+        except Exception as e:
+            error_message = f"Error decoding image {image_name}: {e}"
+            self.cleanup_temp_dir_on_error(temp_dir, error_message)
+
+        # Check image size before saving
+        if len(image_bytes) > self.image_max_size:
+            error_message = f"Image: {image_name} \
+                exceeds the maximum allowed size of {self.image_max_size} bytes."
+            self.cleanup_temp_dir_on_error(temp_dir, error_message)
+
+        image_path = os.path.join(temp_dir, image_name)
+        with open(image_path, "wb") as f:
+            f.write(image_bytes)
+
+    async def save_base64_images(
+        self, input_data: List[Dict[str, str]], temp_dir: str
+    ) -> None:
+        """
+        Saves base64 encoded images from input data to the specified
+        temporary directory asynchronously.
+        """
+        tasks = []
+        for data in input_data:
+            tasks.append(self.save_base64_image(data, temp_dir))
+        await asyncio.gather(*tasks)
+
     def cleanup_temp_dir_on_error(self, temp_dir: str, error_message: str) -> None:
         """
         Cleans up the temporary directory, logs and raises the provided error.
@@ -172,37 +209,33 @@ class LogoDetectionModel(kserve.Model):
         and their values are of the expected types.
         """
         if "instances" not in payload:
-            logging.error("Missing required key 'instances' in input data.")
-            raise InvalidInput("Missing required key 'instances' in input data.")
+            error_message = "Missing required key 'instances' in input data."
+            logging.error(error_message)
+            raise InvalidInput(error_message)
 
         input_data = payload.get("instances")
         # Check maximum number of images in input data
         if len(input_data) > self.images_max_num:
-            logging.error(
-                f"Input data should have less than {self.images_max_num} images."
-            )
-            raise InvalidInput(
-                f"Input data should have less than {self.images_max_num} images."
-            )
+            error_message = f"Input data should have less than \
+                {self.images_max_num} images."
+            logging.error(error_message)
+            raise InvalidInput(error_message)
 
-        required_keys = ["filename", "url", "target"]
+        required_keys = ["filename", "image", "target"]
         for data in input_data:
             # Check if all required keys are present
             if not all(key in data for key in required_keys):
-                logging.error(
-                    "Input data has invalid key(s). \
-                    Ensure each item contains: filename, url, and target."
-                )
-                raise InvalidInput(
-                    "Input data has invalid key(s). \
-                    Ensure each item contains: filename, url, and target."
-                )
+                error_message = "Input data has invalid key(s). \
+                    Ensure each item contains: filename, image, and target."
+                logging.error(error_message)
+                raise InvalidInput(error_message)
 
             # Check if values of required keys are strings
             for key in required_keys:
                 if not isinstance(data[key], str):
-                    logging.error(f"Value for key '{key}' should be a string.")
-                    raise InvalidInput(f"Value for key '{key}' should be a string.")
+                    error_message = f"Value for key '{key}' should be a string."
+                    logging.error(error_message)
+                    raise InvalidInput(error_message)
 
 
 if __name__ == "__main__":
