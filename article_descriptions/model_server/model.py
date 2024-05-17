@@ -257,14 +257,10 @@ class ArticleDescriptionsModel(kserve.Model):
             if human and not died:
                 blp = True
         except Exception as e:
-            logging.error(
-                f"Failed to lookup Wikidata info for page {title}. Reason: {e}"
-            )
-            raise InferenceError(
-                "An error occurred while fetching info for title "
-                "from the Wikidata API, please contact the ML-Team "
-                "if the issue persists."
-            )
+            error_message = f"Failed to lookup Wikidata info for \
+                page {title}. Reason: {e}"
+            logging.error(error_message)
+            raise InferenceError(error_message)
         return descriptions, sitelinks, blp
 
     @staticmethod
@@ -296,29 +292,30 @@ class ArticleDescriptionsModel(kserve.Model):
     ) -> None:
         """Validate the user inputs"""
         if not lang:
-            logging.error("Missing lang in input data.")
-            raise InvalidInput("The parameter lang is required.")
+            error_message = "The parameter lang is required."
+            logging.error(error_message)
+            raise InvalidInput(error_message)
         elif lang not in self.supported_wikipedia_language_codes:
-            logging.error(
-                f"Unsupported lang: {lang}. \
+            error_message = f"Unsupported lang: {lang}. \
                 The supported ones are: {self.supported_wikipedia_language_codes}."
-            )
-            raise InvalidInput(
-                f"Unsupported lang: {lang}. \
-                The supported ones are: {self.supported_wikipedia_language_codes}."
-            )
+            logging.error(error_message)
+            raise InvalidInput(error_message)
         if not title:
-            logging.error("Missing title in input data.")
-            raise InvalidInput("The parameter title is required.")
+            error_message = "The parameter title is required."
+            logging.error(error_message)
+            raise InvalidInput(error_message)
         if not num_beams:
-            logging.error("Missing num_beams in input data.")
-            raise InvalidInput("The parameter num_beams is required.")
+            error_message = "The parameter num_beams is required."
+            logging.error(error_message)
+            raise InvalidInput(error_message)
         elif not isinstance(num_beams, int) or num_beams < 1:
-            logging.error("num_beams in input data should be a positive number.")
-            raise InvalidInput("The parameter num_beams should be a positive number.")
+            error_message = "The parameter num_beams should be a positive number."
+            logging.error(error_message)
+            raise InvalidInput(error_message)
         if debug not in [0, 1]:
-            logging.error("debug in input data should be either 0 or 1.")
-            raise InvalidInput("The parameter debug should be either 0 or 1.")
+            error_message = "The parameter debug should be either 0 or 1."
+            logging.error(error_message)
+            raise InvalidInput(error_message)
 
 
 if __name__ == "__main__":
