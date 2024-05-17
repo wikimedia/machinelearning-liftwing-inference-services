@@ -69,8 +69,8 @@ curl -H "content-type:application/json" -v localhost:8080/v1/models/bert:predict
 ## Updating kserve and dependencies
 
 The huggingfaceserver is one of the latest additions in kserve and is still under development. In order for us to be able
-to incorporate the latest changes in kserve but also creating a standard build we are using a [wikimedia fork of kserve](https://github.com/wikimedia/kserve)
-and a specific branch named liftwing.
+to incorporate the latest changes in kserve but also create a standard build we are using a [wikimedia fork of kserve](https://github.com/wikimedia/kserve)
+and a specific branch named `liftwing`.
 
 Also, we specify all the dependencies explicitly in the requirements.txt file with the main reason being
 that we want to avoid pytorch to be reinstalled. The reason is that the base image has pytorch-rocm installed which has different metadata that torch and pip will try to install the cpu version of pytorch
@@ -81,6 +81,12 @@ In order to update to the latest version of kserve, you can do the following:
 Next to update the dependencies in the requirements.txt file we'll have to do one of the following:
 - Build the docker image locally by removing the no-deps flag from the blubber config. This will allow pip to automatically resolve the required dependencies.
   ```docker build --target production -f .pipeline/huggingface/blubber.yaml --platform=linux/amd64 -t hf:kserve .```
+  - Use the following requirements.txt file and build the docker image. Resolve any dependencies if needed.
+      ```
+      --extra-index-url https://download.pytorch.org/whl/rocm6.0
+      kserve @ file:///srv/app/kserve_repo/python/kserve
+      -e kserve_repo/python/huggingfaceserver
+      ```
 - Run `pip freeze` within a running container using the above docker image:
    `docker run -it --entrypoint "pip" hf:kserve freeze > requirements.txt`
 - Manually remove `torch` from the requirements.txt as well as all packages starting with `nvidia*` and then file a new patch
