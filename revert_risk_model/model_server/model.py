@@ -5,7 +5,6 @@ from distutils.util import strtobool
 import kserve
 from base_model import RevisionRevertRiskModel
 from batch_model import RevisionRevertRiskModelBatch
-from python.resource_utils import gpu_is_available
 
 logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
 
@@ -15,12 +14,8 @@ if __name__ == "__main__":
     wiki_url = os.environ.get("WIKI_URL")
     force_http = strtobool(os.environ.get("FORCE_HTTP", "False"))
     aiohttp_client_timeout = os.environ.get("AIOHTTP_CLIENT_TIMEOUT", 5)
-    use_batcher = strtobool(os.environ.get("USE_BATCHER", "False"))
     if model_name == "revertrisk-language-agnostic":
         module_name = "revertrisk"
-    else:
-        module_name = model_name.replace("-", "_")
-    if use_batcher:
         model = RevisionRevertRiskModelBatch(
             model_name,
             module_name,
@@ -29,20 +24,8 @@ if __name__ == "__main__":
             aiohttp_client_timeout,
             force_http,
         )
-    elif model_name == "revertrisk-multilingual" and gpu_is_available():
-        # We import gpu_model here to avoid issues with models that
-        # don't have torch installed, as gpu_model imports torch.
-        from gpu_model import RevertRiskMultilingualGPU
-
-        model = RevertRiskMultilingualGPU(
-            model_name,
-            module_name,
-            model_path,
-            wiki_url,
-            aiohttp_client_timeout,
-            force_http,
-        )
     else:
+        module_name = model_name.replace("-", "_")
         model = RevisionRevertRiskModel(
             model_name,
             module_name,

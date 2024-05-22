@@ -5,7 +5,6 @@ from typing import Any, List, Dict, Tuple, Sequence, Optional
 
 import mwapi
 from fastapi import HTTPException
-from fastapi.responses import JSONResponse
 from base_model import RevisionRevertRiskModel
 from knowledge_integrity.mediawiki import get_revision, Error
 from knowledge_integrity.schema import Revision
@@ -128,7 +127,7 @@ class RevisionRevertRiskModelBatch(RevisionRevertRiskModel):
             )
         num_rev = len(request["revision"])
         logging.info(f"Getting {num_rev} rev_ids in the request")
-        results = self.ModelLoader.classify_batch(self.model, valid_rev.values())
+        results = self.ModelLoader.classify(self.model, valid_rev.values())
         rev_pred = {k: results[i] for i, k in enumerate(valid_rev.keys())}
         predictions = []
         for (rev_id, lang), result in rev_pred.items():
@@ -156,10 +155,7 @@ class RevisionRevertRiskModelBatch(RevisionRevertRiskModel):
                         f"Could not make prediction for revision {rev_id} ({lang})."
                         f" Reason: {rev.code.value}"
                     )
-            return JSONResponse(
-                status_code=HTTPStatus.MULTI_STATUS,
-                content={"predictions": predictions + error_msg},
-            )
+            return {"predictions": predictions, "errors": error_msg}
         if "instances" not in request:
             # response for requests like {"rev_id": 12345, "lang": "en"}
             return predictions[0]
