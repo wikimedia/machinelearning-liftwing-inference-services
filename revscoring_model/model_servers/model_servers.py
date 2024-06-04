@@ -92,7 +92,9 @@ class RevscoringModel(kserve.Model):
     def score(self, feature_values):
         return self.model.score(feature_values)
 
-    def fetch_features(self, rev_id, features, extractor, cache):
+    def fetch_features(
+        self, rev_id, features, extractor, cache, heavy_revid_content=None
+    ):
         return extractor_utils.fetch_features(rev_id, features, extractor, cache)
 
     def get_http_client_session(self, endpoint):

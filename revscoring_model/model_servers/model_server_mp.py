@@ -19,6 +19,9 @@ class RevscoringModelMP(RevscoringModel):
         self.asyncio_aux_workers = int(os.environ.get("ASYNCIO_AUX_WORKERS"))
         self.preprocess_mp = strtobool(os.environ.get("PREPROCESS_MP", "True"))
         self.inference_mp = strtobool(os.environ.get("INFERENCE_MP", "True"))
+        self.mwapi_revid_content_threshold = int(
+            os.environ.get("MWAPI_REVID_CONTENT_THRESHOLD_BYTES", "100000")
+        )
         self.process_pool = process_utils.create_process_pool(self.asyncio_aux_workers)
 
     async def _run_in_process_pool(self, *args):
@@ -40,8 +43,10 @@ class RevscoringModelMP(RevscoringModel):
         else:
             return super().score(feature_values)
 
-    async def fetch_features(self, rev_id, features, extractor, cache):
-        if self.preprocess_mp:
+    async def fetch_features(
+        self, rev_id, features, extractor, cache, heavy_revid_content
+    ):
+        if self.preprocess_mp and heavy_revid_content:
             return await self._run_in_process_pool(
                 extractor_utils.fetch_features,
                 rev_id,
@@ -50,7 +55,7 @@ class RevscoringModelMP(RevscoringModel):
                 cache,
             )
         else:
-            return super().fetch_features(rev_id, features, extractor, cache)
+            return super().fetch_features(rev_id, features, extractor, cache, False)
 
     async def preprocess(self, inputs: Dict, headers: Dict[str, str] = None) -> Dict:
         """Use MW API session and Revscoring API to extract feature values
@@ -62,6 +67,37 @@ class RevscoringModelMP(RevscoringModel):
 
         cache = {}
 
+        # Sometimes the MWAPI returns a big JSON payload for a specific rev-id
+        # content, that will likely require a lot more computation for parsing
+        # and tokenization. Inspect the size reported by the MWAPI-Cache and
+        # offload the fetch_features call to a separate process only if it
+        # crosses a certain threshold, as performance compromise to make sure
+        # that the latency penalty for serialization/deserialization is not paid
+        # for small/quick rev-id contents.
+        heavy_revid_content = False
+        revisions = extractor.http_cache.get_revisions_batch_doc([rev_id])
+        for page_id, page_info in revisions["query"]["pages"].items():
+            for cached_revid_result in page_info["revisions"]:
+                try:
+                    if (
+                        cached_revid_result["size"]
+                        >= self.mwapi_revid_content_threshold
+                    ):
+                        heavy_revid_content = True
+                        logging.info(
+                            f"The MWAPI cache content for {rev_id} is {cached_revid_result['size']} "
+                            f"bytes and multiprocessing is used for extracting features"
+                        )
+                except KeyError:
+                    logging.error(
+                        f"The MWAPI cache content for {rev_id} didn't contain a size field, "
+                        "assuming a non heavy rev-id."
+                    )
+                    logging.debug(
+                        f"The MWAPI cached content that led to the KeyError is {cached_revid_result}",
+                        cached_revid_result,
+                    )
+
         # The fetch_features function can be heavily cpu-bound, it depends
         # on the complexity of the rev-id to process. Running cpu-bound
         # code inside the asyncio eventloop will block the thread
@@ -69,13 +105,13 @@ class RevscoringModelMP(RevscoringModel):
         # (still enabled/disabled as opt-in).
         # See: https://docs.python.org/3/library/asyncio-eventloop.html#executing-code-in-thread-or-process-pools
         inputs[self.FEATURE_VAL_KEY] = await self.fetch_features(
-            rev_id, self.model.features, extractor, cache
+            rev_id, self.model.features, extractor, cache, heavy_revid_content
         )
 
         if extended_output:
             bare_model_features = list(trim(self.model.features))
             base_feature_values = await self.fetch_features(
-                rev_id, bare_model_features, extractor, cache
+                rev_id, bare_model_features, extractor, cache, heavy_revid_content
             )
             inputs[self.EXTENDED_OUTPUT_KEY] = {
                 str(f): v for f, v in zip(bare_model_features, base_feature_values)
