@@ -76,7 +76,14 @@ Also, we specify all the dependencies explicitly in the requirements.txt file wi
 that we want to avoid pytorch to be reinstalled. The reason is that the base image has pytorch-rocm installed which has different metadata that torch and pip will try to install the cpu version of pytorch
 leaving us with an additional 2-3GB of files that we don't need.
 In order to update to the latest version of kserve, you can do the following:
-- sync the liftwing branch in the wikimedia/kserve repository to the kserve/kserve one via the `Update branch` button under the synf fork menu in the github UI.
+- sync the `main` branch in our fork wikimedia/kserve repository to the kserve/kserve one via the `Update branch` button under the sync fork menu in the github UI.
+  - If we plan to use a custom commit (in development phase) we can sync also the `liftwing` branch to the latest version of the `main` branch.
+  - If we plan to use a stable release then we should also sync all the tags manually via cli.
+    ```
+    git remote update upstream https://github.com/kserve/kserve.git
+    git fetch upstream --tags
+    git push origin --tags
+    ```
 
 Next to update the dependencies in the requirements.txt file we'll have to do one of the following:
 - Build the docker image locally by removing the no-deps flag from the blubber config. This will allow pip to automatically resolve the required dependencies.
