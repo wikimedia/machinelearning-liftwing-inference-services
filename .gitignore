@@ -161,4 +161,4 @@ cython_debug/
 #.idea/
 
 # Model directories as used by the Makefile
-models/
+/models/
