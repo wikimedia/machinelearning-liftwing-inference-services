@@ -38,5 +38,5 @@ class ArticleQualityModel(kserve.Model):
 
 if __name__ == "__main__":
     model_name = os.environ.get("MODEL_NAME")
-    model = ArticleQuality(name=model_name)
+    model = ArticleQualityModel(name=model_name)
     kserve.ModelServer(workers=1).start([model])
