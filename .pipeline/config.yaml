@@ -262,3 +262,22 @@ pipelines:
           image:
             name: '${setup.project}-logo-detection'
             tags: [stable]
+
+  articlequality:
+    blubberfile: articlequality/blubber.yaml
+    stages:
+      - name: run-test
+        build: test
+        run: true
+      - name: production
+        build: production
+
+  articlequality-publish:
+    blubberfile: articlequality/blubber.yaml
+    stages:
+      - name: publish
+        build: production
+        publish:
+          image:
+            name: '${setup.project}-articlequality'
+            tags: [stable]
