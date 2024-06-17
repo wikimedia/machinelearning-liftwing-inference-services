@@ -1,1 +1,3 @@
 kserve==0.13.0
+mwparserfromhtml==1.0.2
+pandas==2.2.2
