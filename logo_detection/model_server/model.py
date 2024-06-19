@@ -4,6 +4,7 @@ import logging
 import os
 import shutil
 import tempfile
+import time
 from typing import Any, Dict, List, Tuple
 
 import aiohttp
@@ -41,6 +42,8 @@ class LogoDetectionModel(kserve.Model):
     async def preprocess(
         self, payload: Dict[str, Any], headers: Dict[str, str] = None
     ) -> Tuple[Dataset, str]:
+        latency = {}
+        preprocess_start_time = time.time()
         payload = validate_json_input(payload)
         self.validate_input_data(payload)
         # Create a request-specific temporary directory to store images
@@ -48,16 +51,23 @@ class LogoDetectionModel(kserve.Model):
         # Save base64 images to a temporary directory
         await self.save_base64_images(payload.get("instances"), temp_dir)
         dataset = self.create_image_dataset(temp_dir)
-        # Return both dataset and request-specific temp_dir
-        return dataset, temp_dir
+        # Return dataset, request-specific temp_dir, and latency
+        latency["preprocess (s)"] = time.time() - preprocess_start_time
+        debug = payload.get("debug", False)  # default to non debug mode
+        return dataset, temp_dir, latency, debug
 
     def predict(
         self, preprocess_results: Tuple[Dataset, str], headers: Dict[str, str] = None
     ) -> Dict[str, Any]:
-        dataset, temp_dir = preprocess_results
+        predict_start_time = time.time()
+        dataset, temp_dir, latency, debug = preprocess_results
         predictions = self.generate_predictions(dataset, temp_dir)
         # Delete the temporary directory after use
         shutil.rmtree(temp_dir)
+        latency["predict (s)"] = time.time() - predict_start_time
+        latency["total (s)"] = latency["preprocess (s)"] + latency["predict (s)"]
+        if debug:
+            predictions["latency"] = latency
         return predictions
 
     def generate_predictions(self, dataset: Dataset, temp_dir: str) -> Dict[str, Any]:
@@ -210,6 +220,11 @@ class LogoDetectionModel(kserve.Model):
         """
         if "instances" not in payload:
             error_message = "Missing required key 'instances' in input data."
+            logging.error(error_message)
+            raise InvalidInput(error_message)
+
+        if not isinstance(payload.get("debug", False), bool):
+            error_message = "The 'debug' key should be a boolean."
             logging.error(error_message)
             raise InvalidInput(error_message)
 
