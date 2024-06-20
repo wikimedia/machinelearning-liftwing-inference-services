@@ -18,11 +18,12 @@ logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
 
 
 class ArticleQualityModel(kserve.Model):
-    def __init__(self, name: str) -> None:
+    def __init__(self, name: str, force_http: bool = False) -> None:
         super().__init__(name)
         self.name = name
         self.ready = False
         self.model_path = os.environ.get("MODEL_PATH", "/mnt/models/model.pkl")
+        self.protocol = "http" if force_http else "https"
         self.load()
 
     def load(self) -> None:
@@ -40,7 +41,7 @@ class ArticleQualityModel(kserve.Model):
         inputs = validate_json_input(inputs)
         lang = inputs.get("lang")
         rev_id = inputs.get("rev_id")
-        article_html = get_article_html(lang, rev_id)
+        article_html = get_article_html(lang, rev_id, self.protocol)
         article_features = get_article_features(article_html)
         if article_features[0] > 0:  # page_length > 0
             normalized_features = normalize_features(

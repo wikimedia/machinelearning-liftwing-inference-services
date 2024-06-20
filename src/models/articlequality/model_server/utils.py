@@ -6,7 +6,7 @@ from mwparserfromhtml import Article
 from mwparserfromhtml.parse.utils import is_transcluded
 
 
-def get_article_html(lang, revid):
+def get_article_html(lang, revid, protocol):
     """Get an article revision's HTML.
 
     NOTE: fetching HTML for old revisions can be slow as it's not always cached.
@@ -15,7 +15,8 @@ def get_article_html(lang, revid):
     See: https://www.mediawiki.org/wiki/RESTBase/service_migration#Parsoid_endpoints
 
     """
-    base_url = f"https://{lang}.wikipedia.org/w/rest.php/v1/revision/{revid}/html"  # returns the html contents
+
+    base_url = f"{protocol}://{lang}.wikipedia.org/w/rest.php/v1/revision/{revid}/html"
 
     try:
         response = requests.get(
