@@ -1,5 +1,6 @@
 import logging
 import os
+from distutils.util import strtobool
 from typing import Any, Dict
 
 import kserve
@@ -65,5 +66,6 @@ class ArticleQualityModel(kserve.Model):
 
 if __name__ == "__main__":
     model_name = os.environ.get("MODEL_NAME")
-    model = ArticleQualityModel(name=model_name)
+    force_http = strtobool(os.environ.get("FORCE_HTTP", "False"))
+    model = ArticleQualityModel(name=model_name, force_http=force_http)
     kserve.ModelServer(workers=1).start([model])
