@@ -2,6 +2,7 @@ import logging
 import os
 from distutils.util import strtobool
 from typing import Any, Dict
+import pickle
 
 import kserve
 from kserve.errors import InferenceError
@@ -19,17 +20,17 @@ logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
 
 
 class ArticleQualityModel(kserve.Model):
-    def __init__(self, name: str, force_http: bool = False) -> None:
+    def __init__(self, name: str, model_path: str, force_http: bool = False) -> None:
         super().__init__(name)
         self.name = name
         self.ready = False
-        self.model_path = os.environ.get("MODEL_PATH", "/mnt/models/model.pkl")
+        self.model_path = model_path
         self.protocol = "http" if force_http else "https"
         self.load()
 
     def load(self) -> None:
-        # TODO: Load the model from the model_path
-
+        with open(self.model_path, "rb") as f:
+            self.model = pickle.load(f)
         # Load the table of max feature values - use for feature normalization
         self.max_qual_vals = load_quality_max_featurevalues(
             "data/max-vals-html-dumps-ar-en-fr-hu-tr-zh.tsv"
@@ -60,12 +61,15 @@ class ArticleQualityModel(kserve.Model):
     def predict(
         self, request: Dict[str, Any], headers: Dict[str, str] = None
     ) -> Dict[str, Any]:
-        # TODO: Run model.predict() on the preprocessed inputs
-        return request
+        predicted_value = self.model.predict([request["normalized_features"]])
+        return predicted_value[0]
 
 
 if __name__ == "__main__":
     model_name = os.environ.get("MODEL_NAME")
+    model_path = os.environ.get("MODEL_PATH", "/mnt/models/model.pkl")
     force_http = strtobool(os.environ.get("FORCE_HTTP", "False"))
-    model = ArticleQualityModel(name=model_name, force_http=force_http)
+    model = ArticleQualityModel(
+        name=model_name, model_path=model_path, force_http=force_http
+    )
     kserve.ModelServer(workers=1).start([model])
