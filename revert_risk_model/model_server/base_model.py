@@ -8,7 +8,7 @@ import kserve
 import mwapi
 from fastapi import HTTPException
 from knowledge_integrity.mediawiki import get_revision, Error
-from kserve.errors import InferenceError
+from kserve.errors import InferenceError, InvalidInput
 
 from python.config_utils import get_config
 from python.preprocess_utils import check_input_param, validate_json_input
@@ -71,6 +71,12 @@ class RevisionRevertRiskModel(kserve.Model):
         ):
             logging.info(f"Unsupported lang: {lang}.")
 
+    def check_wiki_suffix(self, lang):
+        if lang.endswith("wiki"):
+            raise InvalidInput(
+                "Language field should not have a 'wiki' suffix, i.e. use 'en', not 'enwiki'"
+            )
+
     def load(self) -> None:
         self.model = self.ModelLoader.load_model(self.model_path)
         self.ready = True
@@ -83,6 +89,7 @@ class RevisionRevertRiskModel(kserve.Model):
         rev_id = inputs.get("rev_id")
         logging.info(f"Received request for revision {rev_id} ({lang}).")
         check_input_param(lang=lang, rev_id=rev_id)
+        self.check_wiki_suffix(lang)
         self.check_supported_wikis(lang)
         mw_host = self.get_mediawiki_host(lang)
         session = mwapi.AsyncSession(

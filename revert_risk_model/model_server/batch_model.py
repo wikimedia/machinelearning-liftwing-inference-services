@@ -78,6 +78,7 @@ class RevisionRevertRiskModelBatch(RevisionRevertRiskModel):
     ) -> Dict[str, Any]:
         inputs = validate_json_input(inputs)
         rev_ids, lang = self.prepare_batch_input(inputs)
+        self.check_wiki_suffix(lang)
         self.check_supported_wikis(lang)
         mw_host = self.get_mediawiki_host(lang)
         session = mwapi.AsyncSession(
