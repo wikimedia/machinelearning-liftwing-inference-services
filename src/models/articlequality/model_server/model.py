@@ -20,11 +20,18 @@ logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
 
 
 class ArticleQualityModel(kserve.Model):
-    def __init__(self, name: str, model_path: str, force_http: bool = False) -> None:
+    def __init__(
+        self,
+        name: str,
+        model_path: str,
+        max_feature_vals: str,
+        force_http: bool = False,
+    ) -> None:
         super().__init__(name)
         self.name = name
         self.ready = False
         self.model_path = model_path
+        self.max_feature_vals = max_feature_vals
         self.protocol = "http" if force_http else "https"
         self.load()
 
@@ -32,9 +39,7 @@ class ArticleQualityModel(kserve.Model):
         with open(self.model_path, "rb") as f:
             self.model = pickle.load(f)
         # Load the table of max feature values - use for feature normalization
-        self.max_qual_vals = load_quality_max_featurevalues(
-            "data/max-vals-html-dumps-ar-en-fr-hu-tr-zh.tsv"
-        )
+        self.max_qual_vals = load_quality_max_featurevalues(self.max_feature_vals)
         self.ready = True
 
     async def preprocess(
@@ -69,7 +74,13 @@ if __name__ == "__main__":
     model_name = os.environ.get("MODEL_NAME")
     model_path = os.environ.get("MODEL_PATH", "/mnt/models/model.pkl")
     force_http = strtobool(os.environ.get("FORCE_HTTP", "False"))
+    max_feature_vals = os.environ.get(
+        "MAX_FEATURE_VALS", "data/max-values-html-dumps-ar-en-fr-hu-tr-zh.tsv"
+    )
     model = ArticleQualityModel(
-        name=model_name, model_path=model_path, force_http=force_http
+        name=model_name,
+        model_path=model_path,
+        max_feature_vals=max_feature_vals,
+        force_http=force_http,
     )
     kserve.ModelServer(workers=1).start([model])
