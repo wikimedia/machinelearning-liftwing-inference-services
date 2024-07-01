@@ -21,7 +21,7 @@ variants:
       - custom:
           # At the moment we clone the kserve repo to get the huggingface server from the master branch as various
           # fixes are introduced. In the future we'll either clone a specific release or commit the code in our repo.
-          command: [ "git", "clone",  "--branch", "v0.13.0", "https://github.com/wikimedia/kserve.git", "kserve_repo" ]
+          command: [ "git", "clone",  "--branch", "liftwing", "https://github.com/wikimedia/kserve.git", "kserve_repo" ]
       - python:
           version: python3
           no-deps: true
