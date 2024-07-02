@@ -10,6 +10,7 @@ export PYTHONPATH := $(PYTHON_PATH):$(PYTHONPATH)
 # docs on what phony targets are and how to use them.
 .PHONY: \
 article-descriptions \
+articlequality \
 articletopic-outlink-predictor \
 articletopic-outlink-transformer \
 clean \
@@ -28,10 +29,13 @@ run-server
 run: revertrisk-language-agnostic
 
 # Generic command to run any model server.
-# Adds port argument if defined (e.g articletopic-outlink defines it because it
-# uses both a predictor and transformer)
+# Adds isvc-specific arguments if defined:
+# - articlequality uses the MAX_FEATURE_VALS to load the features data file.
+# - articletopic-outlink uses PREDICTOR_PORT because it runs both a predictor
+#   and transformer.
 run-server: $(VENV)/bin/activate $(MODEL_PATH)
 	MODEL_PATH=$(MODEL_PATH) MODEL_NAME=$(MODEL_NAME) \
+	$(if $(MAX_FEATURE_VALS), MAX_FEATURE_VALS=$(MAX_FEATURE_VALS)) \
 	$(PYTHON) $(MODEL_SERVER_PARENT_DIR)/$(MODEL_SERVER_DIR)/model.py \
 	$(if $(PREDICTOR_PORT), --http_port=$(PREDICTOR_PORT))
 
@@ -64,6 +68,18 @@ clone-descartes:
 	@if [ ! -d "article_descriptions/model_server/descartes" ]; then \
 		git clone https://github.com/wikimedia/descartes.git --branch 1.0.1 article_descriptions/model_server/descartes; \
 	fi
+
+# Command for articlequality model-server
+articlequality:
+	@$(MAKE) run-server MODEL_NAME="articlequality" \
+	MODEL_URL="articlequality/language-agnostic/model.pkl" \
+	MODEL_SERVER_PARENT_DIR="src/models/articlequality" \
+	MODEL_PATH="models/articlequality/language-agnostic/model.pkl" \
+	MODEL_SERVER_DIR="model_server" \
+	DEP_DIR=".." \
+	CUT_DIRS=2 \
+	ACCEPT_REGEX="." \
+	MAX_FEATURE_VALS="src/models/articlequality/data/max-vals-html-dumps-ar-en-fr-hu-tr-zh.tsv"
 
 # Command for articletopic-outlink predictor
 articletopic-outlink-predictor:

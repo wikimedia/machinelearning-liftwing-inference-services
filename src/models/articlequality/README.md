@@ -9,12 +9,34 @@ The language-agnostic articlequality inference service takes a Wikipedia article
 
 
 ## How to run locally
-In order to run the articlequality model server locally, please follow the instructions below:
+In order to run the articlequality model server locally, please choose one of the two options below:
 
 <details>
-<summary>1. Manual setup</summary>
+<summary>1. Automated setup using the Makefile</summary>
 
-### 1.1 Build Python venv and install dependencies
+### 1.1. Build
+In the first terminal run:
+```console
+make articlequality
+```
+This build process will set up: a Python venv, install dependencies, download the model(s), and run the server.
+
+### 1.2. Query
+On the second terminal query the isvc using:
+```console
+curl -s localhost:8080/v1/models/articlequality:predict -X POST -d '{"rev_id": 12345, "lang": "en"}' -i -H "Content-type: application/json"
+```
+
+### 1.3. Remove
+If you would like to remove the setup run:
+```console
+MODEL_TYPE=articlequality make clean
+```
+</details>
+<details>
+<summary>2. Manual setup</summary>
+
+### 2.1 Build Python venv and install dependencies
 First add the top level directory of the repo to the PYTHONPATH:
 ```console
 export PYTHONPATH=$PYTHONPATH:.
@@ -28,11 +50,11 @@ pip install -r src/models/articlequality/requirements.txt
 pip install -r python/requirements.txt
 ```
 
-### 1.1. Download the model
+### 2.2. Download the model
 Download the `model.pkl` from the link below and place it in the same directory named PATH_TO_MODEL_DIR.
 https://analytics.wikimedia.org/published/wmf-ml-models/articlequality/language-agnostic/
 
-### 1.3. Run the server
+### 2.3. Run the server
 We can run the server locally with:
 ```console
 MODEL_PATH=PATH_TO_MODEL_DIR MAX_FEATURE_VALS=PATH_TO_MAX_FEATURE_VALS MODEL_NAME=articlequality python3 src/models/articlequality/model_server/model.py
