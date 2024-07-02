@@ -97,6 +97,8 @@ You can get revert risk predictions using revision data, instead of providing a 
 
 Required fields are `id`, `lang`, `text`, `timestamp`, `bytes`, `page.id`, `page.title`, `page.first_edit_timestamp`, `parent.id`, `parent.lang`, `parent.text`, `parent.timestamp`, `parent.bytes`, `user.id`.
 
+If the revision has not yet been saved, set `id` to `-1`.
+
 Example of a valid input:
 ```json
 {
