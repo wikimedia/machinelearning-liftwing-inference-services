@@ -75,7 +75,7 @@ if __name__ == "__main__":
     model_path = os.environ.get("MODEL_PATH", "/mnt/models/model.pkl")
     force_http = strtobool(os.environ.get("FORCE_HTTP", "False"))
     max_feature_vals = os.environ.get(
-        "MAX_FEATURE_VALS", "data/max-values-html-dumps-ar-en-fr-hu-tr-zh.tsv"
+        "MAX_FEATURE_VALS", "data/max-vals-html-dumps-ar-en-fr-hu-tr-zh.tsv"
     )
     model = ArticleQualityModel(
         name=model_name,
