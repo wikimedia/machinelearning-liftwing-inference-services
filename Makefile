@@ -114,7 +114,7 @@ language-identification:
 logo-detection:
 	@$(MAKE) run-server MODEL_NAME="logo-detection" \
 	MODEL_URL="logo-detection/20240417132942/logo_max_all.keras" \
-	MODEL_SERVER_PARENT_DIR="logo_detection" \
+	MODEL_SERVER_PARENT_DIR="src/models/logo_detection" \
 	MODEL_PATH="models/logo-detection/20240417132942/logo_max_all.keras" \
 	MODEL_SERVER_DIR="model_server" \
 	DEP_DIR="." \

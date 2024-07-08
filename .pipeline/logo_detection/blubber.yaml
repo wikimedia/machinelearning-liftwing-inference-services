@@ -13,7 +13,7 @@ variants:
   build:
     python:
       version: python3
-      requirements: [logo_detection/model_server/requirements.txt, python/requirements.txt]
+      requirements: [src/models/logo_detection/model_server/requirements.txt, python/requirements.txt]
     apt:
       packages:
         - build-essential
@@ -24,7 +24,7 @@ variants:
   production:
     copies:
       - from: local
-        source: logo_detection/model_server/.
+        source: src/models/logo_detection/model_server/.
         destination: model_server
       - from: local
         source: python
@@ -57,7 +57,7 @@ variants:
         - git
     copies:
       - from: local
-        source: logo_detection/model_server
+        source: src/models/logo_detection/model_server
         destination: model_server
       - from: local
         source: python
