@@ -1,11 +1,11 @@
-# syntax=docker-registry.wikimedia.org/repos/releng/blubber/buildkit:v0.22.0
+# syntax=docker-registry.wikimedia.org/repos/releng/blubber/buildkit:v0.23.0
+base: docker-registry.wikimedia.org/amd-pytorch23:2.3.0rocm6.0-2
 version: v4
-base: docker-registry.wikimedia.org/amd-pytorch23:2.3.0rocm6.0-1
 
 runs:
   insecurely: true
   environment:
-    PYTHONPATH: /srv/app
+    PYTHONPATH: /srv/app:/opt/lib/python/site-packages:/opt/lib/venv/lib/python3.11/site-packages
     MODEL_DIR: /mnt/models
 
 lives:
@@ -17,6 +17,7 @@ variants:
       packages:
         - build-essential
         - git
+        - python3-venv
     builders:
       - custom:
           # At the moment we clone the kserve repo to get the huggingface server from the master branch as various
@@ -24,7 +25,8 @@ variants:
           command: [ "git", "clone",  "--branch", "liftwing", "https://github.com/wikimedia/kserve.git", "kserve_repo" ]
       - python:
           version: python3
-          no-deps: true
+          use-system-site-packages: true
+          no-deps: false
           requirements: [ huggingface_modelserver/requirements.txt ]
 
 
@@ -34,6 +36,9 @@ variants:
         source: /opt/lib/python/site-packages
         destination: /opt/lib/python/site-packages
       - from: build
+        source: /opt/lib/venv/lib/python3.11/site-packages/
+        destination: /opt/lib/venv/lib/python3.11/site-packages/
+      - from: build
         source: /srv/app/kserve_repo/python/huggingfaceserver
         destination: .
       - from: local
@@ -42,7 +47,7 @@ variants:
 
     python:
       version: python3
-      use-system-flag: false
+      use-system-site-packages: true
     entrypoint: ["./entrypoint.sh"]
 
 
@@ -52,6 +57,7 @@ variants:
         - python3-pip
         - python3-setuptools
         - git
+        - python3-venv
     copies:
       - from: local
         source: huggingface_modelserver/
@@ -74,5 +80,4 @@ variants:
     entrypoint: ["./ci_entrypoint.sh", "."]
     python:
       version: python3
-      use-system-flag: false
       requirements: [requirements-test.txt]
