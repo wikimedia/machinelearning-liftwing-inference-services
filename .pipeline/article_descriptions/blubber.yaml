@@ -23,12 +23,12 @@ variants:
           command: ["git", "clone", "--branch", "1.0.1", "--depth", "1", "https://github.com/wikimedia/descartes.git", "model_server/descartes"]
       - python:
           version: python3
-          requirements: [article_descriptions/model_server/requirements.txt, python/requirements.txt]
+          requirements: [src/models/article_descriptions/model_server/requirements.txt, python/requirements.txt]
 
   production:
     copies:
       - from: local
-        source: article_descriptions/model_server/.
+        source: src/models/article_descriptions/model_server/.
         destination: model_server
       - from: build
         source: /srv/article_descriptions/model_server/.
@@ -64,7 +64,7 @@ variants:
         - git
     copies:
       - from: local
-        source: article_descriptions/model_server
+        source: src/models/article_descriptions/model_server
         destination: model_server
       - from: local
         source: python

@@ -49,12 +49,12 @@ Create a virtual environment and install the dependencies using:
 ```console
 python -m venv .venv
 source .venv/bin/activate
-pip install -r article_descriptions/model_server/requirements.txt
+pip install -r src/models/article_descriptions/model_server/requirements.txt
 ```
 
 Clone the descartes repository by running:
 ```console
-git clone https://github.com/wikimedia/descartes.git --branch 1.0.1 article_descriptions/model_server/descartes
+git clone https://github.com/wikimedia/descartes.git --branch 1.0.1 src/models/article_descriptions/model_server/descartes
 ```
 
 ### 2.2. Download the model(s)
@@ -71,7 +71,7 @@ PATH_TO_MODEL_DIR
 
 ### 2.3. Run the server
 We can run the server locally with:
-> MODEL_PATH=PATH_TO_MODEL_DIR MODEL_NAME=article-descriptions python article_descriptions/model_server/model.py
+> MODEL_PATH=PATH_TO_MODEL_DIR MODEL_NAME=article-descriptions python src/models/article_descriptions/model_server/model.py
 
  On a separate terminal we can make a request to the server with:
 > curl -s localhost:8080/v1/models/article-descriptions:predict -X POST -d '{"lang": "en", "title": "Clandonald", "num_beams": 2}' -i --header "Content-type: application/json"

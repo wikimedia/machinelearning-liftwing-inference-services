@@ -56,7 +56,7 @@ clean:
 article-descriptions: clone-descartes
 	@$(MAKE) run-server MODEL_NAME="article-descriptions" \
 	MODEL_URL="article-descriptions/" \
-	MODEL_SERVER_PARENT_DIR="article_descriptions" \
+	MODEL_SERVER_PARENT_DIR="src/models/article_descriptions" \
 	MODEL_PATH="models/article-descriptions/" \
 	MODEL_SERVER_DIR="model_server" \
 	DEP_DIR="." \
@@ -65,8 +65,8 @@ article-descriptions: clone-descartes
 
 # Clone descartes repository if not already present (used by article-descriptions)
 clone-descartes:
-	@if [ ! -d "article_descriptions/model_server/descartes" ]; then \
-		git clone https://github.com/wikimedia/descartes.git --branch 1.0.1 article_descriptions/model_server/descartes; \
+	@if [ ! -d "src/models/article_descriptions/model_server/descartes" ]; then \
+		git clone https://github.com/wikimedia/descartes.git --branch 1.0.1 src/models/article_descriptions/model_server/descartes; \
 	fi
 
 # Command for articlequality model-server
