@@ -46,7 +46,7 @@ Create a virtual environment and install the dependencies using:
 ```console
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -r readability_model/model_server/requirements.txt
+pip install -r src/models/readability_model/model_server/requirements.txt
 python3 -m nltk.downloader punkt
 ```
 
@@ -57,7 +57,7 @@ https://analytics.wikimedia.org/published/wmf-ml-models/readability/multilingual
 ### 2.3. Run the server
 We can run the server locally with:
 ```console
-MODEL_PATH=PATH_TO_MODEL_DIR MODEL_NAME=readability python3 readability_model/model_server/model.py
+MODEL_PATH=PATH_TO_MODEL_DIR MODEL_NAME=readability python3 src/models/readability_model/model_server/model.py
 ```
 
 On a separate terminal we can make a request to the server with:
