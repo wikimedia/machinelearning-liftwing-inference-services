@@ -19,15 +19,15 @@ Even in this case, after one figures out the type of tests needed, it is recomme
 
    **Staging**:
    ```bash
-   httpbb --host inference-staging.svc.codfw.wmnet --https_port 30443 /srv/deployment/httpbb-tests/liftwing/test_liftwing_staging.yaml
+   httpbb --host inference-staging.svc.codfw.wmnet --https_port 30443 /srv/deployment/httpbb-tests/liftwing/staging/*
    ```
 
    **Production**:
    ```bash
-   httpbb --host inference.svc.codfw.wmnet --https_port 30443 /srv/deployment/httpbb-tests/liftwing/test_liftwing_production.yaml
+   httpbb --host inference.svc.codfw.wmnet --https_port 30443 /srv/deployment/httpbb-tests/liftwing/production/*
    ```
    ```bash
-   httpbb --host inference.svc.eqiad.wmnet --https_port 30443 /srv/deployment/httpbb-tests/liftwing/test_liftwing_production.yaml
+   httpbb --host inference.svc.eqiad.wmnet --https_port 30443 /srv/deployment/httpbb-tests/liftwing/production/*
    ```
 
 2. Tests that are run through the python script `endpoint_manual_testing.py` from deployment server
