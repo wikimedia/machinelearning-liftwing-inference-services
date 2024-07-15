@@ -11,7 +11,7 @@ variants:
   build:
     python:
       version: python3
-      requirements: [nsfw-model/model-server/requirements.txt]
+      requirements: [src/models/nsfw-model/model-server/requirements.txt]
     apt:
       packages:
         - python3-pip
@@ -20,7 +20,7 @@ variants:
   production:
     copies:
       - from: local
-        source: nsfw-model/model-server
+        source: src/models/nsfw-model/model-server
         destination: model-server
       - from: build
         source: /opt/lib/python/site-packages
@@ -43,7 +43,7 @@ variants:
         - git
     copies:
       - from: local
-        source: nsfw-model/model-server
+        source: src/models/nsfw-model/model-server
         destination: model-server
       - from: local
         source: tox.ini
