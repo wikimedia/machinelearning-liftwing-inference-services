@@ -11,7 +11,7 @@ variants:
   build:
     python:
       version: python3
-      requirements: [outlink_topic_model/model_server/requirements.txt]
+      requirements: [src/models/outlink_topic_model/model_server/requirements.txt]
     apt:
       packages:
         - build-essential
@@ -26,7 +26,7 @@ variants:
   production:
     copies:
       - from: local
-        source: outlink_topic_model/model_server
+        source: src/models/outlink_topic_model/model_server
         destination: model_server
       - from: local
         source: python/*.py
@@ -58,7 +58,7 @@ variants:
         - git
     copies:
       - from: local
-        source: outlink_topic_model/model_server
+        source: src/models/outlink_topic_model/model_server
         destination: model_server
       - from: local
         source: tox.ini

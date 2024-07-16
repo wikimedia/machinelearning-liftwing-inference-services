@@ -85,7 +85,7 @@ articlequality:
 articletopic-outlink-predictor:
 	@$(MAKE) run-server MODEL_NAME="outlink-topic-model" \
 	MODEL_URL="articletopic/outlink/20221111111111/model.bin" \
-	MODEL_SERVER_PARENT_DIR="outlink_topic_model" \
+	MODEL_SERVER_PARENT_DIR="src/models/outlink_topic_model" \
 	MODEL_PATH="models/articletopic/outlink/20221111111111/model.bin" \
 	MODEL_SERVER_DIR="model_server" \
 	DEP_DIR="." \
@@ -96,7 +96,7 @@ articletopic-outlink-predictor:
 # Command for articletopic-outlink transformer
 articletopic-outlink-transformer:
 	. $(VENV)/bin/activate && \
-	$(PYTHON) outlink_topic_model/transformer/transformer.py \
+	$(PYTHON) src/models/outlink_topic_model/transformer/transformer.py \
 	--predictor_host="localhost:8181" --model_name="outlink-topic-model"
 
 # Command for language-identification model-server

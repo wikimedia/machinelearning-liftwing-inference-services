@@ -1,5 +1,5 @@
 import pytest
-from outlink_topic_model.transformer.transformer import OutlinkTransformer
+from src.models.outlink_topic_model.transformer.transformer import OutlinkTransformer
 
 
 @pytest.mark.parametrize(

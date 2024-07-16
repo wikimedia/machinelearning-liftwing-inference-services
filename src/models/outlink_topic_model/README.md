@@ -51,8 +51,8 @@ Create a virtual environment and install the dependencies using:
 ```console
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -r outlink_topic_model/model_server/requirements.txt
-pip install -r outlink_topic_model/transformer/requirements.txt
+pip install -r src/models/outlink_topic_model/model_server/requirements.txt
+pip install -r src/models/outlink_topic_model/transformer/requirements.txt
 pip install -r python/requirements.txt
 ```
 
@@ -65,12 +65,12 @@ Unlike other model servers, this one uses both a transformer and a predictor. In
 
 On the first terminal start the transformer:
 ```console
-python3 outlink_topic_model/transformer/transformer.py --predictor_host="localhost:8181" --model_name="outlink-topic-model"
+python3 src/models/outlink_topic_model/transformer/transformer.py --predictor_host="localhost:8181" --model_name="outlink-topic-model"
 ```
 
 On the second terminal start the predictor:
 ```console
-MODEL_PATH=PATH_TO_MODEL_DIR MODEL_NAME="outlink-topic-model" python3 outlink_topic_model/model_server/model.py --http_port=8181
+MODEL_PATH=PATH_TO_MODEL_DIR MODEL_NAME="outlink-topic-model" python3 src/models/outlink_topic_model/model_server/model.py --http_port=8181
 ```
 
 On the third terminal make a request to the server:

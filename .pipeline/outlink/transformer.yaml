@@ -11,7 +11,7 @@ variants:
   build:
     python:
       version: python3
-      requirements: [outlink_topic_model/transformer/requirements.txt]
+      requirements: [src/models/outlink_topic_model/transformer/requirements.txt]
     apt:
       packages:
         - python3-pip
@@ -21,7 +21,7 @@ variants:
   production:
     copies:
       - from: local
-        source: outlink_topic_model/transformer
+        source: src/models/outlink_topic_model/transformer
         destination: transformer
       - from: local
         source: python/*.py
@@ -53,7 +53,7 @@ variants:
         - git
     copies:
       - from: local
-        source: outlink_topic_model/transformer
+        source: src/models/outlink_topic_model/transformer
         destination: transformer
       - from: local
         source: tox.ini
