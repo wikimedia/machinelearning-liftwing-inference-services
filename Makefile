@@ -103,7 +103,7 @@ articletopic-outlink-transformer:
 language-identification:
 	@$(MAKE) run-server MODEL_NAME="langid" \
 	MODEL_URL="langid/lid201-model.bin" \
-	MODEL_SERVER_PARENT_DIR="langid" \
+	MODEL_SERVER_PARENT_DIR="src/models/langid" \
 	MODEL_PATH="models/langid/lid201-model.bin" \
 	MODEL_SERVER_DIR="." \
 	DEP_DIR="." \

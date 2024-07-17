@@ -22,12 +22,12 @@ variants:
     builders:
       - python:
           version: python3.9
-          requirements: [ langid/requirements.txt]
+          requirements: [src/models/langid/requirements.txt]
 
   production:
     copies:
       - from: local
-        source: langid/
+        source: src/models/langid/
         destination: langid/
       - from: local
         source: python
@@ -61,7 +61,7 @@ variants:
         - g++
     copies:
       - from: local
-        source: langid/
+        source: src/models/langid/
         destination: langid/
       - from: local
         source: python
@@ -81,5 +81,5 @@ variants:
     entrypoint: ["./langid/ci_entrypoint.sh", "."]
     python:
       version: python3
-      requirements: [requirements-test.txt, langid/requirements.txt]
+      requirements: [requirements-test.txt, src/models/langid/requirements.txt]
       use-system-flag: false

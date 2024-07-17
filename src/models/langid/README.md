@@ -49,7 +49,7 @@ Create a virtual environment and install the dependencies using:
 ```console
 python -m venv .venv
 source .venv/bin/activate
-pip install -r langid/requirements.txt
+pip install -r src/models/langid/requirements.txt
 ```
 
 ### 2.2. Download the model
@@ -59,7 +59,7 @@ https://analytics.wikimedia.org/published/wmf-ml-models/langid/
 ### 2.3. Run the server
 We can run the server locally with:
 ```console
-MODEL_PATH=PATH_TO_MODEL_DIR MODEL_NAME=langid python langid/model.py
+MODEL_PATH=PATH_TO_MODEL_DIR MODEL_NAME=langid python src/models/langid/model.py
 ```
 
 On a separate terminal we can make a request to the server with:
