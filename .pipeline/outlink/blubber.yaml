@@ -3,6 +3,8 @@ version: v4
 base: docker-registry.wikimedia.org/bullseye:20231210
 runs:
   insecurely: true
+  environment:
+    PYTHONPATH: /srv/outlink_topic_model
 
 lives:
   in: /srv/outlink_topic_model
@@ -11,7 +13,7 @@ variants:
   build:
     python:
       version: python3
-      requirements: [src/models/outlink_topic_model/model_server/requirements.txt]
+      requirements: [src/models/outlink_topic_model/model_server/requirements.txt, python/requirements.txt]
     apt:
       packages:
         - build-essential
@@ -29,8 +31,8 @@ variants:
         source: src/models/outlink_topic_model/model_server
         destination: model_server
       - from: local
-        source: python/*.py
-        destination: model_server/
+        source: python
+        destination: python/
       - from: build
         source: /opt/lib/python/site-packages
         destination: /opt/lib/python/site-packages
