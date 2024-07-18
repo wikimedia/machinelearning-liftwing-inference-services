@@ -1,7 +1,0 @@
-wiki_db	num_pages	max_length	max_media	max_cats	max_refs	max_headings	max_links	max_srcs	infobox	mbox
-arwiki	1260827	65.543878	3.0	21.0	0.305139	0.122056	0.701820	5	True	False
-enwiki	6995651	96.695398	5.0	15.0	0.506746	0.155126	1.178960	5	True	False
-frwiki	2665263	91.755109	7.0	11.0	0.359653	0.185276	1.296931	5	True	False
-huwiki	545845	81.804645	5.0	9.0	0.220036	0.146691	0.990164	5	True	False
-trwiki	622779	66.955209	3.0	14.0	0.313643	0.134418	0.731833	5	True	False
-zhwiki	1448372	44.721360	5.0	10.0	0.581378	0.290689	1.744133	5	True	False

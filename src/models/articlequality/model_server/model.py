@@ -1,20 +1,20 @@
 import logging
+import math
 import os
 from distutils.util import strtobool
-from typing import Any, Dict
-import pickle
+from typing import Any, Dict, Tuple
 
 import kserve
+import numpy as np
 from kserve.errors import InferenceError
-
 from python.preprocess_utils import validate_json_input
+from statsmodels.iolib.smpickle import load_pickle
 from utils import (
-    get_article_html,
     get_article_features,
-    normalize_features,
+    get_article_html,
     load_quality_max_featurevalues,
+    normalize_features,
 )
-
 
 logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
 
@@ -33,14 +33,47 @@ class ArticleQualityModel(kserve.Model):
         self.model_path = model_path
         self.max_feature_vals = max_feature_vals
         self.protocol = "http" if force_http else "https"
+        self.max_qual_vals = None
+        self.model = None
+        self.labels = ("Stub", "Start", "C", "B", "GA", "FA")
+        self.feature_order = (
+            "characters",
+            "refs",
+            "wikilinks",
+            "categories",
+            "media",
+            "headings",
+            "sources",
+            "infobox",
+            "messagebox",
+        )
         self.load()
+        self.top_score, self.score_range = self.extract_score_range()
 
     def load(self) -> None:
-        with open(self.model_path, "rb") as f:
-            self.model = pickle.load(f)
+        self.model = load_pickle(self.model_path)
         # Load the table of max feature values - use for feature normalization
         self.max_qual_vals = load_quality_max_featurevalues(self.max_feature_vals)
         self.ready = True
+
+    def extract_score_range(self) -> Tuple[float, float]:
+        """Extract the top score and score range from the model."""
+        top_input = []
+        low_input = []
+        for i, param_value in zip(self.feature_order, self.model.params):
+            if param_value >= 0:
+                top_input.append(1)
+                low_input.append(0)
+            else:  # negative coefficient
+                top_input.append(0)
+                low_input.append(1)
+        top_score = self.model.predict(top_input, which="linpred")[0]
+        low_score = self.model.predict(low_input, which="linpred")[0]
+        top_score = top_score + 1  # maps maximum model output to 1
+        score_range = (
+            top_score - low_score
+        )  # helps transform rest of outputs between 0 and 1
+        return top_score, score_range
 
     async def preprocess(
         self, inputs: Dict[str, Any], headers: Dict[str, str] = None
@@ -49,34 +82,53 @@ class ArticleQualityModel(kserve.Model):
         lang = inputs.get("lang")
         rev_id = inputs.get("rev_id")
         article_html = get_article_html(lang, rev_id, self.protocol)
-        article_features = get_article_features(article_html)
-        if article_features[0] > 0:  # page_length > 0
-            normalized_features = normalize_features(
-                self.max_qual_vals, lang, *article_features
+        raw_features = get_article_features(article_html)
+        raw_features_dict = dict(zip(self.feature_order, raw_features))
+        page_length_idx = self.feature_order.index("characters")
+        if raw_features[page_length_idx] > 0:  # page_length > 0
+            normalized_features_tuple = normalize_features(
+                self.max_qual_vals, lang, *raw_features
+            )
+            normalized_features_dict = dict(
+                zip(self.feature_order, normalized_features_tuple)
             )
         else:
             raise InferenceError(
                 f"Article with language {lang} and revid {rev_id}"
                 " has errors when preprocessing"
             )
-
-        inputs["normalized_features"] = normalized_features
+        inputs["features"] = {
+            "raw": raw_features_dict,
+            "normalized": normalized_features_dict,
+        }
+        inputs["normalized_features"] = normalized_features_tuple
         return inputs
 
     def predict(
         self, request: Dict[str, Any], headers: Dict[str, str] = None
     ) -> Dict[str, Any]:
-        predicted_value = self.model.predict([request["normalized_features"]])
-        return predicted_value[0]
+        output = {}
+        features = request["features"]
+        get_label = strtobool(request.get("get_label", "False"))
+        if get_label:
+            probs = self.model.predict(request["normalized_features"])
+            label = self.labels[np.argmax(probs)]
+            output["label"] = label
+        raw_score = self.model.predict(request["normalized_features"], which="linpred")[
+            0
+        ]
+        # normalize the score to be approximately between 0 and 1
+        normalized_score = 1 - math.log(self.top_score - raw_score, self.score_range)
+        output.update({"score": normalized_score, "features": features})
+
+        return output
 
 
 if __name__ == "__main__":
     model_name = os.environ.get("MODEL_NAME")
     model_path = os.environ.get("MODEL_PATH", "/mnt/models/model.pkl")
     force_http = strtobool(os.environ.get("FORCE_HTTP", "False"))
-    max_feature_vals = os.environ.get(
-        "MAX_FEATURE_VALS", "data/max-vals-html-dumps-ar-en-fr-hu-tr-zh.tsv"
-    )
+    max_feature_vals = os.environ.get("MAX_FEATURE_VALS", "data/feature_values.tsv")
     model = ArticleQualityModel(
         name=model_name,
         model_path=model_path,

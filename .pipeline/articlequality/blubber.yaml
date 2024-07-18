@@ -11,10 +11,6 @@ lives:
 
 variants:
   build:
-    python:
-      version: python3
-      use-system-site-packages: true
-      requirements: ["src/models/articlequality/requirements.txt", "python/requirements.txt"]
     apt:
       packages:
         - build-essential
@@ -23,6 +19,16 @@ variants:
         - python3-pip
         - python3-setuptools
         - python3-venv
+    builders:
+      - custom:
+          # At the moment we clone the kserve repo to get the huggingface server from the master branch as various
+          # fixes are introduced. In the future we'll either clone a specific release or commit the code in our repo.
+          command: [ "git", "clone",  "--branch", "numpy-200", "https://github.com/wikimedia/kserve.git", "kserve_repository" ]
+      - python:
+          version: python3
+          use-system-site-packages: true
+          requirements: ["src/models/articlequality/requirements.txt", "python/requirements.txt"]
+
 
   production:
     apt:
