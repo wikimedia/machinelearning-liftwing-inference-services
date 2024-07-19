@@ -9,4 +9,4 @@ source common_settings.sh
 MODEL_SERVER_PATH="${1:-model_server/model.py}"
 
 # Run the model server
-exec /usr/bin/python3 ${MODEL_SERVER_PATH}
+exec /usr/bin/python3 ${MODEL_SERVER_PATH} "${@:2}"
