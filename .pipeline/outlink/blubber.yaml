@@ -77,7 +77,7 @@ variants:
       - from: local
         source: requirements-test.txt
         destination: .
-    entrypoint: ["./entrypoint.sh", "model_server"]
+    entrypoint: [ "./entrypoint.sh", "model_server" ]
     python:
       version: python3
       requirements: [requirements-test.txt]

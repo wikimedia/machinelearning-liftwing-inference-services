@@ -45,7 +45,7 @@ variants:
     python:
       version: python3
       use-system-flag: false
-    entrypoint: ["./entrypoint.sh",  "transformer/transformer.py"]
+    entrypoint: [ "./entrypoint.sh",  "transformer/transformer.py" ]
 
   test:
     apt:
