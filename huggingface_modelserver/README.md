@@ -85,3 +85,17 @@ In order to update to the latest version of huggingfaceserver and/or kserve, you
     git fetch upstream --tags
     git push origin --tags
     ```
+
+
+## Build for Apple Silicon processors
+
+If you want to run things locally using an Apple Silicon processor you can build the image for the arm64 architecture using the dedicated blubberfile.
+This uses a different base image and the `linux/arm64` platform without vllm as it is not yet supported.
+```bash
+docker build --target production -f .pipeline/huggingface/blubber_m1.yaml --platform=linux/arm64 -t hf:kserve-m1 .
+```
+
+
+```bash
+docker run -p 8080:8080 --rm -v /local/path/to/model/:/mnt/models/ --platform=linux/arm64 -e MODEL_NAME=name hf:kserve-m1
+```

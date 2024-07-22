@@ -1,0 +1,58 @@
+# syntax=docker-registry.wikimedia.org/repos/releng/blubber/buildkit:v0.23.0
+base: arm64v8/debian:stable
+version: v4
+
+runs:
+  insecurely: true
+  environment:
+    PYTHONPATH: /srv/app:/opt/lib/venv/lib/python3.11/site-packages
+    PIP_DEFAULT_TIMEOUT: "100"
+    MODEL_DIR: /mnt/models
+
+lives:
+  in: /srv/app
+
+variants:
+  build:
+    apt:
+      packages:
+        - build-essential
+        - git
+        - python3-pip
+        - python3-dev
+        - python3-setuptools
+        - python3-venv
+    builders:
+      - custom:
+          # At the moment we clone the kserve repo to get the huggingface server from the master branch as various
+          # fixes are introduced. In the future we'll either clone a specific release or commit the code in our repo.
+          command: [ "git", "clone",  "--branch", "apple-silicon", "https://github.com/wikimedia/kserve.git", "kserve_repo" ]
+      - python:
+          version: python3
+          use-system-site-packages: true
+          no-deps: false
+          requirements: [ huggingface_modelserver/requirements_apple_silicon.txt ]
+
+
+  production:
+    apt:
+      packages:
+        - python3
+        - python3-distutils
+        - python3-pip
+        - python3-setuptools
+    copies:
+      - from: build
+        source: /opt/lib/venv/lib/python3.11/site-packages/
+        destination: /opt/lib/venv/lib/python3.11/site-packages/
+      - from: build
+        source: /srv/app/kserve_repo/python/huggingfaceserver
+        destination: .
+      - from: local
+        source: huggingface_modelserver/entrypoint.sh
+        destination: .
+
+    python:
+      version: python3
+      use-system-site-packages: true
+    entrypoint: ["./entrypoint.sh"]
