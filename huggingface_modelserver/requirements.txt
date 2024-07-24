@@ -1,3 +1,2 @@
 kserve @ file:///srv/app/kserve_repo/python/kserve
 -e kserve_repo/python/huggingfaceserver
-vllm==0.4.3
