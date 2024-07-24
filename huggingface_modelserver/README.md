@@ -99,3 +99,20 @@ docker build --target production -f .pipeline/huggingface/blubber_m1.yaml --plat
 ```bash
 docker run -p 8080:8080 --rm -v /local/path/to/model/:/mnt/models/ --platform=linux/arm64 -e MODEL_NAME=name hf:kserve-m1
 ```
+
+
+### What to do when a new model is released on Huggingface
+
+When a new model is released on Huggingface, we need to update the `huggingface` server to support it. The following steps should be taken:
+If the architecture used by the model is already included in the `transformers` package there shouldn't be any steps needed to be taken and the model should be available for use.
+If the architecture is not included in `transformers` the following sequence of steps should be taken:
+1. an update is included in `transformers` and the model is available for use. Look for a specific mention of the model in the release notes (similar to [this for Llama 3.1](https://github.com/huggingface/transformers/releases/tag/v4.43.0))
+2. We should make sure that this version of `transformers` is supported by the [huggingfaceserver in kserve](https://github.com/kserve/kserve/blob/master/python/huggingfaceserver/pyproject.toml#L15).
+   If not we should update the [wikimedia/kserve fork](https://github.com/wikimedia/kserve) to allow the installation of this version by updating/relaxing the constraints in the `pyproject.toml` file.
+3. Update our huggingface image in the inference-services repo to include the new version of the `transformers` package.
+   To be sure we use a specific version of the package we can include an entry in the `requirements.txt` file in the `huggingface_modelserver` directory.
+4. Upload the model on swift.
+5. File a change in deployment-charts to either switch an existing service to the new model or add a new service with it. Things required to change for an existing deploymetn would be:
+    - the name of the service
+    - the model name
+    - the model path in swift
