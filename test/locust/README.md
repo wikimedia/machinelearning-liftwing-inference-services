@@ -60,3 +60,13 @@ model server code that affects load and/or latencies we run the following comman
 MODEL=revertrisk locust --csv results/revertrisk
 ```
 and then commit the updated `revertrisk_stats.csv` file under the results directory.
+
+
+## Huggingface models
+
+To run a load test for a huggingface model, apart from MODEL we also need to specify the MODEL_NAME and the HOST.
+This is done so that we can use the same locust model file for all deployed huggingface models.
+Also the NAMESPACE is an optional environment variable that can be used to specify the namespace of the model server.
+```bash
+MODEL=huggingface MODEL_NAME=gemma2 HOST=gemma2-27b-it locust
+```
