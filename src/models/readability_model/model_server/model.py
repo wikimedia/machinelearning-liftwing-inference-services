@@ -23,7 +23,7 @@ class ReadabilityModel(kserve.Model):
         self.ready = False
         self._http_client_session = {}
         self.WIKI_URL = os.environ.get("WIKI_URL")
-        self.model_path = os.environ.get("MODEL_PATH", "/mnt/models/model.pkl")
+        self.model_path = os.environ.get("MODEL_PATH", "/mnt/models/model.bin")
         self.AIOHTTP_CLIENT_TIMEOUT = os.environ.get("AIOHTTP_CLIENT_TIMEOUT", 5)
         self.load()
 
@@ -109,12 +109,8 @@ class ReadabilityModel(kserve.Model):
     ) -> Dict[str, Any]:
         result = classify(self.model, request["revision"])
         output = {
-            "prediction": result.prediction,
-            "probabilities": {
-                "true": result.probability,
-                "false": 1 - result.probability,
-            },
-            "fk_score": result.fk_score,
+            "score": result.score,
+            "fk_score_proxy": result.fk_score_proxy,
         }
         return {
             "model_name": self.name,
