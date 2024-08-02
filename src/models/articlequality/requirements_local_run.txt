@@ -1,0 +1,5 @@
+-e src/models/articlequality/kserve_repository/python/kserve
+mwparserfromhtml==1.0.2
+pandas==2.2.2
+scikit-learn==1.5.0
+statsmodels==0.14.2

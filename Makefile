@@ -15,6 +15,7 @@ articletopic-outlink-predictor \
 articletopic-outlink-transformer \
 clean \
 clone-descartes \
+clone-wmf-kserve-numpy-200 \
 download-nltk-punkt \
 language-identification \
 logo-detection \
@@ -70,16 +71,22 @@ clone-descartes:
 	fi
 
 # Command for articlequality model-server
-articlequality:
+articlequality: clone-wmf-kserve-numpy-200
 	@$(MAKE) run-server MODEL_NAME="articlequality" \
-	MODEL_URL="articlequality/language-agnostic/model.pkl" \
+	MODEL_URL="articlequality/language-agnostic/20240801111508/model.pkl" \
 	MODEL_SERVER_PARENT_DIR="src/models/articlequality" \
-	MODEL_PATH="models/articlequality/language-agnostic/model.pkl" \
+	MODEL_PATH="models/articlequality/language-agnostic/20240801111508/model.pkl" \
 	MODEL_SERVER_DIR="model_server" \
 	DEP_DIR=".." \
 	CUT_DIRS=2 \
 	ACCEPT_REGEX="." \
-	MAX_FEATURE_VALS="src/models/articlequality/data/max-vals-html-dumps-ar-en-fr-hu-tr-zh.tsv"
+	MAX_FEATURE_VALS="src/models/articlequality/data/feature_values.tsv"
+
+# Clone the wmf kserve fork that uses numpy v2.0.0 (used by articlequality)
+clone-wmf-kserve-numpy-200:
+	@if [ ! -d "src/models/articlequality/kserve_repository" ]; then \
+		git clone --branch numpy-200 https://github.com/wikimedia/kserve.git src/models/articlequality/kserve_repository; \
+	fi
 
 # Command for articletopic-outlink predictor
 articletopic-outlink-predictor:
@@ -165,7 +172,12 @@ $(VENV)/bin/activate: $(MODEL_SERVER_PARENT_DIR)/$(MODEL_SERVER_DIR)/$(DEP_DIR)/
 	python3 -m venv $(VENV)
 	$(PIP) install --upgrade pip
 	$(PIP) install -r python/requirements.txt
-	$(PIP) install -r $(MODEL_SERVER_PARENT_DIR)/$(MODEL_SERVER_DIR)/$(DEP_DIR)/requirements.txt
+	# Conditional installation based on MODEL_NAME to support local run requirements
+	@if [ "$(MODEL_NAME)" = "articlequality" ]; then \
+		$(PIP) install -r $(MODEL_SERVER_PARENT_DIR)/$(MODEL_SERVER_DIR)/$(DEP_DIR)/requirements_local_run.txt; \
+	else \
+		$(PIP) install -r $(MODEL_SERVER_PARENT_DIR)/$(MODEL_SERVER_DIR)/$(DEP_DIR)/requirements.txt; \
+	fi
 
 # Download the model file(s)
 $(MODEL_PATH):

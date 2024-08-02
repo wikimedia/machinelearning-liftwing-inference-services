@@ -46,7 +46,8 @@ Create a virtual environment and install the dependencies using:
 ```console
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -r src/models/articlequality/requirements.txt
+git clone --branch numpy-200 https://github.com/wikimedia/kserve.git src/models/articlequality/kserve_repository
+pip install -r src/models/articlequality/requirements_local_run.txt
 pip install -r python/requirements.txt
 ```
 
@@ -59,7 +60,7 @@ We can run the server locally with:
 ```console
 MODEL_PATH=PATH_TO_MODEL_DIR MAX_FEATURE_VALS=PATH_TO_MAX_FEATURE_VALS MODEL_NAME=articlequality python3 src/models/articlequality/model_server/model.py
 ```
-PATH_TO_MAX_FEATURE_VALS is the absolute path to `data/max-vals-html-dumps-ar-en-fr-hu-tr-zh.tsv`.
+PATH_TO_MAX_FEATURE_VALS is the absolute path to `data/feature_values.tsv`.
 
 On a separate terminal we can make a request to the server with:
 ```console
