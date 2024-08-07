@@ -22,7 +22,7 @@ variants:
     builders:
       - python:
           version: python3.9
-          requirements: [src/models/langid/requirements.txt]
+          requirements: [src/models/langid/requirements.txt, python/requirements.txt]
 
   production:
     copies:
