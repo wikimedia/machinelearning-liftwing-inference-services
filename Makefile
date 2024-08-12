@@ -131,9 +131,9 @@ logo-detection:
 # Command for readability model-server
 readability:
 	@$(MAKE) download-nltk-punkt run-server MODEL_NAME="readability" \
-	MODEL_URL="readability/multilingual/20230824102026/model.pkl" \
+	MODEL_URL="readability/multilingual/20240805140437/model.bin" \
 	MODEL_SERVER_PARENT_DIR="src/models/readability_model" \
-	MODEL_PATH="models/readability/multilingual/20230824102026/model.pkl" \
+	MODEL_PATH="models/readability/multilingual/20240805140437/model.bin" \
 	MODEL_SERVER_DIR="model_server" \
 	DEP_DIR="." \
 	CUT_DIRS=2 \
