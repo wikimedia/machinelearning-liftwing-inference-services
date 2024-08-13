@@ -62,6 +62,9 @@ class RevscoringModelMP(RevscoringModel):
         of edit text based on its revision id"""
         inputs = validate_json_input(inputs)
         rev_id = self.get_rev_id(inputs, self.EVENT_KEY)
+        request_id = headers.get("x-request-id", "N.A.") if headers else "N.A."
+        if self.LOG_JSON_PAYLOAD:
+            logging.info(f"JSON payload for the request-id {request_id}: {inputs}")
         extended_output = inputs.get("extended_output", False)
         extractor = await self.get_extractor(inputs, rev_id)
 
