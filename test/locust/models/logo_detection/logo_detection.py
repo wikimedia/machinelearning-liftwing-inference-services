@@ -4,6 +4,7 @@ import random
 
 from locust import FastHttpUser, between, task
 
+
 def get_random_image(image_dir):
     image_files = os.listdir(image_dir)
     filename = random.choice(image_files)
@@ -11,6 +12,7 @@ def get_random_image(image_dir):
     with open(image_path, "rb") as image_file:
         encoded_image = base64.b64encode(image_file.read()).decode("utf-8")
     return filename, encoded_image
+
 
 class LogoDetection(FastHttpUser):
     wait_time = between(1, 5)

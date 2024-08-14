@@ -1,1 +1,1 @@
-from .hf import HuggingfaceServer # noqa
+from .hf import HuggingfaceServer  # noqa
