@@ -11,7 +11,7 @@ variants:
   build:
     python:
       version: python3
-      requirements: [src/models/nsfw-model/model-server/requirements.txt]
+      requirements: [ src/models/nsfw-model/model-server/requirements.txt ]
     apt:
       packages:
         - python3-pip
