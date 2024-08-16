@@ -110,7 +110,7 @@ If the architecture is not included in `transformers` the following sequence of 
 2. We should make sure that this version of `transformers` is supported by the [huggingfaceserver in kserve](https://github.com/kserve/kserve/blob/master/python/huggingfaceserver/pyproject.toml#L15).
    If not we should update the [wikimedia/kserve fork](https://github.com/wikimedia/kserve) to allow the installation of this version by updating/relaxing the constraints in the `pyproject.toml` file.
 3. Update our huggingface image in the inference-services repo to include the new version of the `transformers` package.
-   To be sure we use a specific version of the package we can include an entry in the `requirements.txt` file in the `huggingface_modelserver` directory.
+   To be sure we use a specific version of the package we can include an entry in the `requirements.txt` file in the `src/models/huggingface_modelserver` directory.
 4. Upload the model on swift.
 5. File a change in deployment-charts to either switch an existing service to the new model or add a new service with it. Things required to change for an existing deploymetn would be:
     - the name of the service

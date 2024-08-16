@@ -31,7 +31,7 @@ variants:
           version: python3
           use-system-site-packages: true
           no-deps: false
-          requirements: [ huggingface_modelserver/requirements_apple_silicon.txt ]
+          requirements: [ src/models/huggingface_modelserver/requirements_apple_silicon.txt ]
 
 
   production:
@@ -49,7 +49,7 @@ variants:
         source: /srv/app/kserve_repo/python/huggingfaceserver
         destination: .
       - from: local
-        source: huggingface_modelserver/entrypoint.sh
+        source: src/models/huggingface_modelserver/entrypoint.sh
         destination: .
 
     python:

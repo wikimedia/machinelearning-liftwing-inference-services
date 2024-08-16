@@ -27,7 +27,7 @@ variants:
           version: python3
           use-system-site-packages: true
           no-deps: false
-          requirements: [ huggingface_modelserver/requirements.txt ]
+          requirements: [ src/models/huggingface_modelserver/requirements.txt ]
 
 
   production:
@@ -42,7 +42,7 @@ variants:
         source: /srv/app/kserve_repo/python/huggingfaceserver
         destination: .
       - from: local
-        source: huggingface_modelserver/entrypoint.sh
+        source: src/models/huggingface_modelserver/entrypoint.sh
         destination: .
 
     python:
@@ -60,7 +60,7 @@ variants:
         - python3-venv
     copies:
       - from: local
-        source: huggingface_modelserver/
+        source: src/models/huggingface_modelserver/
         destination: huggingface_modelserver/
       - from: local
         source: tox.ini
