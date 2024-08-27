@@ -13,7 +13,7 @@ variants:
   build:
     python:
       version: python3
-      requirements: ["revert_risk_model/model_server/multilingual/requirements.txt", "python/requirements.txt"]
+      requirements: ["src/models/revert_risk_model/model_server/multilingual/requirements.txt", "python/requirements.txt"]
     apt:
       packages:
         - build-essential
@@ -25,7 +25,7 @@ variants:
   production:
     copies:
       - from: local
-        source: revert_risk_model/model_server
+        source: src/models/revert_risk_model/model_server
         destination: model_server
       - from: local
         source: python
@@ -59,7 +59,7 @@ variants:
         - git
     copies:
       - from: local
-        source: revert_risk_model/model_server
+        source: src/models/revert_risk_model/model_server
         destination: model_server
       - from: local
         source: python

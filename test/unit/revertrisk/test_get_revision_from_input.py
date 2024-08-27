@@ -3,7 +3,7 @@ import pytest
 from unittest.mock import patch
 
 
-from revert_risk_model.model_server.base_model import RevisionRevertRiskModel
+from src.models.revert_risk_model.model_server.base_model import RevisionRevertRiskModel
 from knowledge_integrity.schema import Revision
 
 

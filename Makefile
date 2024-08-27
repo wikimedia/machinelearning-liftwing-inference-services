@@ -147,7 +147,7 @@ download-nltk-punkt: $(VENV)/bin/activate
 revertrisk-language-agnostic:
 	@$(MAKE) run-server MODEL_NAME="revertrisk-language-agnostic" \
 	MODEL_URL="revertrisk/language-agnostic/20231117132654/model.pkl" \
-	MODEL_SERVER_PARENT_DIR="revert_risk_model" \
+	MODEL_SERVER_PARENT_DIR="src/models/revert_risk_model" \
 	MODEL_PATH="models/revertrisk/language-agnostic/20231117132654/model.pkl" \
 	MODEL_SERVER_DIR="model_server" \
 	DEP_DIR="revertrisk" \
@@ -158,7 +158,7 @@ revertrisk-language-agnostic:
 revertrisk-multilingual:
 	@$(MAKE) run-server MODEL_NAME="revertrisk-multilingual" \
 	MODEL_URL="revertrisk/multilingual/20230810110019/model.pkl" \
-	MODEL_SERVER_PARENT_DIR="revert_risk_model" \
+	MODEL_SERVER_PARENT_DIR="src/models/revert_risk_model" \
 	MODEL_PATH="models/revertrisk/multilingual/20230810110019/model.pkl" \
 	MODEL_SERVER_DIR="model_server" \
 	DEP_DIR="multilingual" \

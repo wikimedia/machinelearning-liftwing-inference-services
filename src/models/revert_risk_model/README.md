@@ -47,7 +47,7 @@ Create a virtual environment and install the dependencies using:
 ```console
 python -m venv .venv
 source .venv/bin/activate
-pip install -r revert_risk_model/model_server/revertrisk/requirements.txt
+pip install -r src/models/revert_risk_model/model_server/revertrisk/requirements.txt
 ```
 
 
@@ -58,7 +58,7 @@ https://analytics.wikimedia.org/published/wmf-ml-models/revertrisk/language-agno
 ### 2.3. Run the server
 We can run the server locally with:
 ```console
-MODEL_PATH=<PATH_TO_MODEL_DIR/model.pkl> MODEL_NAME=revertrisk-language-agnostic python revert_risk_model/model_server/model.py
+MODEL_PATH=<PATH_TO_MODEL_DIR/model.pkl> MODEL_NAME=revertrisk-language-agnostic python src/models/revert_risk_model/model_server/model.py
 ```
 
 On a separate terminal we can make a request to the server with:
@@ -69,7 +69,7 @@ curl -s localhost:8080/v1/models/revertrisk-language-agnostic:predict -X POST -d
 ### 2.4. Batch inference
 If you want to use batch inference to request multiple predictions using a single request, set the `USE_BATCHER` environment variable to True when launching the model server:
 ```console
-MODEL_PATH=<PATH_TO_MODEL_DIR/model.pkl> MODEL_NAME=revertrisk-language-agnostic USE_BATCHER=True python revert_risk_model/model_server/model.py
+MODEL_PATH=<PATH_TO_MODEL_DIR/model.pkl> MODEL_NAME=revertrisk-language-agnostic USE_BATCHER=True python src/models/revert_risk_model/model_server/model.py
 ```
 
 We have a different input schema for batch inference. For example, the input should be in JSON format as shown below:
