@@ -95,3 +95,16 @@ def validate_json_input(inputs: Union[Dict, bytes]) -> Dict:
         except (AttributeError, json.decoder.JSONDecodeError):
             raise InvalidInput("Please verify that request input is a json dict")
     return inputs
+
+
+def check_wiki_suffix(lang: str) -> None:
+    if lang.endswith("wiki"):
+        raise InvalidInput(
+            "Language field should not have a 'wiki' suffix, i.e. use 'en', not 'enwiki'"
+        )
+
+
+def check_supported_wikis(model, lang: str) -> None:
+    if hasattr(model, "supported_wikis") and lang not in model.supported_wikis:
+        logging.info(f"Unsupported lang: {lang}.")
+        raise InvalidInput(f"Unsupported lang: {lang}.")

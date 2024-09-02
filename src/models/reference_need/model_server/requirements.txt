@@ -1,0 +1,2 @@
+knowledge_integrity[reference-need] @ git+https://gitlab.wikimedia.org/repos/research/knowledge_integrity.git@v0.8.2
+kserve==0.13.1
