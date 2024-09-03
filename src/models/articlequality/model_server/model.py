@@ -109,8 +109,8 @@ class ArticleQualityModel(kserve.Model):
     ) -> Dict[str, Any]:
         output = {}
         features = request["features"]
-        get_label = strtobool(request.get("get_label", "False"))
-        if get_label:
+        extended_output = strtobool(request.get("extended_output", "False"))
+        if extended_output:
             probs = self.model.predict(request["normalized_features"])
             label = self.labels[np.argmax(probs)]
             output["label"] = label
@@ -119,7 +119,17 @@ class ArticleQualityModel(kserve.Model):
         ]
         # normalize the score to be approximately between 0 and 1
         normalized_score = 1 - math.log(self.top_score - raw_score, self.score_range)
-        output.update({"score": normalized_score, "features": features})
+        if extended_output:
+            output["features"] = features
+        output["score"] = normalized_score
+        output.update(
+            {
+                "model_name": "articlequality",
+                "model_version": "1",  # model version should come directly from the model
+                "wiki_db": f"{request.get('lang')}wiki",
+                "revision_id": request.get("rev_id"),
+            }
+        )
 
         return output
 
