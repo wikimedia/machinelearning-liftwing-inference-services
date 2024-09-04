@@ -70,3 +70,18 @@ Also the NAMESPACE is an optional environment variable that can be used to speci
 ```bash
 MODEL=huggingface MODEL_NAME=gemma2 HOST=gemma2-27b-it locust
 ```
+
+
+## Running load tests using the Makefile
+
+### 1. Build
+This build process will: set up a Python virtual environment, install dependencies, run locust load tests for the specified model isvc, and update csv results in `results/model_name.csv`.
+```bash
+MODEL_LOCUST_DIR="logo_detection" make run-locust-test
+```
+
+### 2. Remove
+If you would like to remove the setup run:
+```bash
+make clean
+```
