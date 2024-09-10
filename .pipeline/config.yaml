@@ -262,3 +262,22 @@ pipelines:
           image:
             name: '${setup.project}-articlequality'
             tags: [stable]
+
+  reference-quality:
+    blubberfile: reference_quality/blubber.yaml
+    stages:
+      - name: run-test
+        build: test
+        run: true
+      - name: production
+        build: production
+
+  reference-quality-publish:
+    blubberfile: reference_quality/blubber.yaml
+    stages:
+      - name: publish
+        build: production
+        publish:
+          image:
+            name: '${setup.project}-reference-quality'
+            tags: [stable]
