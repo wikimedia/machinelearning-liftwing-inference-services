@@ -43,7 +43,7 @@ Create a virtual environment and install the dependencies using:
 ```console
 python -m venv .venv
 source .venv/bin/activate
-pip install -r src/models/reference_need/model_server/requirements.txt
+pip install -r src/models/reference_quality/model_server/requirements.txt
 ```
 
 ### 2.2. Download the model
@@ -53,7 +53,7 @@ https://analytics.wikimedia.org/published/wmf-ml-models/reference-quality/refere
 ### 2.3. Run the server
 We can run the server locally with:
 ```console
-MODEL_PATH=<PATH_TO_MODEL_DIR/model.pkl> MODEL_NAME=reference-need python src/models/reference_need/model_server/model.py
+MODEL_PATH=<PATH_TO_MODEL_DIR/model.pkl> MODEL_NAME=reference-need python src/models/reference_quality/model_server/model.py
 ```
 
 On a separate terminal we can make a request to the server with:
