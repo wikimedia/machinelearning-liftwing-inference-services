@@ -5,3 +5,4 @@ from .logo_detection import *  # noqa
 from .readability import *  # noqa
 from .revertrisk import *  # noqa
 from .revscoring import *  # noqa
+from .reference_quality import *  # noqa
