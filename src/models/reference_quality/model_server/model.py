@@ -8,6 +8,10 @@ from distutils.util import strtobool
 
 from knowledge_integrity.mediawiki import get_revision
 from knowledge_integrity.models.reference_need import load_model, classify
+from knowledge_integrity.models.reference_risk import (
+    ReferenceRiskModel as BaseReferenceRiskModel,
+)
+
 from kserve.errors import InferenceError
 
 from python.config_utils import get_config
@@ -35,7 +39,7 @@ class ReferenceNeedModel(kserve.Model):
 
     def load(self) -> None:
         self.model = load_model(self.model_path)
-        logging.info(f"Supported wikis: {self.model.supported_wikis}.")
+        logging.info(f"{self.name} supported wikis: {self.model.supported_wikis}.")
         self.ready = True
 
     def get_mediawiki_host(self, lang):
@@ -70,7 +74,7 @@ class ReferenceNeedModel(kserve.Model):
         check_supported_wikis(self.model, lang)
         session = mwapi.AsyncSession(
             host=self.get_mediawiki_host(lang),
-            user_agent="WMF ML Team reference-need isvc",
+            user_agent="WMF ML Team Reference Quality isvc",
             session=self.get_http_client_session("mwapi"),
         )
         try:
@@ -92,15 +96,49 @@ class ReferenceNeedModel(kserve.Model):
         self, request: Dict[str, Any], headers: Dict[str, str] = None
     ) -> Dict[str, Any]:
         result = classify(self.model, request["revision"])
-        return result
+        return {
+            "model_version": self.model.model_version,
+            "reference_need_score": result.rn_score,
+        }
+
+
+class ReferenceRiskModel(ReferenceNeedModel):
+    def __init__(self, name: str, model_path: str, force_http: bool) -> None:
+        super().__init__(name, model_path, force_http)
+
+    def load(self) -> None:
+        self.model = BaseReferenceRiskModel(self.model_path)
+        logging.info(f"{self.name} supported wikis: {self.model.supported_wikis}.")
+        self.ready = True
+
+    def predict(
+        self, request: Dict[str, Any], headers: Dict[str, str] = None
+    ) -> Dict[str, Any]:
+        result = self.model.classify(request["revision"])
+        return {
+            "model_version": result.model_version,
+            "reference_count": result.reference_count,
+            "survival_ratio": result.survival_ratio,
+            "reference_risk_score": result.reference_risk_score,
+        }
 
 
 if __name__ == "__main__":
-    model_name = os.environ.get("MODEL_NAME", "reference-need")
-    model_path = os.environ.get("MODEL_PATH", "/mnt/models/model.pkl")
+    model_path = os.environ.get("MODEL_PATH", "/mnt/models/reference-need/model.pkl")
+    features_db_path = os.environ.get(
+        "FEATURES_DB_PATH", "/mnt/models/reference-risk/features.db"
+    )
     force_http = strtobool(os.environ.get("FORCE_HTTP", "False"))
 
-    model = ReferenceNeedModel(
-        name=model_name, model_path=model_path, force_http=force_http
+    ref_need = ReferenceNeedModel(
+        name="reference-need",
+        model_path=model_path,
+        force_http=force_http,
     )
-    kserve.ModelServer(workers=1).start([model])
+    ref_risk = ReferenceRiskModel(
+        name="reference-risk",
+        model_path=features_db_path,
+        force_http=force_http,
+    )
+
+    kserve.ModelServer(workers=1).start([ref_need, ref_risk])
