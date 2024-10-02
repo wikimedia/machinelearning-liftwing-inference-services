@@ -1,1 +1,1 @@
-from .reference_quality import ReferenceNeed  # noqa
+from .reference_quality import ReferenceNeed, ReferenceRisk  # noqa
