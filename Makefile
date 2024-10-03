@@ -9,6 +9,7 @@ export PYTHONPATH := $(PYTHON_PATH):$(PYTHONPATH)
 # See https://www.gnu.org/software/make/manual/html_node/Phony-Targets.html for
 # docs on what phony targets are and how to use them.
 .PHONY: \
+article-country \
 article-descriptions \
 articlequality \
 articletopic-outlink-predictor \
@@ -53,6 +54,18 @@ clean:
 	fi
 
 ### Targets for running servers locally (plus direct deps)
+
+# Command for article-country model-server
+article-country:
+	@$(MAKE) run-server MODEL_NAME="article-country" \
+	MODEL_URL="article-country/20240901015102/" \
+	MODEL_SERVER_PARENT_DIR="src/models/article_country" \
+	MODEL_PATH="models/article-country/20240901015102/" \
+	DATA_PATH="models/article-country/20240901015102/" \
+	MODEL_SERVER_DIR="model_server" \
+	DEP_DIR=".." \
+	CUT_DIRS=2 \
+	ACCEPT_REGEX="'(category-countries.tsv.gz|ne_10m_admin_0_map_units.geojson)'"
 
 # Command for article-descriptions model-server
 article-descriptions: clone-descartes
