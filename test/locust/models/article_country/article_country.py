@@ -2,7 +2,7 @@ import pandas as pd
 
 from locust import FastHttpUser, between, task
 
-articles = pd.read_csv("inputs/article_country.csv")
+articles = pd.read_csv("data/article_country.csv")
 
 
 def get_random_sample_from_df_input(df):
