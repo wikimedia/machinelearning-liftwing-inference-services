@@ -2,7 +2,7 @@ import pandas as pd
 
 from locust import FastHttpUser, between, task
 
-rev_ids = pd.read_csv("data/revertrisk.tsv", delimiter="\t", header=None)
+revisions = pd.read_csv("data/revisions_lang_and_id.tsv", delimiter="\t", header=None)
 
 
 def get_random_sample_from_df_input(df):
@@ -15,7 +15,7 @@ class RevertriskLanguageAgnostic(FastHttpUser):
 
     @task(3)
     def get_prediction(self):
-        lang, rev_id = get_random_sample_from_df_input(rev_ids)
+        lang, rev_id = get_random_sample_from_df_input(revisions)
         headers = {
             "Content-Type": "application/json",
             "Host": "revertrisk-language-agnostic.revertrisk.wikimedia.org",
@@ -32,7 +32,7 @@ class RevertriskMultilingual(FastHttpUser):
 
     @task(3)
     def get_prediction(self):
-        lang, rev_id = get_random_sample_from_df_input(rev_ids)
+        lang, rev_id = get_random_sample_from_df_input(revisions)
         headers = {
             "Content-Type": "application/json",
             "Host": "revertrisk-multilingual.revertrisk.wikimedia.org",

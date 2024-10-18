@@ -2,12 +2,12 @@ import pandas as pd
 
 from locust import FastHttpUser, between, task
 
-articles = pd.read_csv("data/article_descriptions.csv")
+articles = pd.read_csv("data/articles_lang_and_title.csv")
 
 
 def get_random_sample_from_df_input(df):
-    lang, title, num_beans = df.sample(n=1).squeeze().tolist()
-    return lang, title, num_beans
+    lang, title = df.sample(n=1).squeeze().tolist()
+    return lang, title
 
 
 class ArticleDescriptions(FastHttpUser):
@@ -15,7 +15,7 @@ class ArticleDescriptions(FastHttpUser):
 
     @task
     def get_prediction(self):
-        lang, title, num_beans = get_random_sample_from_df_input(articles)
+        lang, title = get_random_sample_from_df_input(articles)
         headers = {
             "Content-Type": "application/json",
             "Host": "article-descriptions.experimental.wikimedia.org",
@@ -25,7 +25,7 @@ class ArticleDescriptions(FastHttpUser):
             json={
                 "lang": lang,
                 "title": title,
-                "num_beams": int(num_beans),
+                "num_beams": 3,
             },
             headers=headers,
         )
@@ -42,6 +42,6 @@ class ArticleDescriptionsCloudVPS(FastHttpUser):
 
     @task
     def get_prediction_cloud_vps(self):
-        lang, title, num_beans = get_random_sample_from_df_input(articles)
-        params = {"lang": lang, "title": title, "num_beams": int(num_beans)}
+        lang, title = get_random_sample_from_df_input(articles)
+        params = {"lang": lang, "title": title, "num_beams": 3}
         self.client.get("/article", params=params)
