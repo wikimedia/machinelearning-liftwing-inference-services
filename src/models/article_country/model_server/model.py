@@ -4,7 +4,6 @@ from distutils.util import strtobool
 from typing import Any, Dict
 
 import kserve
-from kserve.errors import InvalidInput
 
 from python.preprocess_utils import (
     check_input_param,
@@ -22,7 +21,6 @@ from utils import (
     load_geometries,
     title_to_categories,
     title_to_qid,
-    validate_qid,
 )
 
 
@@ -57,23 +55,11 @@ class ArticleCountryModel(kserve.Model):
         self, inputs: Dict[str, Any], headers: Dict[str, str] = None
     ) -> Dict[str, Any]:
         inputs = validate_json_input(inputs)
-        qid = inputs.get("qid")
         lang = inputs.get("lang")
         title = inputs.get("title")
         check_input_param(lang=lang, title=title)
         check_wiki_suffix(lang)
-
-        if qid:
-            qid = qid.upper()
-            if not validate_qid(qid):
-                error_message = (
-                    f"Poorly formatted 'qid' field. '{qid}' does not match '^Q[0-9]+$'"
-                )
-                logging.error(error_message)
-                raise InvalidInput(error_message)
-        else:
-            qid = title_to_qid(lang, title, self.protocol)
-
+        qid = title_to_qid(lang, title, self.protocol)
         claims = get_claims(self.protocol, qid)
         country_categories = title_to_categories(
             title,
