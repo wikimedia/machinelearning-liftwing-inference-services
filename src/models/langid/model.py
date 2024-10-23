@@ -1,19 +1,21 @@
 import csv
 import logging
 import os
-from typing import Dict
+import re
+from typing import Any, Dict
 
 from fasttext.FastText import _FastText
 from kserve import Model, ModelServer
 from kserve.errors import InvalidInput
 
-from python.preprocess_utils import validate_json_input
+from python.preprocess_utils import check_input_param, validate_json_input
 
 
 class LanguageIdentificationModel(Model):
     def __init__(self, name: str):
         super().__init__(name)
         self.name = name
+        self.max_text_length = int(os.environ.get("MAX_TEXT_LENGTH", 100))
         self.ready = False
         self.languages: Dict[str, str] = self.create_language_lookup()
         self.model = self.load()
@@ -37,15 +39,38 @@ class LanguageIdentificationModel(Model):
         self.ready = True
         return model
 
-    def predict(self, payload: Dict, headers: Dict[str, str] = None) -> Dict:
-        payload = validate_json_input(payload)
-        text = payload.get("text", None)
+    def normalize_text(self, text: str) -> str:
+        """
+        Replaces newlines (line feed, carriage return), tabs (vertical tab, normal tab),
+        and multiple consecutive spaces with a single space then removes leading/trailing spaces
+        and finally truncates the string keeping only the first {max_text_length} characters.
 
-        if text is None:
-            logging.error("Missing text in input data.")
-            raise InvalidInput("The parameter text is required.")
+        This resolves T377751 by enabling passing of a single line string to the fasttext model as per:
+        https://github.com/facebookresearch/fastText/issues/1079#issuecomment-637440314
+        """
 
-        label, score = self.model.predict(text)
+        return re.sub(r"[\n\r\v\t ]+", " ", text).strip()[: self.max_text_length]
+
+    def preprocess(
+        self, inputs: Dict[str, Any], headers: Dict[str, str] = None
+    ) -> Dict[str, Any]:
+        inputs = validate_json_input(inputs)
+        text = inputs.get("text", None)
+        check_input_param(text=text)
+
+        if not isinstance(text, str):
+            error_message = "The input 'text' should be a string."
+            logging.error(error_message)
+            raise InvalidInput(error_message)
+        else:
+            normalized_text = self.normalize_text(text)
+
+        return normalized_text
+
+    def predict(
+        self, normalized_text: str, headers: Dict[str, str] = None
+    ) -> Dict[str, Any]:
+        label, score = self.model.predict(normalized_text)
         language = label[0].replace("__label__", "")
 
         return {
