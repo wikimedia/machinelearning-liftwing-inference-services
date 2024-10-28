@@ -5,6 +5,7 @@ import re
 
 import mwapi
 import pandas as pd
+from aiohttp import ClientSession
 from kserve.errors import InferenceError
 from shapely.geometry import Point, shape
 from typing import List, Dict, Optional
@@ -12,8 +13,7 @@ from typing import List, Dict, Optional
 logging.basicConfig(level=logging.DEBUG)
 
 current_file_directory = os.path.dirname(__file__)
-
-custom_ua = "WMF ML Team article-country model inference (LiftWing)"
+custom_user_agent = "WMF ML Team article-country model inference (LiftWing)"
 
 """
 TODO: when the event stream exists, replace SQLite database usage with search index
@@ -50,7 +50,7 @@ def title_to_qid(lang: str, title: str, protocol: str) -> Optional[str]:
     Remember to reuse sessions similar to other model servers.
     """
     session = mwapi.Session(
-        get_mediawiki_base_url(protocol, lang), user_agent=custom_ua
+        get_mediawiki_base_url(protocol, lang), user_agent=custom_user_agent
     )
 
     try:
@@ -139,7 +139,9 @@ def point_in_country(
     return None
 
 
-def get_claims(protocol: str, qid: Optional[str] = None) -> Dict:
+async def get_claims(
+    protocol: str, mwapi_client_session: ClientSession, qid: Optional[str] = None
+) -> Dict:
     """
     Get claims from wikibase entity item of provided QID.
 
@@ -149,12 +151,14 @@ def get_claims(protocol: str, qid: Optional[str] = None) -> Dict:
     claims = {}
 
     if qid:
-        session = mwapi.Session(
-            get_mediawiki_base_url(protocol), user_agent=custom_ua
+        session = mwapi.AsyncSession(
+            host=get_mediawiki_base_url(protocol),
+            user_agent=custom_user_agent,
+            session=mwapi_client_session,
         )  # wikidata API session
 
         try:
-            result = session.get(
+            result = await session.get(
                 action="wbgetentities",
                 ids=qid,
                 props="claims",
@@ -182,7 +186,7 @@ def title_to_categories(
     Remember to reuse sessions similar to other model servers.
     """
     session = mwapi.Session(
-        get_mediawiki_base_url(protocol, lang), user_agent=custom_ua
+        get_mediawiki_base_url(protocol, lang), user_agent=custom_user_agent
     )
 
     try:
