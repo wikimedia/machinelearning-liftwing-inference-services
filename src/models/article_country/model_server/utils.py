@@ -146,7 +146,7 @@ def get_claims(protocol: str, qid: Optional[str] = None) -> Dict:
     TODO: use asynchronous API calls after testing force_http on staging
     Remember to reuse sessions similar to other model servers.
     """
-    claims = None
+    claims = {}
 
     if qid:
         session = mwapi.Session(
