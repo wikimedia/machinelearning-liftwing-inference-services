@@ -67,11 +67,12 @@ class ArticleCountryModel(kserve.Model):
         claims = await get_claims(
             self.protocol, self.get_http_client_session("mwapi"), qid
         )
-        country_categories = title_to_categories(
+        country_categories = await title_to_categories(
             title,
             lang,
             self.protocol,
             self.category_to_country,
+            self.get_http_client_session("mwapi"),
         )
         peprocessed_data = {
             "qid": qid,

@@ -144,9 +144,6 @@ async def get_claims(
 ) -> Dict:
     """
     Get claims from wikibase entity item of provided QID.
-
-    TODO: use asynchronous API calls after testing force_http on staging
-    Remember to reuse sessions similar to other model servers.
     """
     claims = {}
 
@@ -176,23 +173,26 @@ async def get_claims(
     return claims
 
 
-def title_to_categories(
-    title: str, lang: str, protocol: str, category_to_country: Dict
+async def title_to_categories(
+    title: str,
+    lang: str,
+    protocol: str,
+    category_to_country: Dict,
+    mwapi_client_session: ClientSession,
 ) -> Dict:
     """
     Gather categories for an article and check if any map to countries
-
-    TODO: use asynchronous API calls after testing force_http on staging
-    Remember to reuse sessions similar to other model servers.
     """
-    session = mwapi.Session(
-        get_mediawiki_base_url(protocol, lang), user_agent=custom_user_agent
+    session = mwapi.AsyncSession(
+        host=get_mediawiki_base_url(protocol, lang),
+        user_agent=custom_user_agent,
+        session=mwapi_client_session,
     )
 
     try:
         # generate list of all categories for the article and their associated Wikidata IDs
         # https://en.wikipedia.org/w/api.php?action=query&generator=categories&titles=Japanese_iris&prop=pageprops&format=json&ppprop=wikibase_item&gcllimit=max
-        result = session.get(
+        result = await session.get(
             action="query",
             generator="categories",
             titles=title,
