@@ -63,7 +63,12 @@ class ArticleCountryModel(kserve.Model):
         title = inputs.get("title")
         check_input_param(lang=lang, title=title)
         check_wiki_suffix(lang)
-        qid = title_to_qid(lang, title, self.protocol)
+        qid = await title_to_qid(
+            lang,
+            title,
+            self.protocol,
+            self.get_http_client_session("mwapi"),
+        )
         claims = await get_claims(
             self.protocol, self.get_http_client_session("mwapi"), qid
         )

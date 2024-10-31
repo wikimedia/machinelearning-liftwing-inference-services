@@ -42,19 +42,23 @@ def validate_qid(qid: str) -> bool:
     return bool(re.match("^Q[0-9]+$", qid))
 
 
-def title_to_qid(lang: str, title: str, protocol: str) -> Optional[str]:
+async def title_to_qid(
+    lang: str,
+    title: str,
+    protocol: str,
+    mwapi_client_session: ClientSession,
+) -> Optional[str]:
     """
     Get Wikidata item ID(s) for Wikipedia article(s)
-
-    TODO: use asynchronous API calls after testing force_http on staging
-    Remember to reuse sessions similar to other model servers.
     """
-    session = mwapi.Session(
-        get_mediawiki_base_url(protocol, lang), user_agent=custom_user_agent
+    session = mwapi.AsyncSession(
+        host=get_mediawiki_base_url(protocol, lang),
+        user_agent=custom_user_agent,
+        session=mwapi_client_session,
     )
 
     try:
-        result = session.get(
+        result = await session.get(
             action="query",
             prop="pageprops",
             ppprop="wikibase_item",
