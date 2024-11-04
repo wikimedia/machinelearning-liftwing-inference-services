@@ -67,8 +67,9 @@ def test_get_revision_from_input(input_data: str):
             "my_wiki_url",
             5,
             False,
+            False,
         )
         preprocessed_data = model.get_revision_from_input(input_data)
         assert isinstance(preprocessed_data["revision"], Revision)
-        assert preprocessed_data["rev_id"] == 1234
+        assert preprocessed_data["rev_id"] == -1
         assert preprocessed_data["lang"] == "en"

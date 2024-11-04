@@ -2,6 +2,7 @@ black
 tox
 pre-commit
 ruff==0.0.225
+furl
 # the following are all pre-commit requirements mostly for black
 ruamel.yaml
 tokenize-rt
