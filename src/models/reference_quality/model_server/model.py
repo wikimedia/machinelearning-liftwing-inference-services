@@ -97,7 +97,10 @@ class ReferenceNeedModel(kserve.Model):
     ) -> Dict[str, Any]:
         result = classify(self.model, request["revision"])
         return {
+            "model_name": self.name,
             "model_version": self.model.model_version,
+            "wiki_db": f'{request.get("lang")}wiki',
+            "revision_id": request.get("rev_id"),
             "reference_need_score": result.rn_score,
         }
 
@@ -115,12 +118,19 @@ class ReferenceRiskModel(ReferenceNeedModel):
         self, request: Dict[str, Any], headers: Dict[str, str] = None
     ) -> Dict[str, Any]:
         result = self.model.classify(request["revision"])
-        return {
+        output = {
+            "model_name": self.name,
             "model_version": result.model_version,
+            "wiki_db": f'{request.get("lang")}wiki',
+            "revision_id": request.get("rev_id"),
             "reference_count": result.reference_count,
             "survival_ratio": result.survival_ratio,
             "reference_risk_score": result.reference_risk_score,
         }
+        extended_output = strtobool(request.get("extended_output", "False"))
+        if extended_output:
+            output["references"] = result.references
+        return output
 
 
 if __name__ == "__main__":
