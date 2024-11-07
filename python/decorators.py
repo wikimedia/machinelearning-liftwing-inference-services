@@ -4,7 +4,13 @@ import logging
 import time
 import inspect
 from functools import wraps
-from python.metric_utils import total_size
+from python.metric_utils import (
+    FETCH_SIZE_BYTE,
+    PRE_SIZE_BYTE,
+    get_labels,
+    total_size,
+)
+from kserve.logging import trace_logger
 
 
 def elapsed_time_async(func):
@@ -89,21 +95,27 @@ def log_slow_function(threshold: float = 10.0):
     return decorator
 
 
-def fetch_size_kb():
-    """Simple decorator for functions to log the size of fetched data in KB."""
+def fetch_size_bytes(model_name: str):
+    """Simple decorator for functions to log and export the size of fetched data in bytes."""
 
     def fetch_size_decorator(func):
         @wraps(func)
         def fetch_size_wrapper(*args, **kwargs):
             resp = func(*args, **kwargs)
-            size = len(resp) / 1000
-            logging.info(f"Function {func.__name__} fetched data {size:.3f} KB.")
+            size = len(resp)
+            FETCH_SIZE_BYTE.labels(**get_labels(model_name)).observe(size)
+            trace_logger.info(
+                f"Function {func.__name__} fetched data {size:.3f} bytes."
+            )
             return resp
 
         async def fetch_size_wrapper_async(*args, **kwargs):
             resp = await func(*args, **kwargs)
-            size = len(resp) / 1000
-            logging.info(f"Function {func.__name__} fetched data {size:.3f} KB.")
+            size = len(resp)
+            FETCH_SIZE_BYTE.labels(**get_labels(model_name)).observe(size)
+            trace_logger.info(
+                f"Function {func.__name__} fetched data {size:.3f} bytes."
+            )
             return resp
 
         if inspect.iscoroutinefunction(func):
@@ -114,14 +126,15 @@ def fetch_size_kb():
     return fetch_size_decorator
 
 
-def preprocess_size_kb(key_name: str):
-    """Simple decorator for functions to log the size of the preprocessed data in KB."""
+def preprocess_size_bytes(model_name: str, key_name: str):
+    """Simple decorator for functions to log and export the size of the preprocessed data in bytes."""
 
     def preprocess_size_decorator(func):
         @wraps(func)
         def preprocess_size_wrapper(*args, **kwargs):
-            size = total_size(args[1][key_name]) / 1000
-            logging.info(f"Preprocessed data ({key_name}) {size:.3f} KB.")
+            size = total_size(args[1][key_name])
+            PRE_SIZE_BYTE.labels(**get_labels(model_name)).observe(size)
+            trace_logger.info(f"Preprocessed data ({key_name}) {size:.3f} bytes.")
             return func(*args, **kwargs)
 
         return preprocess_size_wrapper

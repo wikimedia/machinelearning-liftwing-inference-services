@@ -2,6 +2,27 @@ from sys import getsizeof
 from itertools import chain
 from collections import deque
 
+from prometheus_client import Histogram
+
+PROM_LABELS = ["model_name"]
+FETCH_SIZE_BYTE = Histogram(
+    "fetch_size_bytes",
+    "fetched data size in bytes",
+    buckets=[1000, 10000, 50000, 100000, 500000, 1000000, 5000000, 10000000],
+    labelnames=PROM_LABELS,
+)
+
+PRE_SIZE_BYTE = Histogram(
+    "preprocess_size_bytes",
+    "preprocessed data size in bytes",
+    buckets=[1000, 10000, 50000, 100000, 500000, 1000000, 5000000, 10000000],
+    labelnames=PROM_LABELS,
+)
+
+
+def get_labels(model_name):
+    return {PROM_LABELS[0]: model_name}
+
 
 def total_size(o, handlers={}):
     """Returns the approximate memory footprint an object and all of its contents.

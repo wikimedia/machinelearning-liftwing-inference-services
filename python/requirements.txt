@@ -1,3 +1,4 @@
 aiohttp==3.9.3
 PyYAML==6.0.1
 pyopencl==2024.2.7
+prometheus-client>=0.13.1
