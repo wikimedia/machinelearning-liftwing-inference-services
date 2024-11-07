@@ -79,45 +79,60 @@ class ArticleCountryModel(kserve.Model):
             self.category_to_country,
             self.get_http_client_session("mwapi"),
         )
-        peprocessed_data = {
+        preprocessed_data = {
+            "title": title,
             "qid": qid,
             "claims": claims,
             "country_categories": country_categories,
         }
-        return peprocessed_data
+        return preprocessed_data
 
     def predict(
         self, request: Dict[str, Any], headers: Dict[str, str] = None
     ) -> Dict[str, Any]:
         claims = request.get("claims")
         country_categories = request.get("country_categories")
-        prediction = {"qid": request.get("qid"), "countries": [], "wikidata": []}
-        countries = set()
-        details = []
-        for property, p_country in get_cultural_countries(
+        prediction = {
+            "model_name": self.name,
+            "model_version": "1",  # proper versioning will happen when model is available
+            "prediction": {
+                "article": f'https://en.wikipedia.org/wiki/{request.get("title")}',
+                "wikidata_item": request.get("qid"),
+                "results": [],
+            },
+        }
+        # add country results to prediction
+        for wikidata_property, country in get_cultural_countries(
             claims, self.country_properties, self.qid_to_region
         ):
-            details.append(
-                {property: self.country_properties[property], "country": p_country}
-            )
-            countries.add(p_country)
-        country = get_geographic_country(
-            claims, self.qid_to_geometry, self.qid_to_region
-        )
-        if country:
-            details.append({"P625": "coordinate location", "country": country})
-            countries.add(country)
-        prediction["wikidata"] = details
-        prediction["categories"] = []
-        for country in country_categories:
-            countries.add(country)
-            prediction["categories"].append(
+            prediction["prediction"]["results"].append(
                 {
                     "country": country,
-                    "categories": "|".join(country_categories[country]),
+                    "score": 1,
+                    "source": {
+                        "wikidata_properties": {
+                            wikidata_property: self.country_properties[
+                                wikidata_property
+                            ]
+                        },
+                        "categories": [],
+                    },
                 }
             )
-        prediction["countries"] = sorted(list(countries))
+        geographic_country = get_geographic_country(
+            claims, self.qid_to_geometry, self.qid_to_region
+        )
+        for result in prediction["prediction"]["results"]:
+            country_in_result = result.get("country")
+            # add more country wikidata properties
+            if country_in_result == geographic_country:
+                result["source"]["wikidata_properties"].update(
+                    {"P625": {"0": "coordinate location"}}
+                )
+            # add country categories
+            result["source"]["categories"] = country_categories.get(
+                country_in_result, []
+            )
         return prediction
 
     def get_http_client_session(self, endpoint: str) -> ClientSession:
