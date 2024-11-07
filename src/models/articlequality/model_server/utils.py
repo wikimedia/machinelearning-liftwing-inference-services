@@ -4,8 +4,10 @@ import pandas as pd
 import requests
 from mwparserfromhtml import Article
 from mwparserfromhtml.parse.utils import is_transcluded
+from python.decorators import fetch_size_kb
 
 
+@fetch_size_kb()
 def get_article_html(lang, revid, protocol):
     """Get an article revision's HTML.
 

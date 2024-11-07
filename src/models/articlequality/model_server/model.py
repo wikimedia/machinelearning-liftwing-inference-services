@@ -8,6 +8,7 @@ import kserve
 import numpy as np
 from kserve.errors import InferenceError
 from python.preprocess_utils import validate_json_input
+from python.decorators import preprocess_size_kb
 from statsmodels.iolib.smpickle import load_pickle
 from utils import (
     get_article_features,
@@ -104,6 +105,7 @@ class ArticleQualityModel(kserve.Model):
         inputs["normalized_features"] = normalized_features_tuple
         return inputs
 
+    @preprocess_size_kb(key_name="features")
     def predict(
         self, request: Dict[str, Any], headers: Dict[str, str] = None
     ) -> Dict[str, Any]:
