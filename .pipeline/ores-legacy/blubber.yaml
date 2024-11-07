@@ -57,6 +57,9 @@ variants:
         source: .pre-commit-config.yaml
         destination: .
       - from: local
+        source: tox.ini
+        destination: .
+      - from: local
         source: ci_entrypoint.sh
         destination: entrypoint.sh
       - from: local
