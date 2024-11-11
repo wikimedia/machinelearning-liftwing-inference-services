@@ -11,6 +11,7 @@ from python.preprocess_utils import (
     validate_json_input,
 )
 from utils import (
+    calculate_sums,
     get_cultural_countries,
     get_claims,
     get_geographic_country,
@@ -19,8 +20,10 @@ from utils import (
     load_country_properties,
     load_countries_data,
     load_geometries,
+    normalize_sums,
     title_to_categories,
     title_to_qid,
+    update_scores,
 )
 
 
@@ -133,6 +136,10 @@ class ArticleCountryModel(kserve.Model):
             result["source"]["categories"] = country_categories.get(
                 country_in_result, []
             )
+        # normalize score based on categories and properties
+        sums = calculate_sums(prediction)
+        normalized_scores = normalize_sums(sums)
+        update_scores(prediction, normalized_scores)
         return prediction
 
     def get_http_client_session(self, endpoint: str) -> ClientSession:

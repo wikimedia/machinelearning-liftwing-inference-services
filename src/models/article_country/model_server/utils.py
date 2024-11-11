@@ -340,3 +340,39 @@ def load_categories(model_path: str, file_name: str, qid_to_region: Dict) -> Dic
         logging.error(error_message)
         raise InferenceError(error_message)
     return category_to_country
+
+
+def calculate_sums(prediction_data: Dict) -> List[int]:
+    """
+    Calculate the sum of categories and wikidata properties for each prediction result
+    """
+    results = prediction_data["prediction"]["results"]
+    sums = []
+    for result in results:
+        num_categories = len(result["source"]["categories"])
+        num_wikidata_properties = len(result["source"]["wikidata_properties"])
+        sums.append(num_categories + num_wikidata_properties)
+    return sums
+
+
+def normalize_sums(sums: List[int]) -> List[float]:
+    """
+    Normalize sums so that the lowest value is 0.5 and the highest is 1
+    """
+    min_val, max_val = min(sums), max(sums)
+    if max_val == min_val:
+        return [1.0] * len(
+            sums
+        )  # avoid division by zero if min and max values are the same
+    return [
+        0.5 + 0.5 * ((sum_item - min_val) / (max_val - min_val)) for sum_item in sums
+    ]
+
+
+def update_scores(prediction_data: Dict, normalized_scores: List[float]) -> None:
+    """
+    Update scores in the JSON prediction data based on the normalized values
+    """
+    results = prediction_data["prediction"]["results"]
+    for i, result in enumerate(results):
+        result["score"] = normalized_scores[i]
