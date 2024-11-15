@@ -61,10 +61,10 @@ variants:
     copies:
       - from: local
         source: src/models/outlink_topic_model/model_server
-        destination: model_server
+        destination: src/models/outlink_topic_model/model_server
       - from: local
         source: tox.ini
-        destination: model_server
+        destination: .
       - from: local
         source: .pre-commit-config.yaml
         destination: .
@@ -77,7 +77,7 @@ variants:
       - from: local
         source: requirements-test.txt
         destination: .
-    entrypoint: [ "./entrypoint.sh", "model_server" ]
+    entrypoint: [ "./entrypoint.sh", "ci-lint" ]
     python:
       version: python3
       requirements: [requirements-test.txt]
