@@ -56,10 +56,10 @@ variants:
     copies:
       - from: local
         source: src/models/outlink_topic_model/transformer
-        destination: transformer
+        destination: src/models/outlink_topic_model/transformer
       - from: local
         source: tox.ini
-        destination: transformer
+        destination: .
       - from: local
         source: .pre-commit-config.yaml
         destination: .
@@ -72,8 +72,25 @@ variants:
       - from: local
         source: requirements-test.txt
         destination: .
-    entrypoint: ["./entrypoint.sh", "transformer"]
-    python:
-      version: python3
-      requirements: [requirements-test.txt]
-      use-system-flag: false
+      - from: local
+        source: python
+        destination: python/
+      - from: local
+        source: test/unit/__init__.py
+        destination: test/unit/__init__.py
+      - from: local
+        source: test/unit/outlink_topic_model
+        destination: test/unit/outlink_topic_model
+      - from: local
+        source: test/unit/python
+        destination: test/unit/python
+    builders:
+      - python:
+          version: python3
+          requirements: [src/models/outlink_topic_model/transformer/requirements.txt, python/requirements.txt, requirements-test.txt]
+          use-system-flag: false
+      - custom:
+          command: ["python3", "-m", "pip", "uninstall", "-y", "virtualenv"]
+      - custom:
+          command: ["python3", "-m", "pip", "install", "--target", "/opt/lib/python/site-packages", "virtualenv==20.27.1"]
+    entrypoint: ["./entrypoint.sh", "ci-lint", "ci-unit"]
