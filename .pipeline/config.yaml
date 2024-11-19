@@ -149,6 +149,25 @@ pipelines:
             name: '${setup.project}-ores-legacy'
             tags: [stable]
 
+  llm:
+    blubberfile: llm/blubber.yaml
+    stages:
+      - name: run-test
+        build: test
+        run: true
+      - name: production
+        build: production
+
+  llm-publish:
+    blubberfile: llm/blubber.yaml
+    stages:
+      - name: publish
+        build: production
+        publish:
+          image:
+            name: '${setup.project}-llm'
+            tags: [stable]
+
   readability:
     blubberfile: readability/blubber.yaml
     stages:

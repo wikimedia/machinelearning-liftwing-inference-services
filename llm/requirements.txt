@@ -1,0 +1,9 @@
+accelerate==0.26.0
+ctranslate2==3.22.0
+einops==0.7.0
+kserve==0.11.2
+sentencepiece==0.1.95
+scipy==1.11.0
+--extra-index-url https://download.pytorch.org/whl/rocm6.0
+torch==2.3.0
+transformers==4.36.2
