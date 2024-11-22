@@ -69,13 +69,10 @@ variants:
     copies:
       - from: local
         source: src/models/articlequality
-        destination: .
-      - from: local
-        source: python
-        destination: python/
+        destination: src/models/articlequality
       - from: local
         source: tox.ini
-        destination: model_server
+        destination: .
       - from: local
         source: .pre-commit-config.yaml
         destination: .
@@ -88,7 +85,7 @@ variants:
       - from: local
         source: requirements-test.txt
         destination: .
-    entrypoint: ["./entrypoint.sh", "model_server"]
+    entrypoint: ["./entrypoint.sh", "ci-lint"]
     python:
       version: python3
       use-system-site-packages: true
