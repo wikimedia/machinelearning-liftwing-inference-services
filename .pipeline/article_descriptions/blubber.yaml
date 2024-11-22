@@ -64,14 +64,11 @@ variants:
         - git
     copies:
       - from: local
-        source: src/models/article_descriptions/model_server
-        destination: model_server
-      - from: local
-        source: python
-        destination: python/
+        source: src/models/article_descriptions
+        destination: src/models/article_descriptions
       - from: local
         source: tox.ini
-        destination: model_server
+        destination: .
       - from: local
         source: .pre-commit-config.yaml
         destination: .
@@ -84,7 +81,7 @@ variants:
       - from: local
         source: requirements-test.txt
         destination: .
-    entrypoint: ["./entrypoint.sh", "model_server"]
+    entrypoint: ["./entrypoint.sh", "ci-lint"]
     python:
       version: python3
       use-system-flag: false
