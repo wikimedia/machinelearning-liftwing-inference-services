@@ -62,10 +62,7 @@ variants:
     copies:
       - from: local
         source: src/models/langid/
-        destination: langid/
-      - from: local
-        source: python
-        destination: python/
+        destination: src/models/langid/
       - from: local
         source: requirements-test.txt
         destination: .
@@ -78,8 +75,11 @@ variants:
       - from: local
         source: ruff.toml
         destination: .
-    entrypoint: ["./langid/ci_entrypoint.sh", "."]
+      - from: local
+        source: ci_entrypoint.sh
+        destination: entrypoint.sh
+    entrypoint: ["./entrypoint.sh", "ci-lint"]
     python:
       version: python3
-      requirements: [requirements-test.txt, src/models/langid/requirements.txt]
+      requirements: [requirements-test.txt]
       use-system-flag: false
