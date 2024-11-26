@@ -44,10 +44,10 @@ variants:
     copies:
       - from: local
         source: src/models/nsfw-model/model-server
-        destination: model-server
+        destination: src/models/nsfw-model/model-server
       - from: local
         source: tox.ini
-        destination: model-server
+        destination: .
       - from: local
         source: .pre-commit-config.yaml
         destination: .
@@ -60,7 +60,7 @@ variants:
       - from: local
         source: requirements-test.txt
         destination: .
-    entrypoint: ["./entrypoint.sh", "model-server"]
+    entrypoint: ["./entrypoint.sh", "ci-lint"]
     python:
       version: python3
       use-system-flag: false
