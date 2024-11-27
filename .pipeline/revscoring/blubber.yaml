@@ -124,7 +124,7 @@ variants:
         destination: python/
       - from: local
         source: tox.ini
-        destination: revscoring_model/
+        destination: .
       - from: local
         source: .pre-commit-config.yaml
         destination: .
@@ -137,7 +137,7 @@ variants:
       - from: local
         source: requirements-test.txt
         destination: .
-    entrypoint: ["./entrypoint.sh", "revscoring_model"]
+    entrypoint: ["./entrypoint.sh", "ci-lint"]
     python:
       version: python3
       requirements: [requirements-test.txt]
