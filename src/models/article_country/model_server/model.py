@@ -21,6 +21,7 @@ from utils import (
     load_countries_data,
     load_geometries,
     normalize_sums,
+    sort_results_by_score,
     title_to_categories,
     title_to_qid,
     update_scores,
@@ -140,6 +141,7 @@ class ArticleCountryModel(kserve.Model):
         sums = calculate_sums(prediction)
         normalized_scores = normalize_sums(sums)
         update_scores(prediction, normalized_scores)
+        prediction = sort_results_by_score(prediction)
         return prediction
 
     def get_http_client_session(self, endpoint: str) -> ClientSession:

@@ -376,3 +376,16 @@ def update_scores(prediction_data: Dict, normalized_scores: List[float]) -> None
     results = prediction_data["prediction"]["results"]
     for i, result in enumerate(results):
         result["score"] = normalized_scores[i]
+
+
+def sort_results_by_score(prediction_data: Dict) -> Dict:
+    """
+    Sort results in the prediction data so they are ranked by score in descending order
+    """
+    if "prediction" in prediction_data and "results" in prediction_data["prediction"]:
+        prediction_data["prediction"]["results"] = sorted(
+            prediction_data["prediction"]["results"],
+            key=lambda country_result: country_result["score"],
+            reverse=True,
+        )
+    return prediction_data
