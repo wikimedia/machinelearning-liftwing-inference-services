@@ -81,7 +81,7 @@ variants:
       - from: local
         source: requirements-test.txt
         destination: .
-    entrypoint: ["./entrypoint.sh", "."]
+    entrypoint: ["./entrypoint.sh", "ci-lint"]
     python:
       version: python3
       use-system-flag: false
