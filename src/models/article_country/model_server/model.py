@@ -137,11 +137,12 @@ class ArticleCountryModel(kserve.Model):
             result["source"]["categories"] = country_categories.get(
                 country_in_result, []
             )
-        # normalize score based on categories and properties
-        sums = calculate_sums(prediction)
-        normalized_scores = normalize_sums(sums)
-        update_scores(prediction, normalized_scores)
-        prediction = sort_results_by_score(prediction)
+        if prediction["prediction"]["results"]:
+            # normalize score based on categories and properties if results exist
+            sums = calculate_sums(prediction)
+            normalized_scores = normalize_sums(sums)
+            update_scores(prediction, normalized_scores)
+            prediction = sort_results_by_score(prediction)
         return prediction
 
     def get_http_client_session(self, endpoint: str) -> ClientSession:
