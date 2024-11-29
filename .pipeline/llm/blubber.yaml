@@ -13,7 +13,7 @@ variants:
   build:
     python:
       version: python3
-      requirements: [llm/requirements.txt, python/requirements.txt]
+      requirements: [src/models/llm/requirements.txt, python/requirements.txt]
       use-system-site-packages: true
       no-deps: false
     apt:
@@ -31,7 +31,7 @@ variants:
   production:
     copies:
       - from: local
-        source: llm/
+        source: src/models/llm/
         destination: llm/
       - from: local
         source: python
@@ -70,8 +70,8 @@ variants:
         - git
     copies:
       - from: local
-        source: llm/
-        destination: llm/
+        source: src/models/llm/
+        destination: src/models/llm/
       - from: local
         source: python
         destination: python/
