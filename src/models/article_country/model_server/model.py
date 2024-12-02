@@ -114,11 +114,13 @@ class ArticleCountryModel(kserve.Model):
                     "country": country,
                     "score": 1,
                     "source": {
-                        "wikidata_properties": {
-                            wikidata_property: self.country_properties[
-                                wikidata_property
-                            ]
-                        },
+                        "wikidata_properties": [
+                            {
+                                wikidata_property: self.country_properties[
+                                    wikidata_property
+                                ].get(0)
+                            }
+                        ],
                         "categories": [],
                     },
                 }
@@ -130,8 +132,8 @@ class ArticleCountryModel(kserve.Model):
             country_in_result = result.get("country")
             # add more country wikidata properties
             if country_in_result == geographic_country:
-                result["source"]["wikidata_properties"].update(
-                    {"P625": {"0": "coordinate location"}}
+                result["source"]["wikidata_properties"].append(
+                    {"P625": "coordinate location"}
                 )
             # add country categories
             result["source"]["categories"] = country_categories.get(
