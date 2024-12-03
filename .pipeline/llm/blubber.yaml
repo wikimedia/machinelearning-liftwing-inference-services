@@ -1,10 +1,10 @@
-# syntax=docker-registry.wikimedia.org/repos/releng/blubber/buildkit:v0.21.1
+# syntax=docker-registry.wikimedia.org/repos/releng/blubber/buildkit:v1.0.1
 version: v4
-base: docker-registry.wikimedia.org/bookworm:20240505
+base: docker-registry.wikimedia.org/amd-pytorch23:2.3.0rocm6.0-2
 runs:
   insecurely: true
   environment:
-    PYTHONPATH: /srv/app
+    PYTHONPATH: /opt/lib/python/site-packages:/srv/app:/opt/lib/venv/lib/python3.11/site-packages
 
 lives:
   in: /srv/app
@@ -14,15 +14,19 @@ variants:
     python:
       version: python3
       requirements: [llm/requirements.txt, python/requirements.txt]
+      use-system-site-packages: true
+      no-deps: false
     apt:
       packages:
         - build-essential
+        - cmake
+        - git
+        - pkg-config
         - python3-pip
         - python3-dev
         - python3-setuptools
-        - git
-        - cmake
-        - pkg-config
+        - python3.11-venv
+
 
   production:
     copies:
@@ -35,6 +39,9 @@ variants:
       - from: build
         source: /opt/lib/python/site-packages
         destination: /opt/lib/python/site-packages
+      - from: build
+        source: /opt/lib/venv/lib/python3.11/site-packages/
+        destination: /opt/lib/venv/lib/python3.11/site-packages/
       - from: local
         source: model_server_entrypoint.sh
         destination: entrypoint.sh
@@ -50,7 +57,8 @@ variants:
         - libdrm-amdgpu1
     python:
       version: python3
-      use-system-flag: false
+      use-system-site-packages: true
+      no-deps: false
     entrypoint: ["./entrypoint.sh",  "llm/model.py"]
 
   test:
@@ -58,6 +66,7 @@ variants:
       packages:
         - python3-pip
         - python3-setuptools
+        - python3-venv
         - git
     copies:
       - from: local
@@ -84,5 +93,6 @@ variants:
     entrypoint: ["./entrypoint.sh", "ci-lint"]
     python:
       version: python3
-      use-system-flag: false
+      use-system-site-packages: true
+      no-deps: false
       requirements: [requirements-test.txt]
