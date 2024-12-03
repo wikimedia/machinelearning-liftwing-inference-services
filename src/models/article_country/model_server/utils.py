@@ -357,9 +357,15 @@ def calculate_sums(prediction_data: Dict) -> List[int]:
 
 def normalize_sums(sums: List[int]) -> List[float]:
     """
-    Normalize sums so that the lowest value is 0.5 and the highest is 1
+    Apply min-max normalization to sums using a fixed minimum sum value of 1.
+    Scale the sum values so the lowest is >= 0.5 and the highest is <= 1.
+
+    Examples:
+    1. normalize_sums([4, 1, 2]) returns [1.0, 0.5, 0.6666666666666666]
+    2. normalize_sums([2, 3]) without a fixed minimum sum would return [0.5, 1.0] based on T371897#10290006
+    3. normalize_sums([2, 3]) with a fixed minimum sum of 1 returns [0.75, 1.0] based on T371897#10363540
     """
-    min_val, max_val = min(sums), max(sums)
+    min_val, max_val = 1, max(sums)
     if max_val == min_val:
         return [1.0] * len(
             sums
