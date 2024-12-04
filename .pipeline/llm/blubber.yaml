@@ -32,7 +32,7 @@ variants:
     copies:
       - from: local
         source: src/models/llm/
-        destination: llm/
+        destination: src/models/llm/
       - from: local
         source: python
         destination: python
@@ -59,7 +59,7 @@ variants:
       version: python3
       use-system-site-packages: true
       no-deps: false
-    entrypoint: ["./entrypoint.sh",  "llm/model.py"]
+    entrypoint: ["./entrypoint.sh",  "src/models/llm/model.py"]
 
   test:
     apt:

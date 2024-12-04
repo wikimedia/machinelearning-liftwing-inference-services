@@ -7,14 +7,14 @@ This can be done with:
 ```console
 python -m venv .venv
 source .venv/bin/activate
-pip install -r llm/requirements.txt
+pip install -r src/models/llm/requirements.txt
 ```
 
 To be able to use utils from the python director, we need to add the top level directory to the PYTHONPATH
 > export PYTHONPATH=$PYTHONPATH:<PATH_TO_INFERENCE_SERVICES_REPO>
 
 Then running:
->  MODEL_NAME=nllb-200 LLM_CLASS=llm.NLLB MODEL_PATH=/path/to/model/files/ python llm/model.py
+>  MODEL_NAME=nllb-200 LLM_CLASS=llm.NLLB MODEL_PATH=/path/to/model/files/ python src/models/llm/model.py
 
 Make a request:
 > curl localhost:8080/v1/models/nllb-200:predict -i -X POST -d '{"prompt": "Some random text we want to translate to german", "tgt_lang": "deu_Latn"}'

@@ -6,7 +6,7 @@ import ctranslate2 as ctr2
 import sentencepiece as spm
 from kserve.errors import InferenceError
 
-from llm import NLLB
+from src.models.llm import NLLB
 from python.preprocess_utils import validate_json_input
 from python.resource_utils import get_cpu_count
 
