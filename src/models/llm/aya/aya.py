@@ -27,6 +27,7 @@ class Aya(LLM):
             low_cpu_mem_usage=True,
             trust_remote_code=True,
             torch_dtype=torch.bfloat16,
+            attn_implementation="flash_attention_2",
             quantization_config=quantization_config,
         )
         tokenizer = AutoTokenizer.from_pretrained(
