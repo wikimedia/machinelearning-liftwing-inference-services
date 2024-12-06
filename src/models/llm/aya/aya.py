@@ -10,7 +10,7 @@ from src.models.llm import LLM
 class Aya(LLM):
     def __init__(self, model_name: str):
         self.quantization_mode = os.environ.get("BITSANDBYTES_DTYPE", "int4")
-        self.device = os.environ.get("DEVICE", "cuda:0")
+        self.device_map = os.environ.get("DEVICE", "cuda:0")
         super().__init__(model_name)
 
     def load(self) -> Tuple[AutoModelForCausalLM, AutoTokenizer]:
@@ -22,7 +22,7 @@ class Aya(LLM):
             quantization_config = None
         model = AutoModelForCausalLM.from_pretrained(
             self.model_path,
-            device=self.device,
+            device_map=self.device_map,
             local_files_only=True,
             low_cpu_mem_usage=True,
             trust_remote_code=True,
