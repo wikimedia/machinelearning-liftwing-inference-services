@@ -127,6 +127,7 @@ if __name__ == "__main__":
     llm_class_name = os.environ.get("LLM_CLASS", "llm.LLM")
     try:
         module_name, class_name = llm_class_name.split(".")
+        module_name = ".".join(["src.models", module_name])
         module = importlib.import_module(module_name)
         llm_class = getattr(module, class_name)
     except (ImportError, AttributeError):
