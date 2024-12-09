@@ -5,7 +5,7 @@ runs:
   insecurely: true
   environment:
     PYTHONPATH: /opt/lib/python/site-packages:/srv/app:/opt/lib/venv/lib/python3.11/site-packages
-    PATH: /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/srv/app
+    PATH: $PATH:/srv/app
 
 lives:
   in: /srv/app
