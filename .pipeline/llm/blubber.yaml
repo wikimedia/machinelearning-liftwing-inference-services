@@ -5,6 +5,7 @@ runs:
   insecurely: true
   environment:
     PYTHONPATH: /opt/lib/python/site-packages:/srv/app:/opt/lib/venv/lib/python3.11/site-packages
+    PATH: /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/srv/app
 
 lives:
   in: /srv/app
@@ -48,6 +49,10 @@ variants:
       - from: local
         source: common_settings.sh
         destination: common_settings.sh
+      - from: local
+        source: src/models/llm/rocminfo
+        destination: rocminfo
+
     apt:
       packages:
         - python3
