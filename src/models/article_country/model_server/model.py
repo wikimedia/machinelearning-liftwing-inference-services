@@ -84,6 +84,7 @@ class ArticleCountryModel(kserve.Model):
             self.get_http_client_session("mwapi"),
         )
         preprocessed_data = {
+            "lang": lang,
             "title": title,
             "qid": qid,
             "claims": claims,
@@ -100,7 +101,7 @@ class ArticleCountryModel(kserve.Model):
             "model_name": self.name,
             "model_version": "1",  # proper versioning will happen when model is available
             "prediction": {
-                "article": f'https://en.wikipedia.org/wiki/{request.get("title")}',
+                "article": f'https://{request.get("lang")}.wikipedia.org/wiki/{request.get("title")}',
                 "wikidata_item": request.get("qid"),
                 "results": [],
             },
