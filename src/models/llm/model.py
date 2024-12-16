@@ -66,7 +66,7 @@ class LLM(kserve.Model):
             # https://pytorch.org/docs/stable/notes/hip.html
             self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
             logging.info(f"Using device: {self.device}")
-            self.model = self.model.to(self.device)
+            # TODO: in the event where we have a GPU error the model should be reloaded to the GPU.
 
     def preprocess(
         self, inputs: Dict[str, Any], headers: Dict[str, str] = None
@@ -76,7 +76,7 @@ class LLM(kserve.Model):
             inputs = validate_json_input(inputs)
             prompt = inputs.get("prompt")
             result_length = inputs.get("result_length", 100)
-            inputs = self.tokenizer(prompt, return_tensors="pt")
+            inputs = self.tokenizer(prompt, return_tensors="pt").to(self.device)
             inputs["result_length"] = result_length + inputs["input_ids"].size()[1]
             return inputs
         except RuntimeError as e:
