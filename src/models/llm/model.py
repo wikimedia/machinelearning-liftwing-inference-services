@@ -75,7 +75,7 @@ class LLM(kserve.Model):
             self.check_gpu()
             inputs = validate_json_input(inputs)
             prompt = inputs.get("prompt")
-            result_length = inputs.get("result_length")
+            result_length = inputs.get("result_length", 100)
             inputs = self.tokenizer(prompt, return_tensors="pt")
             inputs["result_length"] = result_length + inputs["input_ids"].size()[1]
             return inputs
