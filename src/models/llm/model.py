@@ -20,6 +20,10 @@ class LLM(kserve.Model):
         super().__init__(model_name)
         self.model_path = os.environ.get("MODEL_PATH", "/mnt/models/")
         self.quantized = strtobool(os.environ.get("QUANTIZED", "False"))
+        self.dtype = os.environ.get("DTYPE", "torch.bloat16")
+        self.attn_implementation = os.environ.get(
+            "ATTN_IMPLEMENTATION", "flash_attention_2"
+        )
         self.tokenizer = None
         self.model = None
         self.model_name = model_name
@@ -45,7 +49,9 @@ class LLM(kserve.Model):
             local_files_only=True,
             trust_remote_code=True,
             low_cpu_mem_usage=True,
+            torch_dtype=self.dtype,
             load_in_8bit=self.quantized,
+            attn_implementation=self.attn_implementation,
         )
         tokenizer = AutoTokenizer.from_pretrained(
             self.model_path, local_files_only=True

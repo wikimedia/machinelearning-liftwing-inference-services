@@ -1,7 +1,6 @@
 import os
 from typing import Tuple
 
-import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 
 from src.models.llm import LLM
@@ -26,8 +25,8 @@ class Aya(LLM):
             local_files_only=True,
             low_cpu_mem_usage=True,
             trust_remote_code=True,
-            torch_dtype=torch.bfloat16,
-            attn_implementation="flash_attention_2",
+            torch_dtype=self.dtype,
+            attn_implementation=self.attn_implementation,
             quantization_config=quantization_config,
         )
         tokenizer = AutoTokenizer.from_pretrained(
