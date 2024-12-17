@@ -112,14 +112,13 @@ class LLM(kserve.Model):
     def predict(
         self, request: Dict[str, Any], headers: Dict[str, str] = None
     ) -> Dict[str, Any]:
-        with torch.inference_mode():
-            outputs = self.model.generate(
-                request["input_ids"],
-                max_length=request["result_length"],
-                do_sample=True,
-                top_k=50,
-                top_p=0.9,
-            )
+        outputs = self.model.generate(
+            request["input_ids"],
+            max_length=request["result_length"],
+            do_sample=True,
+            top_k=50,
+            top_p=0.9,
+        )
         response = self.tokenizer.decode(outputs[0])
         return {"model_name": self.model_name, "response": response}
 
