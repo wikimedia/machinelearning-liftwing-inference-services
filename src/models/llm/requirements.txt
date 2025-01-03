@@ -1,5 +1,5 @@
 accelerate==1.1.1
-https://github.com/bitsandbytes-foundation/bitsandbytes/releases/download/continuous-release_multi-backend-refactor/bitsandbytes-0.44.1.dev0-py3-none-manylinux_2_24_x86_64.whl
+https://github.com/bitsandbytes-foundation/bitsandbytes/releases/download/continuous-release_multi-backend-refactor/bitsandbytes-0.45.0.dev0-py3-none-manylinux_2_24_x86_64.whl
 https://github.com/isaranto/flash-attention/releases/download/v2.7.0-py3.11/flash_attn-2.7.0.post2-cp311-cp311-linux_x86_64.whl
 ctranslate2==4.5.0
 einops==0.8.0
