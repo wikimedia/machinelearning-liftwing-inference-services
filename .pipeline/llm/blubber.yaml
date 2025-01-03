@@ -60,6 +60,7 @@ variants:
         - python3-setuptools
         - wmf-certificates
         - libdrm-amdgpu1
+        - g++
     python:
       version: python3
       use-system-site-packages: true
