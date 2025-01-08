@@ -2,7 +2,7 @@
 
 The logo-detection inference service takes Wikimedia Commons image(s) and returns a prediction on whether they are a logo or not.
 
-* Model Card: TBD
+* Model Card: https://meta.wikimedia.org/wiki/Machine_learning_models/Production/gogologo
 * Source: https://gitlab.wikimedia.org/mfossati/scriptz/-/blob/main/liftwing_prototype.py
 * Paper: https://arxiv.org/abs/2104.00298
 * Model: https://analytics.wikimedia.org/published/wmf-ml-models/logo-detection/
