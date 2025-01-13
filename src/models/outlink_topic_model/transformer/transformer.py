@@ -159,13 +159,6 @@ class OutlinkTransformer(kserve.Model):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(parents=[kserve.model_server.parser])
-    parser.add_argument(
-        "--model_name",
-        help="The name that the model is served under.",
-    )
-    parser.add_argument(
-        "--predictor_host", help="The URL for the model predict function", required=True
-    )
 
     args, _ = parser.parse_known_args()
 
