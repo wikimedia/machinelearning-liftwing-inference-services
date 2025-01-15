@@ -5,9 +5,13 @@ from typing import Any, Dict
 
 import kserve
 from aiohttp import ClientSession, ClientTimeout
+from kserve.errors import InvalidInput
 from python.preprocess_utils import (
     check_input_param,
     check_wiki_suffix,
+    get_lang,
+    get_page_title,
+    is_domain_wikipedia,
     validate_json_input,
 )
 from utils import (
@@ -39,6 +43,7 @@ class ArticleCountryModel(kserve.Model):
         self.name = name
         self.protocol = "http" if force_http else "https"
         self.data_path = data_path
+        self.event_key = "event"
         self.ready = False
         self.http_client_session = {}
         self.aiohttp_client_timeout = aiohttp_client_timeout
@@ -63,8 +68,19 @@ class ArticleCountryModel(kserve.Model):
         self, inputs: Dict[str, Any], headers: Dict[str, str] = None
     ) -> Dict[str, Any]:
         inputs = validate_json_input(inputs)
-        lang = inputs.get("lang")
-        title = inputs.get("title")
+        if self.event_key in inputs:
+            # process inputs from source event stream
+            source_event = inputs.get(self.event_key)
+            if not is_domain_wikipedia(source_event):
+                error_message = "This model is not recommended for use in projects outside of Wikipedia (e.g. Wiktionary, Wikinews, etc)"
+                logging.error(error_message)
+                raise InvalidInput(error_message)
+            lang = get_lang(inputs, self.event_key)
+            title = get_page_title(inputs, self.event_key)
+        else:
+            # avoid using get_page_title() as it expects "page_title" instead of just "title" in the inputs
+            lang = inputs.get("lang")
+            title = inputs.get("title")
         check_input_param(lang=lang, title=title)
         check_wiki_suffix(lang)
         qid = await title_to_qid(
