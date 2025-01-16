@@ -6,6 +6,7 @@ from typing import Any, Dict
 import kserve
 from aiohttp import ClientSession, ClientTimeout
 from kserve.errors import InvalidInput
+from python import events
 from python.preprocess_utils import (
     check_input_param,
     check_wiki_suffix,
@@ -44,6 +45,10 @@ class ArticleCountryModel(kserve.Model):
         self.protocol = "http" if force_http else "https"
         self.data_path = data_path
         self.event_key = "event"
+        self.eventgate_url = os.environ.get("EVENTGATE_URL")
+        self.eventgate_stream = os.environ.get("EVENTGATE_STREAM")
+        # Deployed via the wmf-certificates package
+        self.tls_cert_bundle_path = "/etc/ssl/certs/wmf-ca-certificates.crt"
         self.ready = False
         self.http_client_session = {}
         self.aiohttp_client_timeout = aiohttp_client_timeout
@@ -106,9 +111,11 @@ class ArticleCountryModel(kserve.Model):
             "claims": claims,
             "country_categories": country_categories,
         }
+        if self.event_key in inputs:
+            preprocessed_data[self.event_key] = inputs.get(self.event_key)
         return preprocessed_data
 
-    def predict(
+    async def predict(
         self, request: Dict[str, Any], headers: Dict[str, str] = None
     ) -> Dict[str, Any]:
         claims = request.get("claims")
@@ -162,7 +169,49 @@ class ArticleCountryModel(kserve.Model):
             normalized_scores = normalize_sums(sums)
             update_scores(prediction, normalized_scores)
             prediction = sort_results_by_score(prediction)
+        if self.event_key in request:
+            prediction_results = {
+                "predictions": [
+                    result["country"] for result in prediction["prediction"]["results"]
+                ],  # list of countries in the prediction
+                "probabilities": {
+                    result["country"]: result["score"]
+                    for result in prediction.get("prediction", {}).get("results", [])
+                },  # dict of countries and their score from the prediction
+            }
+            await self.send_event(
+                request.get(self.event_key),
+                prediction_results,
+                prediction.get("model_version"),
+            )
         return prediction
+
+    async def send_event(
+        self,
+        page_change_event: Dict[str, Any],
+        prediction_results: Dict[str, Any],
+        model_version: str,
+    ) -> None:
+        """
+        Send an article_country_prediction event to EventGate, generated from
+        the page_change event and prediction_results passed as input.
+        """
+        article_country_prediction_event = (
+            events.generate_prediction_classification_event(
+                page_change_event,
+                self.eventgate_stream,
+                "article-country-model",
+                model_version,
+                prediction_results,
+            )
+        )
+        await events.send_event(
+            article_country_prediction_event,
+            self.eventgate_url,
+            self.tls_cert_bundle_path,
+            "WMF ML Team article-country model inference (LiftWing)",
+            self.get_http_client_session("eventgate"),
+        )
 
     def get_http_client_session(self, endpoint: str) -> ClientSession:
         """
