@@ -1,3 +1,4 @@
+# Main packages
 kserve==0.14.1
 fasttext-wheel==0.9.2
 mwapi==0.6.1
