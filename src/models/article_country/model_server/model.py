@@ -200,7 +200,7 @@ class ArticleCountryModel(kserve.Model):
             events.generate_prediction_classification_event(
                 page_change_event,
                 self.eventgate_stream,
-                "article-country-model",
+                "article-country",
                 model_version,
                 prediction_results,
             )
