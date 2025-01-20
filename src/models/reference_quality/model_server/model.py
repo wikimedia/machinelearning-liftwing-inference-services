@@ -6,13 +6,13 @@ import mwapi
 from typing import Any, Dict
 from distutils.util import strtobool
 
-from knowledge_integrity.mediawiki import get_revision
+from knowledge_integrity.mediawiki import get_revision, Error
 from knowledge_integrity.models.reference_need import load_model, classify
 from knowledge_integrity.models.reference_risk import (
     ReferenceRiskModel as BaseReferenceRiskModel,
 )
 
-from kserve.errors import InferenceError
+from kserve.errors import InferenceError, InvalidInput
 
 from python.config_utils import get_config
 from python.preprocess_utils import (
@@ -88,6 +88,12 @@ class ReferenceNeedModel(kserve.Model):
                 "An error happened while fetching info for revision "
                 "from the MediaWiki API, please contact the ML-Team "
                 "if the issue persists."
+            )
+        if isinstance(rev, Error):
+            logging.info(f"revision {rev_id} ({lang}): {rev.code.value}")
+            raise InvalidInput(
+                f"Could not make prediction for revision {rev_id} ({lang})."
+                f" Reason: {rev.code.value}"
             )
         inputs["revision"] = rev
         return inputs
