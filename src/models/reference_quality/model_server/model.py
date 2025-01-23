@@ -15,6 +15,7 @@ from knowledge_integrity.models.reference_risk import (
 from kserve.errors import InferenceError, InvalidInput
 
 from python.config_utils import get_config
+from python.decorators import preprocess_size_bytes
 from python.preprocess_utils import (
     validate_json_input,
     check_input_param,
@@ -98,6 +99,7 @@ class ReferenceNeedModel(kserve.Model):
         inputs["revision"] = rev
         return inputs
 
+    @preprocess_size_bytes("reference-need", key_name="revision")
     def predict(
         self, request: Dict[str, Any], headers: Dict[str, str] = None
     ) -> Dict[str, Any]:
@@ -120,6 +122,7 @@ class ReferenceRiskModel(ReferenceNeedModel):
         logging.info(f"{self.name} supported wikis: {self.model.supported_wikis}.")
         self.ready = True
 
+    @preprocess_size_bytes("reference-risk", key_name="revision")
     def predict(
         self, request: Dict[str, Any], headers: Dict[str, str] = None
     ) -> Dict[str, Any]:
