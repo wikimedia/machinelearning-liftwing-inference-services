@@ -85,3 +85,17 @@ If you would like to remove the setup run:
 ```bash
 make clean
 ```
+
+## Create new test dataset
+
+You can use `get_recent_revision_info()` in utils.py to create a test dataset from recent Wikipedia revisions.
+
+For example, to fetch the 30 most recent English Wikipedia revisions and save them for load testing, run:
+
+```bash
+python utils.py get_recent_revision_info 30 en true
+```
+
+The function takes three parameters: the number of revisions to fetch, the Wikipedia language code, and whether to save results to a file.
+
+When saving is enabled, it creates a TSV file in `data/recentchanges_<language>.tsv` containing three columns: `lang`, `rev_id`, and `page_title`.

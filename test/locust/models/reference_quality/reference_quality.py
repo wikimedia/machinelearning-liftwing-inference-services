@@ -2,12 +2,11 @@ import pandas as pd
 
 from locust import FastHttpUser, between, task
 
-rev_ids = pd.read_csv("data/sample_all.tsv", delimiter="\t", header=None)
+input_df = pd.read_csv("data/recentchanges_en.tsv", delimiter="\t")
 
 
 def get_random_sample_from_df_input(df, skip_wikis=[]):
-    lang, rev_id = df[~df[0].isin(skip_wikis)].sample(n=1).squeeze().tolist()
-    return lang, rev_id
+    return df[~df["lang"].isin(skip_wikis)].sample(n=1).squeeze().tolist()
 
 
 class ReferenceNeed(FastHttpUser):
@@ -15,14 +14,14 @@ class ReferenceNeed(FastHttpUser):
 
     @task(3)
     def get_prediction(self):
-        lang, rev_id = get_random_sample_from_df_input(rev_ids)
+        sample = get_random_sample_from_df_input(input_df)
         headers = {
             "Content-Type": "application/json",
-            "Host": "reference-quality.experimental.wikimedia.org",
+            "Host": "reference-quality.revision-models.wikimedia.org",
         }
         self.client.post(
             "/v1/models/reference-need:predict",
-            json={"rev_id": int(rev_id), "lang": lang},
+            json={"rev_id": int(sample[1]), "lang": sample[0]},
             headers=headers,
         )
 
@@ -33,13 +32,13 @@ class ReferenceRisk(FastHttpUser):
     @task(3)
     def get_prediction(self):
         # ref-risk model currently does not support de and es wikis
-        lang, rev_id = get_random_sample_from_df_input(rev_ids, skip_wikis=["de", "es"])
+        sample = get_random_sample_from_df_input(input_df, skip_wikis=["de", "es"])
         headers = {
             "Content-Type": "application/json",
-            "Host": "reference-quality.experimental.wikimedia.org",
+            "Host": "reference-quality.revision-models.wikimedia.org",
         }
         self.client.post(
             "/v1/models/reference-risk:predict",
-            json={"rev_id": int(rev_id), "lang": lang},
+            json={"rev_id": int(sample[1]), "lang": sample[0]},
             headers=headers,
         )
