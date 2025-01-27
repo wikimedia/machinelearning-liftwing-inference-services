@@ -180,6 +180,35 @@ def generate_prediction_classification_event(
     return event
 
 
+def generate_page_weighted_tags_event(
+    source_event: Dict[str, Any], eventgate_stream: str, tags_to_set: Dict[str, Any]
+) -> Dict:
+    """
+    Generates a page_weighted_tags_change event, tailored for a given model,
+    from a page_change event.
+    """
+    if not source_event["$schema"].startswith("/mediawiki/page/change/1"):
+        raise RuntimeError(
+            f"Unsupported event of schema {source_event['$schema']}, please contact "
+            "the ML team."
+        )
+
+    event = {
+        "$schema": "/development/cirrussearch/page_weighted_tags_change/1.0.0",
+        "dt": source_event["dt"],
+        "meta": _meta(source_event, eventgate_stream),
+        "page": {
+            "namespace_id": source_event["page"]["namespace_id"],
+            "page_id": source_event["page"]["page_id"],
+            "page_title": source_event["page"]["page_title"],
+        },
+        "weighted_tags": {"set": tags_to_set},
+        "wiki_id": source_event["wiki_id"],
+        "rev_based": True,
+    }
+    return event
+
+
 async def send_event(
     event: Dict[str, Any],
     eventgate_url: str,
