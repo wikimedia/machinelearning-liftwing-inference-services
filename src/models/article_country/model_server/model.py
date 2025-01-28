@@ -47,8 +47,14 @@ class ArticleCountryModel(kserve.Model):
         self.event_key = "event"
         self.eventgate_url = os.environ.get("EVENTGATE_URL")
         self.eventgate_stream = os.environ.get("EVENTGATE_STREAM")
+        self.eventgate_weighted_tags_change_stream = os.environ.get(
+            "EVENTGATE_WEIGHTED_TAGS_CHANGE_STREAM"
+        )
         # Deployed via the wmf-certificates package
         self.tls_cert_bundle_path = "/etc/ssl/certs/wmf-ca-certificates.crt"
+        self.custom_user_agent = (
+            "WMF ML Team article-country model inference (LiftWing)"
+        )
         self.ready = False
         self.http_client_session = {}
         self.aiohttp_client_timeout = aiohttp_client_timeout
@@ -184,6 +190,15 @@ class ArticleCountryModel(kserve.Model):
                 prediction_results,
                 prediction.get("model_version"),
             )
+            tags_to_set = {
+                "classification.prediction.articlecountry": [
+                    {"tag": result["country"], "score": result["score"]}
+                    for result in prediction_results["prediction"]["results"]
+                ]
+            }
+            await self.send_weighted_tags_change_event(
+                request.get(self.event_key), tags_to_set
+            )
         return prediction
 
     async def send_event(
@@ -209,7 +224,32 @@ class ArticleCountryModel(kserve.Model):
             article_country_prediction_event,
             self.eventgate_url,
             self.tls_cert_bundle_path,
-            "WMF ML Team article-country model inference (LiftWing)",
+            self.custom_user_agent,
+            self.get_http_client_session("eventgate"),
+        )
+
+    async def send_weighted_tags_change_event(
+        self,
+        page_change_event: Dict[str, Any],
+        tags_to_set: Dict[str, Any],
+    ) -> None:
+        """
+        Send a cirrussearch page_weighted_tags_change event to EventGate, generated
+        from the page_change event and prediction results formatted to match the
+        shape of tags_to_set.
+        """
+        article_country_weighted_tags_change_event = (
+            events.generate_page_weighted_tags_event(
+                page_change_event,
+                self.eventgate_weighted_tags_change_stream,
+                tags_to_set,
+            )
+        )
+        await events.send_event(
+            article_country_weighted_tags_change_event,
+            self.eventgate_url,
+            self.tls_cert_bundle_path,
+            self.custom_user_agent,
             self.get_http_client_session("eventgate"),
         )
 
