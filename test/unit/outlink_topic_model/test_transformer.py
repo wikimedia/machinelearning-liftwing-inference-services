@@ -9,6 +9,9 @@ from src.models.outlink_topic_model.transformer.transformer import OutlinkTransf
             "Muumi",
             "fi",
             {
+                "Q131921571",
+                "Q131921570",
+                "Q131921579",
                 "Q1215800",
                 "Q1538681",
                 "Q713750",
