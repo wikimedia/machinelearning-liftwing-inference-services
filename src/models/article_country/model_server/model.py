@@ -46,7 +46,9 @@ class ArticleCountryModel(kserve.Model):
         self.data_path = data_path
         self.event_key = "event"
         self.eventgate_url = os.environ.get("EVENTGATE_URL")
-        self.eventgate_stream = os.environ.get("EVENTGATE_STREAM")
+        self.eventgate_prediction_classification_change_stream = os.environ.get(
+            "EVENTGATE_PREDICTION_CLASSIFICATION_CHANGE_STREAM"
+        )
         self.eventgate_weighted_tags_change_stream = os.environ.get(
             "EVENTGATE_WEIGHTED_TAGS_CHANGE_STREAM"
         )
@@ -185,7 +187,7 @@ class ArticleCountryModel(kserve.Model):
                     for result in prediction.get("prediction", {}).get("results", [])
                 },  # dict of countries and their score from the prediction
             }
-            await self.send_event(
+            await self.send_prediction_classification_change_event(
                 request.get(self.event_key),
                 prediction_results,
                 prediction.get("model_version"),
@@ -201,27 +203,27 @@ class ArticleCountryModel(kserve.Model):
             )
         return prediction
 
-    async def send_event(
+    async def send_prediction_classification_change_event(
         self,
         page_change_event: Dict[str, Any],
         prediction_results: Dict[str, Any],
         model_version: str,
     ) -> None:
         """
-        Send an article_country_prediction event to EventGate, generated from
-        the page_change event and prediction_results passed as input.
+        Send an article_country prediction_classification_change event to EventGate,
+        generated from the page_change event and prediction_results passed as input.
         """
-        article_country_prediction_event = (
+        article_country_prediction_classification_change_event = (
             events.generate_prediction_classification_event(
                 page_change_event,
-                self.eventgate_stream,
+                self.eventgate_prediction_classification_change_stream,
                 "article-country",
                 model_version,
                 prediction_results,
             )
         )
         await events.send_event(
-            article_country_prediction_event,
+            article_country_prediction_classification_change_event,
             self.eventgate_url,
             self.tls_cert_bundle_path,
             self.custom_user_agent,
