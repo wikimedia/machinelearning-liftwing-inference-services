@@ -195,7 +195,7 @@ class ArticleCountryModel(kserve.Model):
             tags_to_set = {
                 "classification.prediction.articlecountry": [
                     {"tag": result["country"], "score": result["score"]}
-                    for result in prediction_results["prediction"]["results"]
+                    for result in prediction["prediction"]["results"]
                 ]
             }
             await self.send_weighted_tags_change_event(
