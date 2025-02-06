@@ -177,7 +177,7 @@ class ArticleCountryModel(kserve.Model):
             normalized_scores = normalize_sums(sums)
             update_scores(prediction, normalized_scores)
             prediction = sort_results_by_score(prediction)
-        if self.event_key in request:
+        if self.event_key in request and prediction["prediction"]["results"]:
             prediction_results = {
                 "predictions": [
                     result["country"] for result in prediction["prediction"]["results"]
