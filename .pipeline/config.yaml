@@ -319,3 +319,22 @@ pipelines:
           image:
             name: '${setup.project}-article-country'
             tags: [stable]
+
+  edit-check:
+    blubberfile: edit_check/blubber.yaml
+    stages:
+      - name: run-test
+        build: test
+        run: true
+      - name: production
+        build: production
+
+  edit-check-publish:
+    blubberfile: edit_check/blubber.yaml
+    stages:
+      - name: publish
+        build: production
+        publish:
+          image:
+            name: '${setup.project}-edit-check'
+            tags: [stable]
