@@ -54,6 +54,7 @@ class EditCheckModel(kserve.Model):
             "violations": ["string"]
         }  # list of words or phrases that are problematic according to the model
 
+        # Output schema:
         out = {
             "model_name": self.name,
             "model_version": str(self.model.model_version),
