@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 from typing import Any, Dict
@@ -56,15 +57,16 @@ class EditCheckModel(kserve.Model):
 
         out = {
             "model_name": self.name,
-            "model_version": str(self.model.model_version),
+            # "model_version": str(self.model.model_version),
+            "model_version": "v1",
             "check_type": request["check_type"],
             "language": request["lang"],
-            "prediction": {bool(prediction)},
+            "prediction": bool(prediction),
             "probability": prob,
             "details": details,
         }
-
-        return out
+        json_out = json.dumps(out, indent=4)
+        return json_out
 
 
 if __name__ == "__main__":
