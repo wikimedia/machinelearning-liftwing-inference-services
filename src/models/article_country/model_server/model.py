@@ -137,40 +137,48 @@ class ArticleCountryModel(kserve.Model):
                 "results": [],
             },
         }
-        # add country results to prediction
+
+        # create a dictionary to aggregate results by country
+        country_results = {}
+
+        # aggregate Wikidata properties for each country
         for wikidata_property, country in get_cultural_countries(
             claims, self.country_properties, self.qid_to_region
         ):
-            prediction["prediction"]["results"].append(
-                {
-                    "country": country,
-                    "score": 1,
-                    "source": {
-                        "wikidata_properties": [
-                            {
-                                wikidata_property: self.country_properties[
-                                    wikidata_property
-                                ].get(0)
-                            }
-                        ],
-                        "categories": [],
-                    },
+            if country not in country_results:
+                country_results[country] = {
+                    "score": 0,
+                    "source": {"wikidata_properties": [], "categories": []},
                 }
+            country_results[country]["source"]["wikidata_properties"].append(
+                {wikidata_property: self.country_properties[wikidata_property].get(0)}
             )
+
+        # check geographic country for additional contributions to score
         geographic_country = get_geographic_country(
             claims, self.qid_to_geometry, self.qid_to_region
         )
-        for result in prediction["prediction"]["results"]:
-            country_in_result = result.get("country")
-            # add more country wikidata properties
-            if country_in_result == geographic_country:
-                result["source"]["wikidata_properties"].append(
-                    {"P625": "coordinate location"}
-                )
-            # add country categories
-            result["source"]["categories"] = country_categories.get(
-                country_in_result, []
+        if geographic_country and geographic_country in country_results:
+            country_results[geographic_country]["source"]["wikidata_properties"].append(
+                {"P625": "coordinate location"}
             )
+
+        # add categories to country results
+        for country, categories in country_categories.items():
+            if country not in country_results:
+                country_results[country] = {
+                    "score": 0,
+                    "source": {"wikidata_properties": [], "categories": []},
+                }
+            country_results[country]["source"]["categories"].extend(categories)
+
+        # convert the results to the expected format
+        prediction["prediction"]["results"] = []
+        for country, result in country_results.items():
+            prediction["prediction"]["results"].append(
+                {"country": country, "score": 1, "source": result["source"]}
+            )
+
         if prediction["prediction"]["results"]:
             # normalize score based on categories and properties if results exist
             sums = calculate_sums(prediction)
