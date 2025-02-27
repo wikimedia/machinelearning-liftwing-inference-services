@@ -6,7 +6,8 @@ import mwapi
 from typing import Any, Dict
 from distutils.util import strtobool
 
-from knowledge_integrity.mediawiki import get_revision, Error
+from knowledge_integrity.mediawiki import get_parent_revision
+from knowledge_integrity.mediawiki import Error
 from knowledge_integrity.models.reference_need import load_model, classify
 from knowledge_integrity.models.reference_risk import (
     ReferenceRiskModel as BaseReferenceRiskModel,
@@ -15,7 +16,6 @@ from knowledge_integrity.models.reference_risk import (
 from kserve.errors import InferenceError, InvalidInput
 
 from python.config_utils import get_config
-from python.decorators import preprocess_size_bytes
 from python.preprocess_utils import (
     validate_json_input,
     check_input_param,
@@ -79,7 +79,8 @@ class ReferenceNeedModel(kserve.Model):
             session=self.get_http_client_session("mwapi"),
         )
         try:
-            rev = await get_revision(session, rev_id, lang)
+            # get_parent_revision fetches only revision information
+            rev = await get_parent_revision(session, rev_id, lang)
         except Exception as e:
             logging.error(
                 "An error has occurred while fetching info for revision: "
@@ -91,15 +92,14 @@ class ReferenceNeedModel(kserve.Model):
                 "if the issue persists."
             )
         if isinstance(rev, Error):
-            logging.info(f"revision {rev_id} ({lang}): {rev.code.value}")
+            logging.info(f"revision {rev_id} ({lang}): {rev.response_body}")
             raise InvalidInput(
                 f"Could not make prediction for revision {rev_id} ({lang})."
-                f" Reason: {rev.code.value}"
+                f" Reason: {rev.response_body}"
             )
         inputs["revision"] = rev
         return inputs
 
-    @preprocess_size_bytes("reference-need", key_name="revision")
     def predict(
         self, request: Dict[str, Any], headers: Dict[str, str] = None
     ) -> Dict[str, Any]:
@@ -122,7 +122,6 @@ class ReferenceRiskModel(ReferenceNeedModel):
         logging.info(f"{self.name} supported wikis: {self.model.supported_wikis}.")
         self.ready = True
 
-    @preprocess_size_bytes("reference-risk", key_name="revision")
     def predict(
         self, request: Dict[str, Any], headers: Dict[str, str] = None
     ) -> Dict[str, Any]:
