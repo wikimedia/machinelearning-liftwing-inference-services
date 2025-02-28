@@ -158,7 +158,12 @@ class ArticleCountryModel(kserve.Model):
         geographic_country = get_geographic_country(
             claims, self.qid_to_geometry, self.qid_to_region
         )
-        if geographic_country and geographic_country in country_results:
+        if geographic_country:
+            if geographic_country not in country_results:
+                country_results[geographic_country] = {
+                    "score": 0,
+                    "source": {"wikidata_properties": [], "categories": []},
+                }
             country_results[geographic_country]["source"]["wikidata_properties"].append(
                 {"P625": "coordinate location"}
             )

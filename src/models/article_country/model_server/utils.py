@@ -91,13 +91,17 @@ def get_cultural_countries(
         if prop in claims:
             for statement in claims[prop]:
                 try:
-                    value = statement["mainsnak"]["datavalue"]["value"]["id"]
-                    if value in qid_to_region:
-                        regions.append((prop, qid_to_region[value]))
+                    mainsnak = statement.get("mainsnak")
+                    datavalue = mainsnak.get("datavalue")
+                    value = datavalue.get("value")
+                    entity_id = value.get("id")
+                    if entity_id and entity_id in qid_to_region:
+                        regions.append((prop, qid_to_region[entity_id]))
                 except Exception as e:
-                    error_message = f"Failed to get cultural regions. Reason: {e}"
+                    error_message = f"Failed to get cultural regions for property {prop}. Reason: {e}"
                     logging.error(error_message)
-                    raise InferenceError(error_message)
+                    # continue to the next statement for processing (see details in T387547)
+                    continue
     return regions
 
 
