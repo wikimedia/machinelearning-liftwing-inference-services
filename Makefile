@@ -65,7 +65,7 @@ article-country:
 	MODEL_SERVER_DIR="model_server" \
 	DEP_DIR=".." \
 	CUT_DIRS=2 \
-	ACCEPT_REGEX="'(category-countries.tsv.gz|ne_10m_admin_0_map_units.geojson)'"
+	ACCEPT_REGEX="'(category-countries.tsv.gz|ne_10m_admin_0_map_units.geojson|region-groundtruth-2025-01-01-qids.sqlite)'"
 
 # Command for article-descriptions model-server
 article-descriptions: clone-descartes
