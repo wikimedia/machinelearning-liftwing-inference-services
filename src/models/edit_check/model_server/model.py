@@ -6,6 +6,8 @@ from typing import Any, Dict
 import kserve
 
 from python.preprocess_utils import validate_json_input
+from request_model import RequestModel
+
 
 logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
 
@@ -25,21 +27,11 @@ class EditCheckModel(kserve.Model):
     async def preprocess(
         self, inputs: Dict[str, Any], headers: Dict[str, str] = None
     ) -> Dict[str, Any]:
+
         inputs = validate_json_input(inputs)
-
-        # TODO: Pydantic object
-        # check_type = inputs.get("check_type")
-        # original_text = inputs.get("original_text")
-        # modified_text = inputs.get("modified_text")
-        # language = inputs.get("lang")
-
-        # {
-        #     "check_type": "string", # examples: "peacock", "npov", "weasel"
-        #     "original_text": "string",
-        #     "modified_text": "string",
-        #     "lang": "string"
-        # }
-        return inputs
+        request_model = RequestModel(**inputs)
+        request_model_dict = request_model.model_dump(mode="json")
+        return request_model_dict
 
     def predict(
         self, request: Dict[str, Any], headers: Dict[str, str] = None
