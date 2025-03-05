@@ -21,7 +21,7 @@ download-nltk-punkt \
 language-identification \
 logo-detection \
 readability \
-reference-need \
+reference-quality \
 revertrisk-language-agnostic \
 revertrisk-multilingual \
 run \
@@ -168,16 +168,17 @@ revertrisk-language-agnostic:
 	CUT_DIRS=2 \
 	ACCEPT_REGEX="."
 
-# Command for reference-need model-server
-reference-need:
-	@$(MAKE) run-server MODEL_NAME="reference-need" \
-	MODEL_URL="reference-quality/reference-need/20240903095237/model.pkl" \
+# Command for reference-quality model-server
+reference-quality:
+	@$(MAKE) run-server MODEL_NAME="reference-quality" \
+	MODEL_URL="reference-quality/20250127142109/" \
 	MODEL_SERVER_PARENT_DIR="src/models/reference_quality" \
-	MODEL_PATH="models/reference-quality/reference-need/20240903095237/model.pkl" \
+	MODEL_PATH="models/reference-quality/20250127142109/reference-need/model.pkl" \
+	FEATURES_DB_PATH="models/reference-quality/20250127142109/reference-risk/features.db" \
 	MODEL_SERVER_DIR="model_server" \
 	DEP_DIR="." \
 	CUT_DIRS=2 \
-	ACCEPT_REGEX="."
+	ACCEPT_REGEX="'(reference-need|reference-risk)'"
 
 # Command for revertrisk-multilingual model-server
 revertrisk-multilingual:

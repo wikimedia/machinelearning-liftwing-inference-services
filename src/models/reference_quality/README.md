@@ -11,7 +11,7 @@ The reference quality inference service contains two models:
 
 ## How to run locally
 
-In order to run the reference-need model server locally, please choose one of the two options below:
+In order to run the reference-quality model server locally, please choose one of the two options below:
 
 <details>
 <summary>1. Automated setup using the Makefile</summary>
@@ -19,14 +19,18 @@ In order to run the reference-need model server locally, please choose one of th
 ### 1.1. Build
 In the first terminal run:
 ```console
-make reference-need
+make reference-quality
 ```
-This build process will: set up a Python venv, install dependencies, download the model, and run the server.
+This build process will: set up a Python venv, install dependencies, download the model and database, then run the server.
 
 ### 1.2. Query
-On the second terminal query the isvc using:
+On the second terminal query the reference-need isvc using:
 ```console
-curl -s localhost:8080/v1/models/reference-need:predict -X POST -d '{"rev_id": 1242378206, "lang": "en"}' -i -H "Content-type: application/json"
+curl -s localhost:8080/v1/models/reference-need:predict -X POST -d '{"rev_id": 1242378206, "lang": "en"}' -H "Content-type: application/json"
+```
+and the reference-risk isvc using:
+```console
+curl -s localhost:8080/v1/models/reference-risk:predict -X POST -d '{"rev_id": 1242378206, "lang": "en"}' -H "Content-type: application/json"
 ```
 
 ### 1.3. Remove
