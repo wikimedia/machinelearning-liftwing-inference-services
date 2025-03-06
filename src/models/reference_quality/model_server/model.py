@@ -123,10 +123,10 @@ class ReferenceRiskModel(ReferenceNeedModel):
         logging.info(f"{self.name} supported wikis: {self.model.supported_wikis}.")
         self.ready = True
 
-    async def predict(
+    def predict(
         self, request: Dict[str, Any], headers: Dict[str, str] = None
     ) -> Dict[str, Any]:
-        result = await asyncio.to_thread(self.model.classify, request["revision"])
+        result = self.model.classify(request["revision"])
         output = {
             "model_name": self.name,
             "model_version": result.model_version,
