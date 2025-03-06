@@ -1,6 +1,7 @@
 import os
 import logging
 import aiohttp
+import asyncio
 import kserve
 import mwapi
 from typing import Any, Dict
@@ -100,10 +101,10 @@ class ReferenceNeedModel(kserve.Model):
         inputs["revision"] = rev
         return inputs
 
-    def predict(
+    async def predict(
         self, request: Dict[str, Any], headers: Dict[str, str] = None
     ) -> Dict[str, Any]:
-        result = classify(self.model, request["revision"])
+        result = await asyncio.to_thread(classify, self.model, request["revision"])
         return {
             "model_name": self.name,
             "model_version": self.model.model_version,
@@ -122,10 +123,10 @@ class ReferenceRiskModel(ReferenceNeedModel):
         logging.info(f"{self.name} supported wikis: {self.model.supported_wikis}.")
         self.ready = True
 
-    def predict(
+    async def predict(
         self, request: Dict[str, Any], headers: Dict[str, str] = None
     ) -> Dict[str, Any]:
-        result = self.model.classify(request["revision"])
+        result = await asyncio.to_thread(classify, request["revision"])
         output = {
             "model_name": self.name,
             "model_version": result.model_version,
