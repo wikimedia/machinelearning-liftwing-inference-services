@@ -126,7 +126,7 @@ class ReferenceRiskModel(ReferenceNeedModel):
     async def predict(
         self, request: Dict[str, Any], headers: Dict[str, str] = None
     ) -> Dict[str, Any]:
-        result = await asyncio.to_thread(classify, request["revision"])
+        result = await asyncio.to_thread(self.model.classify, request["revision"])
         output = {
             "model_name": self.name,
             "model_version": result.model_version,
