@@ -160,4 +160,4 @@ if __name__ == "__main__":
         force_http=force_http,
     )
 
-    kserve.ModelServer(workers=1).start([ref_need, ref_risk])
+    kserve.ModelServer(workers=2).start([ref_need, ref_risk])
