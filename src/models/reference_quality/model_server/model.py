@@ -27,11 +27,14 @@ logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
 
 
 class ReferenceNeedModel(kserve.Model):
-    def __init__(self, name: str, model_path: str, force_http: bool) -> None:
+    def __init__(
+        self, name: str, model_path: str, force_http: bool, batch_size: int = 1
+    ) -> None:
         super().__init__(name)
         self.name = name
         self.model_path = model_path
         self.force_http = force_http
+        self.batch_size = batch_size
         self.host_rewrite_config = get_config(key="mw_host_replace")
         self.aiohttp_client_timeout = 5
         self._http_client_session = {}
@@ -103,7 +106,7 @@ class ReferenceNeedModel(kserve.Model):
     def predict(
         self, request: Dict[str, Any], headers: Dict[str, str] = None
     ) -> Dict[str, Any]:
-        result = classify(self.model, request["revision"])
+        result = classify(self.model, request["revision"], self.batch_size)
         return {
             "model_name": self.name,
             "model_version": self.model.model_version,
@@ -147,15 +150,20 @@ if __name__ == "__main__":
         "FEATURES_DB_PATH", "/mnt/models/reference-risk/features.db"
     )
     force_http = strtobool(os.environ.get("FORCE_HTTP", "False"))
-    num_of_workers = int(os.environ.get("NUM_OF_WORKERS", 1))
 
+    num_of_workers = int(os.environ.get("NUM_OF_WORKERS", 1))
     model_to_deploy = os.environ.get("MODEL_TO_DEPLOY")
+    batch_size = int(os.environ.get("BATCH_SIZE", 1))
+
     REFERENCE_NEED = "reference-need"
     REFERENCE_RISK = "reference-risk"
 
     def ref_need():
         return ReferenceNeedModel(
-            name=REFERENCE_NEED, model_path=model_path, force_http=force_http
+            name=REFERENCE_NEED,
+            model_path=model_path,
+            force_http=force_http,
+            batch_size=batch_size,
         )
 
     def ref_risk():
