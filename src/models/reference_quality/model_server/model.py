@@ -147,17 +147,30 @@ if __name__ == "__main__":
         "FEATURES_DB_PATH", "/mnt/models/reference-risk/features.db"
     )
     force_http = strtobool(os.environ.get("FORCE_HTTP", "False"))
-    num_of_workers = int(os.environ.get("NUM_OF_WORKERS", 2))
+    num_of_workers = int(os.environ.get("NUM_OF_WORKERS", 1))
 
-    ref_need = ReferenceNeedModel(
-        name="reference-need",
-        model_path=model_path,
-        force_http=force_http,
-    )
-    ref_risk = ReferenceRiskModel(
-        name="reference-risk",
-        model_path=features_db_path,
-        force_http=force_http,
-    )
+    model_to_deploy = os.environ.get("MODEL_TO_DEPLOY")
+    REFERENCE_NEED = "reference-need"
+    REFERENCE_RISK = "reference-risk"
 
-    kserve.ModelServer(workers=num_of_workers).start([ref_need, ref_risk])
+    def ref_need():
+        return ReferenceNeedModel(
+            name=REFERENCE_NEED, model_path=model_path, force_http=force_http
+        )
+
+    def ref_risk():
+        return ReferenceRiskModel(
+            name=REFERENCE_RISK, model_path=features_db_path, force_http=force_http
+        )
+
+    allowed_models = {REFERENCE_NEED, REFERENCE_RISK}
+    if model_to_deploy:
+        if model_to_deploy not in allowed_models:
+            raise ValueError(
+                f"Invalid MODEL_TO_DEPLOY value: {model_to_deploy}. "
+                f"Expected one of {allowed_models}."
+            )
+        models = [ref_need()] if model_to_deploy == REFERENCE_NEED else [ref_risk()]
+    else:
+        models = [ref_need(), ref_risk()]
+    kserve.ModelServer(workers=num_of_workers).start(models)
