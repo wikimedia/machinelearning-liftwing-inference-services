@@ -2,25 +2,133 @@ import json
 import logging
 import os
 import re
+import sqlitedict
 
 import mwapi
 import pandas as pd
 from aiohttp import ClientSession
 from kserve.errors import InferenceError
 from shapely.geometry import Point, shape
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Union
 
 logging.basicConfig(level=logging.DEBUG)
 
 current_file_directory = os.path.dirname(__file__)
 custom_user_agent = "WMF ML Team article-country model inference (LiftWing)"
 
-"""
-TODO: when the event stream exists, replace SQLite database usage with search index
-to make a circular dependency prediction using wikilinks. Reference:
-1. https://github.com/wikimedia/research-api-endpoint-template/blob/33b263971f1186befd0d544b59b8121236b5fa62/model/wsgi.py#L43-L49
-2. https://phabricator.wikimedia.org/P69329#277631
-"""
+
+def init_groundtruth_db(
+    model_path: str,
+    file_name: str,
+) -> Union[sqlitedict.SqliteDict, None]:
+    """
+    Initialize the groundtruth database (a pre-computed SQLite database using sqlitedict)
+    that maps Wikidata QIDs to country strings.
+    """
+    db_path = os.path.join(model_path, file_name)
+    if os.path.exists(db_path):
+        try:
+            groundtruth_db = sqlitedict.SqliteDict(db_path, autocommit=False)
+            logging.info(
+                f"Loaded groundtruth SQLite DB with {len(groundtruth_db)} entries."
+            )
+        except Exception as e:
+            logging.error(f"Failed to load groundtruth SQLite DB: {e}")
+            groundtruth_db = None
+    else:
+        logging.warning(f"Groundtruth SQLite DB not found at {db_path}")
+        groundtruth_db = None
+    return groundtruth_db
+
+
+def get_groundtruth(qid: str, groundtruth_db: sqlitedict.SqliteDict) -> List[str]:
+    """
+    For a given QID, return the list of countries from the pre-computed groundtruth DB.
+    The stored value is expected to be a ";"-separated string.
+    """
+    if groundtruth_db:
+        record = groundtruth_db.get(qid, "")
+        return [c for c in record.split(";") if c]
+    return []
+
+
+async def title_to_links(
+    title: str,
+    lang: str,
+    protocol: str,
+    mwapi_client_session: ClientSession,
+    groundtruth_db: sqlitedict.SqliteDict,
+    limit: int = 500,
+) -> Dict[str, int]:
+    """
+    Gather a count of wikilink-based country hints for the given article title.
+    For each outlink in the article, if the outlink's Wikidata QID is in the groundtruth DB,
+    then count its associated country (or count the absence as an empty string).
+    """
+    session = mwapi.AsyncSession(
+        host=get_mediawiki_base_url(protocol, lang),
+        user_agent=custom_user_agent,
+        session=mwapi_client_session,
+    )
+    pages = []
+    try:
+        # the call with continuation=True returns an async generator
+        result = await session.get(
+            action="query",
+            generator="links",
+            titles=title,
+            redirects="",
+            prop="pageprops",
+            ppprop="wikibase_item",
+            gplnamespace=0,
+            gpllimit=50,
+            format="json",
+            formatversion=2,
+            continuation=True,
+        )
+        # iterate over the batches yielded by the async result generator
+        async for batch in result:
+            batch_pages = batch.get("query", {}).get("pages", [])
+            pages.extend(batch_pages)
+            if len(pages) >= limit:
+                break
+    except Exception as e:
+        logging.error(f"Failed to retrieve links for title {title}: {e}")
+        return {}
+
+    country_counts = {}
+    processed = 0
+    for link in pages:
+        processed += 1
+        if (
+            link.get("ns") == 0 and "missing" not in link
+        ):  # namespace 0 and not a red link
+            qid = link.get("pageprops", {}).get("wikibase_item")
+            if qid:
+                link_countries = get_groundtruth(qid, groundtruth_db)
+                if link_countries:
+                    for entry in link_countries:
+                        # calculate cumulative country weights. see P73436#294761
+                        country, count = entry.split(":")
+                        country_counts[country] = country_counts.get(
+                            country, 0
+                        ) + float(count)
+                else:
+                    country_counts[""] = country_counts.get("", 0) + 1
+        if processed >= limit:
+            break
+    return country_counts
+
+
+def load_country_IDFs(file_name: str) -> Dict:
+    """
+    Load country IDFs from country_IDFs.tsv
+    """
+    country_IDFs_tsv = os.path.join(os.path.dirname(__file__), "..", "data", file_name)
+    country_IDFs_df = pd.read_csv(country_IDFs_tsv, sep="\t", keep_default_na=False)
+    country_IDFs = country_IDFs_df.set_index("Country")["IDF"].to_dict()
+    logging.debug("Loaded country IDFs")
+    return country_IDFs
 
 
 def get_mediawiki_base_url(protocol: str, lang: Optional[str] = None) -> str:
@@ -346,16 +454,21 @@ def load_categories(model_path: str, file_name: str, qid_to_region: Dict) -> Dic
     return category_to_country
 
 
-def calculate_sums(prediction_data: Dict) -> List[int]:
+def calculate_sums(prediction_data: Dict) -> List[float]:
     """
-    Calculate the sum of categories and wikidata properties for each prediction result
+    Calculate the sum of categories, wikidata properties, and wikilinks for each prediction result
     """
     results = prediction_data["prediction"]["results"]
     sums = []
     for result in results:
         num_categories = len(result["source"]["categories"])
         num_wikidata_properties = len(result["source"]["wikidata_properties"])
-        sums.append(num_categories + num_wikidata_properties)
+        # for links, assume there is either 0 or 1 link entry.
+        link_signal = 0.0
+        links = result["source"].get("links", [])
+        if links:
+            link_signal = links[0].get("prop-tfidf", 0)
+        sums.append(num_categories + num_wikidata_properties + link_signal)
     return sums
 
 

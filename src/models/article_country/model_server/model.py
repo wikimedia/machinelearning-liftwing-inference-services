@@ -20,14 +20,17 @@ from utils import (
     get_cultural_countries,
     get_claims,
     get_geographic_country,
+    init_groundtruth_db,
     load_categories,
     load_country_aggregations,
+    load_country_IDFs,
     load_country_properties,
     load_countries_data,
     load_geometries,
     normalize_sums,
     sort_results_by_score,
     title_to_categories,
+    title_to_links,
     title_to_qid,
     update_scores,
 )
@@ -60,6 +63,7 @@ class ArticleCountryModel(kserve.Model):
         self.ready = False
         self.http_client_session = {}
         self.aiohttp_client_timeout = aiohttp_client_timeout
+        self.groundtruth_db = None
         self.load()
 
     def load(self) -> None:
@@ -74,6 +78,12 @@ class ArticleCountryModel(kserve.Model):
         )
         self.category_to_country = load_categories(
             self.data_path, "category-countries.tsv.gz", self.qid_to_region
+        )
+        self.country_IDFs = load_country_IDFs("country_IDFs.tsv")
+        # initialize the wikilink groundtruth sqlite database
+        self.groundtruth_db = init_groundtruth_db(
+            self.data_path,
+            "region-groundtruth-2025-01-01-qids.sqlite",
         )
         self.ready = True
 
@@ -121,13 +131,50 @@ class ArticleCountryModel(kserve.Model):
         }
         if self.event_key in inputs:
             preprocessed_data[self.event_key] = inputs.get(self.event_key)
+        # preprocess wikilinks based on the groundtruth db
+        if self.groundtruth_db:
+            link_countries = await title_to_links(
+                title,
+                lang,
+                self.protocol,
+                self.get_http_client_session("mwapi"),
+                self.groundtruth_db,
+                limit=500,
+            )
+            tfidf_sum = 0
+            # temporary dictionary for computed raw tfidf per country
+            computed_tfidf = {}
+            links_analyzed = sum(link_countries.values())
+            # first compute un-normalized tfidf scores for each country
+            for country in sorted(link_countries, key=link_countries.get, reverse=True):
+                # look up the IDF value (using the empty-string fallback if a country is not found)
+                idf_value = self.country_IDFs.get(country, self.country_IDFs.get(""))
+                prop_tfidf = (
+                    (link_countries[country] / links_analyzed) * idf_value
+                    if links_analyzed
+                    else 0
+                )
+                computed_tfidf[country] = prop_tfidf
+                tfidf_sum += prop_tfidf
+            preprocessed_data["wikilinks"] = {
+                "link_countries": link_countries,
+                "computed_tfidf": computed_tfidf,
+                "tfidf_sum": tfidf_sum,
+            }
         return preprocessed_data
 
     async def predict(
         self, request: Dict[str, Any], headers: Dict[str, str] = None
     ) -> Dict[str, Any]:
+        # -------------------------------------------------------------
+        # Get values from preprocess and define a prediction structure
+        # -------------------------------------------------------------
         claims = request.get("claims")
         country_categories = request.get("country_categories")
+        wikilinks_data = request.get("wikilinks")
+        link_countries = wikilinks_data.get("link_countries")
+        computed_tfidf = wikilinks_data.get("computed_tfidf")
+        tfidf_sum = wikilinks_data.get("tfidf_sum")
         prediction = {
             "model_name": self.name,
             "model_version": "1",  # proper versioning will happen when model is available
@@ -138,9 +185,11 @@ class ArticleCountryModel(kserve.Model):
             },
         }
 
-        # create a dictionary to aggregate results by country
+        # -------------------------------------------------------------
+        # Aggregate results from Wikidata properties, categories, and
+        # wikilinks into a country_results dictionary
+        # -------------------------------------------------------------
         country_results = {}
-
         # aggregate Wikidata properties for each country
         for wikidata_property, country in get_cultural_countries(
             claims, self.country_properties, self.qid_to_region
@@ -177,19 +226,55 @@ class ArticleCountryModel(kserve.Model):
                 }
             country_results[country]["source"]["categories"].extend(categories)
 
-        # convert the results to the expected format
-        prediction["prediction"]["results"] = []
+        # iterate over computed tfidf values to determine normalized wikilink support
+        for country, prop_tfidf in computed_tfidf.items():
+            normalized_tfidf = (prop_tfidf / tfidf_sum) if tfidf_sum else 0
+            # only consider merging if above the thresholds
+            if normalized_tfidf >= 0.25 and link_countries[country] >= 3:
+                if country in country_results:
+                    country_results[country]["source"].setdefault("links", [])
+                    country_results[country]["source"]["links"].append(
+                        {
+                            "country": country,
+                            "count": link_countries[country],
+                            "prop-tfidf": normalized_tfidf,
+                        }
+                    )
+                else:
+                    # create a new country result entry for a country that hasn't been seen
+                    country_results[country] = {
+                        "source": {
+                            "wikidata_properties": [],
+                            "categories": [],
+                            "links": [
+                                {
+                                    "country": country,
+                                    "count": link_countries[country],
+                                    "prop-tfidf": normalized_tfidf,
+                                }
+                            ],
+                        }
+                    }
+
+        # -------------------------------------------------------------
+        # Convert aggregated results into the final prediction list and
+        # compute final scores for each country
+        # -------------------------------------------------------------
         for country, result in country_results.items():
             prediction["prediction"]["results"].append(
                 {"country": country, "score": 1, "source": result["source"]}
             )
-
         if prediction["prediction"]["results"]:
             # normalize score based on categories and properties if results exist
             sums = calculate_sums(prediction)
             normalized_scores = normalize_sums(sums)
             update_scores(prediction, normalized_scores)
             prediction = sort_results_by_score(prediction)
+
+        # -------------------------------------------------------------
+        # Send prediction events if applicable based on event stream
+        # input, then return a prediction reponse
+        # -------------------------------------------------------------
         if self.event_key in request and prediction["prediction"]["results"]:
             prediction_results = {
                 "predictions": [

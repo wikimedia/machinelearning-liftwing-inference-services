@@ -2,3 +2,4 @@ kserve==0.13.1
 mwapi==0.6.1
 requests==2.32.3
 shapely==2.0.6
+sqlitedict==2.1.0
