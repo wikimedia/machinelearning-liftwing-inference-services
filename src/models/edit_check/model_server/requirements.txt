@@ -1,2 +1,5 @@
 kserve==0.14.1
 pydantic==2.10.6
+transformers==4.46.2
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.6.0
