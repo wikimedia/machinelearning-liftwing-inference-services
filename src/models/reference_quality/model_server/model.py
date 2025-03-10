@@ -147,6 +147,7 @@ if __name__ == "__main__":
         "FEATURES_DB_PATH", "/mnt/models/reference-risk/features.db"
     )
     force_http = strtobool(os.environ.get("FORCE_HTTP", "False"))
+    num_of_workers = int(os.environ.get("NUM_OF_WORKERS", 2))
 
     ref_need = ReferenceNeedModel(
         name="reference-need",
@@ -159,4 +160,4 @@ if __name__ == "__main__":
         force_http=force_http,
     )
 
-    kserve.ModelServer(workers=2).start([ref_need, ref_risk])
+    kserve.ModelServer(workers=num_of_workers).start([ref_need, ref_risk])
