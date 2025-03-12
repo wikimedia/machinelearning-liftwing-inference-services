@@ -1,3 +1,3 @@
 --extra-index-url https://download.pytorch.org/whl/cpu
-knowledge_integrity[reference-need] @ git+https://gitlab.wikimedia.org/repos/research/knowledge_integrity.git
+knowledge_integrity[reference-need] @ git+https://gitlab.wikimedia.org/repos/research/knowledge_integrity.git@5091fa220272f70359b0a547d5957f55448a1cfb#egg=knowledge_integrity
 kserve==0.13.1
