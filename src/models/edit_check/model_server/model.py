@@ -14,7 +14,7 @@ from request_model import RequestModel
 logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
 BATCH: int = 16  # 16
 MAXLEN: int = 512  # 4096 #
-OUTCOME_RULE: dict[str, bool] = {"00": False, "01": True, "10": False, "11": True}
+OUTCOME_RULE: dict[str, bool] = {"00": False, "01": True, "10": False, "11": False}
 
 
 class EditCheckModel(kserve.Model):
