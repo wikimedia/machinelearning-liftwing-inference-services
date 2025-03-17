@@ -147,8 +147,6 @@ class ArticleCountryModel(kserve.Model):
             links_analyzed = sum(link_countries.values())
             # first compute un-normalized tfidf scores for each country
             for country in sorted(link_countries, key=link_countries.get, reverse=True):
-                if not country:
-                    continue  # skip empty country keys (see T385970#10633019)
                 # look up the IDF value (using the empty-string fallback if a country is not found)
                 idf_value = self.country_IDFs.get(country, self.country_IDFs.get(""))
                 prop_tfidf = (
@@ -156,8 +154,10 @@ class ArticleCountryModel(kserve.Model):
                     if links_analyzed
                     else 0
                 )
-                computed_tfidf[country] = prop_tfidf
                 tfidf_sum += prop_tfidf
+                if not country:
+                    continue  # skip empty country keys (see T385970#10633019 and T385970#10636566)
+                computed_tfidf[country] = prop_tfidf
             preprocessed_data["wikilinks"] = {
                 "link_countries": link_countries,
                 "computed_tfidf": computed_tfidf,
