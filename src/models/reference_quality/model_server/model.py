@@ -1,34 +1,90 @@
-import os
 import logging
+import os
+from concurrent.futures import process
+from distutils.util import strtobool
+from typing import Any, Dict
+
 import aiohttp
 import kserve
 import mwapi
-from typing import Any, Dict
-from distutils.util import strtobool
-
-from knowledge_integrity.mediawiki import get_parent_revision
-from knowledge_integrity.mediawiki import Error
-from knowledge_integrity.models.reference_need import load_model, classify
+from knowledge_integrity.mediawiki import Error, get_parent_revision
+from knowledge_integrity.models.reference_need import classify, load_model
 from knowledge_integrity.models.reference_risk import (
     ReferenceRiskModel as BaseReferenceRiskModel,
 )
-
 from kserve.errors import InferenceError, InvalidInput
 
 from python.config_utils import get_config
 from python.preprocess_utils import (
-    validate_json_input,
     check_input_param,
-    check_wiki_suffix,
     check_supported_wikis,
+    check_wiki_suffix,
+    validate_json_input,
 )
+from python import process_utils
 
 logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
+
+# Global variable to be used by each worker process
+_global_model = None
+
+
+class AsyncClassifierPool:
+    def __init__(self, model_path: str, max_workers: int = 1):
+        self.model_path = model_path
+        self.num_of_workers = max_workers
+        self.process_pool = process_utils.create_process_pool(
+            asyncio_aux_workers=self.num_of_workers,
+            initializer=self._init_worker,
+            initargs=(self.model_path,),
+        )
+
+    @staticmethod
+    def _init_worker(model_path):
+        global _global_model
+        _global_model = load_model(model_path)
+        print("Worker initialized with model version:", _global_model.model_version)
+
+    @staticmethod
+    def worker_classify(revision, batch_size, lang):
+        if not _global_model:
+            raise RuntimeError("Model not initialized in worker")
+        check_supported_wikis(_global_model, lang)
+        return (
+            classify(_global_model, revision, batch_size),
+            _global_model.model_version,
+        )
+
+    async def async_classify(self, revision, batch_size, lang):
+        try:
+            result, model_version = await process_utils.run_in_process_pool(
+                self.process_pool, self.worker_classify, revision, batch_size, lang
+            )
+
+        except process.BrokenProcessPool:
+            logging.exception("Re-creation of a newer process pool before proceeding.")
+            self.process_pool = process_utils.refresh_process_pool(
+                process_pool=self.process_pool,
+                asyncio_aux_workers=self.num_of_workers,
+                initializer=self._init_worker,
+                initargs=(self.model_path,),
+            )
+            raise InferenceError(
+                "An error happened while scoring the revision-id, please "
+                "contact the ML-Team if the issue persists."
+            )
+
+        return result, model_version
 
 
 class ReferenceNeedModel(kserve.Model):
     def __init__(
-        self, name: str, model_path: str, force_http: bool, batch_size: int = 1
+        self,
+        name: str,
+        model_path: str,
+        force_http: bool,
+        batch_size: int = 1,
+        num_of_workers: int = 1,
     ) -> None:
         super().__init__(name)
         self.name = name
@@ -37,13 +93,10 @@ class ReferenceNeedModel(kserve.Model):
         self.batch_size = batch_size
         self.host_rewrite_config = get_config(key="mw_host_replace")
         self.aiohttp_client_timeout = 5
+        self.async_classifier_pool = AsyncClassifierPool(
+            self.model_path, max_workers=num_of_workers
+        )
         self._http_client_session = {}
-        self.ready = False
-        self.load()
-
-    def load(self) -> None:
-        self.model = load_model(self.model_path)
-        logging.info(f"{self.name} supported wikis: {self.model.supported_wikis}.")
         self.ready = True
 
     def get_mediawiki_host(self, lang):
@@ -75,7 +128,6 @@ class ReferenceNeedModel(kserve.Model):
         logging.info(f"Received request for revision {rev_id} ({lang}).")
         check_input_param(lang=lang, rev_id=rev_id)
         check_wiki_suffix(lang)
-        check_supported_wikis(self.model, lang)
         session = mwapi.AsyncSession(
             host=self.get_mediawiki_host(lang),
             user_agent="WMF ML Team Reference Quality isvc",
@@ -103,13 +155,15 @@ class ReferenceNeedModel(kserve.Model):
         inputs["revision"] = rev
         return inputs
 
-    def predict(
+    async def predict(
         self, request: Dict[str, Any], headers: Dict[str, str] = None
     ) -> Dict[str, Any]:
-        result = classify(self.model, request["revision"], self.batch_size)
+        result, model_version = await self.async_classifier_pool.async_classify(
+            request["revision"], self.batch_size, request["lang"]
+        )
         return {
             "model_name": self.name,
-            "model_version": self.model.model_version,
+            "model_version": model_version,
             "wiki_db": f'{request.get("lang")}wiki',
             "revision_id": request.get("rev_id"),
             "reference_need_score": result.rn_score,
@@ -164,6 +218,7 @@ if __name__ == "__main__":
             model_path=model_path,
             force_http=force_http,
             batch_size=batch_size,
+            num_of_workers=num_of_workers,
         )
 
     def ref_risk():
@@ -181,4 +236,4 @@ if __name__ == "__main__":
         models = [ref_need()] if model_to_deploy == REFERENCE_NEED else [ref_risk()]
     else:
         models = [ref_need(), ref_risk()]
-    kserve.ModelServer(workers=num_of_workers).start(models)
+    kserve.ModelServer(workers=1).start(models)

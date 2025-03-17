@@ -1,14 +1,18 @@
 import asyncio
 import logging
 from concurrent.futures import ProcessPoolExecutor
-from typing import Any
+from typing import Any, Callable, Optional, Tuple
 
 from kserve import utils as kserve_utils
 
 from .decorators import elapsed_time_async
 
 
-def create_process_pool(asyncio_aux_workers: int = None) -> ProcessPoolExecutor:
+def create_process_pool(
+    asyncio_aux_workers: int = None,
+    initializer: Optional[Callable[..., None]] = None,
+    initargs: Tuple = (),
+) -> ProcessPoolExecutor:
     """Create a Python Process pool to offload blocking/long cpu-bound code
     that can potentially block/stall the main asyncio loop thread.
     The default thread pool executor set by Kserve in [1] is meant
@@ -20,6 +24,8 @@ def create_process_pool(asyncio_aux_workers: int = None) -> ProcessPoolExecutor:
 
     Parameters:
         asyncio_aux_workers: the process pool's maximum number of workers.
+        initializer: the initializer function to run in each worker process.
+        initargs: the initializer's arguments.
 
     Returns:
         The instance of the Process Pool.
@@ -31,15 +37,22 @@ def create_process_pool(asyncio_aux_workers: int = None) -> ProcessPoolExecutor:
         "Create a process pool of {} workers to support "
         "model scoring blocking code.".format(asyncio_aux_workers)
     )
-    return ProcessPoolExecutor(max_workers=asyncio_aux_workers)
+    return ProcessPoolExecutor(
+        max_workers=asyncio_aux_workers, initializer=initializer, initargs=initargs
+    )
 
 
-def refresh_process_pool(process_pool: ProcessPoolExecutor, asyncio_aux_workers: int):
+def refresh_process_pool(
+    process_pool: ProcessPoolExecutor,
+    asyncio_aux_workers: int = None,
+    initializer: Optional[Callable[..., None]] = None,
+    initargs: Tuple = (),
+):
     """Shutdown and re-create a process pool. Useful when exeptions like
     BrokenProcessPool are raised (the pool is unusable after that).
     """
     process_pool.shutdown()
-    return create_process_pool(asyncio_aux_workers)
+    return create_process_pool(asyncio_aux_workers, initializer, initargs)
 
 
 @elapsed_time_async
