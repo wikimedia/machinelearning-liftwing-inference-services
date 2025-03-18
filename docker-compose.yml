@@ -1,0 +1,30 @@
+services:
+  reference-need:
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: .pipeline/reference_quality/blubber.yaml
+      target: production
+    image: ref:prod
+    ports:
+      - "8080:8080"
+    environment:
+      BATCH_SIZE: "16"
+      MODEL_TO_DEPLOY: "reference-need"
+      NUM_OF_WORKERS: 2
+    volumes:
+      - ${PATH_TO_REFERENCE_NEED_MODEL}:/mnt/models/
+  reference-risk:
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: .pipeline/reference_quality/blubber.yaml
+      target: production
+    image: ref:prod
+    ports:
+      - "8080:8080"
+    environment:
+      MODEL_TO_DEPLOY: "reference-risk"
+      NUM_OF_WORKERS: 1
+    volumes:
+      - ${PATH_TO_REFERENCE_RISK_MODEL}:/mnt/models/
