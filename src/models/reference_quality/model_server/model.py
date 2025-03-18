@@ -93,10 +93,19 @@ class ReferenceNeedModel(kserve.Model):
         self.batch_size = batch_size
         self.host_rewrite_config = get_config(key="mw_host_replace")
         self.aiohttp_client_timeout = 5
-        self.async_classifier_pool = AsyncClassifierPool(
-            self.model_path, max_workers=num_of_workers
-        )
+        if num_of_workers >= 2:
+            self.async_classifier_pool = AsyncClassifierPool(
+                self.model_path, max_workers=num_of_workers
+            )
+            self.ready = True
+        else:
+            self.async_classifier_pool = None
+            self.load()
         self._http_client_session = {}
+
+    def load(self) -> None:
+        self.model = load_model(self.model_path)
+        logging.info(f"{self.name} supported wikis: {self.model.supported_wikis}.")
         self.ready = True
 
     def get_mediawiki_host(self, lang):
@@ -158,9 +167,13 @@ class ReferenceNeedModel(kserve.Model):
     async def predict(
         self, request: Dict[str, Any], headers: Dict[str, str] = None
     ) -> Dict[str, Any]:
-        result, model_version = await self.async_classifier_pool.async_classify(
-            request["revision"], self.batch_size, request["lang"]
-        )
+        if self.async_classifier_pool is None:
+            result = classify(self.model, request["revision"], self.batch_size)
+            model_version = self.model.model_version
+        else:
+            result, model_version = await self.async_classifier_pool.async_classify(
+                request["revision"], self.batch_size, request["lang"]
+            )
         return {
             "model_name": self.name,
             "model_version": model_version,
