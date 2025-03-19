@@ -30,13 +30,11 @@ class EditCheckModel(kserve.Model):
 
         # Load the tokenizer
         tokenizer = AutoTokenizer.from_pretrained(
-            self.model_path, truncation=True, max_length=MAXLEN, device=device
+            self.model_path, truncation=True, max_length=MAXLEN
         )
 
         # Load the pretrained model
-        model = AutoModelForSequenceClassification.from_pretrained(self.model_path).to(
-            device
-        )
+        model = AutoModelForSequenceClassification.from_pretrained(self.model_path)
 
         # Build the pipeline
         self.model_pipeline = pipeline(

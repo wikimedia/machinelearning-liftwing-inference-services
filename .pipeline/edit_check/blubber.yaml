@@ -4,7 +4,7 @@ base: docker-registry.wikimedia.org/amd-pytorch25:2.5.1rocm6.1-1-20250302
 runs:
   insecurely: true
   environment:
-    PYTHONPATH: /opt/lib/python/site-packages:/srv/app:/opt/lib/venv/lib/python3.11/site-packages
+    PYTHONPATH: /opt/lib/python/site-packages:/srv/edit_check:/opt/lib/venv/lib/python3.11/site-packages
 
 lives:
   in: /srv/edit_check
