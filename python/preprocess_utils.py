@@ -80,6 +80,40 @@ def get_page_title(inputs: Dict, event_input_key) -> str:
     return page_title
 
 
+def get_rev_id(inputs: Dict, event_input_key) -> int:
+    """
+    Extracts the revision ID i.e rev_id from an event dictionary.
+    This function handles different event schemas related to MediaWiki
+    revisions and page changes.
+    """
+    try:
+        if event_input_key in inputs:
+            if inputs[event_input_key]["$schema"].startswith(
+                "/mediawiki/revision/create/1"
+            ) or inputs[event_input_key]["$schema"].startswith(
+                "/mediawiki/revision/create/2"
+            ):
+                rev_id = inputs[event_input_key]["rev_id"]
+            elif inputs[event_input_key]["$schema"].startswith(
+                "/mediawiki/page/change/1"
+            ):
+                rev_id = inputs[event_input_key]["revision"]["rev_id"]
+            else:
+                raise InvalidInput(
+                    f"Unsupported event of schema {inputs[event_input_key]['$schema']}, "
+                    "the rev_id value cannot be determined."
+                )
+        else:
+            rev_id = inputs["rev_id"]
+            if not isinstance(rev_id, int):
+                logging.error("Expected rev_id to be an int.")
+                raise InvalidInput('Expected "rev_id" to be a int.')
+    except KeyError:
+        logging.error("Missing rev_id in input data.")
+        raise InvalidInput('Missing "rev_id" in input data.')
+    return rev_id
+
+
 def validate_json_input(inputs: Union[Dict, bytes]) -> Dict:
     """
     Transform inputs to a Dict if inputs are passed as bytes.

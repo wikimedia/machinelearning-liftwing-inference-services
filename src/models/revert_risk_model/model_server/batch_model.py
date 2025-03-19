@@ -11,7 +11,13 @@ from knowledge_integrity.mediawiki import get_revision, Error
 from knowledge_integrity.schema import Revision, InvalidJSONError
 from kserve.errors import InferenceError, InvalidInput
 
-from python.preprocess_utils import check_input_param, validate_json_input
+from python.preprocess_utils import (
+    check_input_param,
+    get_lang,
+    get_rev_id,
+    is_domain_wikipedia,
+    validate_json_input,
+)
 
 
 class RevisionRevertRiskModelBatch(RevisionRevertRiskModel):
@@ -34,6 +40,8 @@ class RevisionRevertRiskModelBatch(RevisionRevertRiskModel):
             force_http,
             allow_revision_json_input,
         )
+        self.event_key = "event"
+        self.custom_user_agent = "WMF ML Team revert-risk model inference (LiftWing)"
 
     async def get_revisions(
         self, session: mwapi.AsyncSession, rev_ids: List[int], lang: str
@@ -53,13 +61,7 @@ class RevisionRevertRiskModelBatch(RevisionRevertRiskModel):
     def prepare_batch_input(self, inputs: Dict[str, Any]) -> Tuple[List[int], str]:
         wiki_ids = []
         rev_ids = []
-        if "instances" not in inputs:
-            # payload like {"rev_id": 12345, "lang": "en"}
-            lang = inputs.get("lang")
-            rev_id = inputs.get("rev_id")
-            check_input_param(lang=lang, rev_id=rev_id)
-            rev_ids.append(rev_id)
-        else:
+        if "instances" in inputs:
             # payload like {"instances": [...]}
             for input in inputs["instances"]:
                 check_input_param(lang=input.get("lang"), rev_id=input.get("rev_id"))
@@ -74,6 +76,23 @@ class RevisionRevertRiskModelBatch(RevisionRevertRiskModel):
             # This allows us to use the same async session.
             lang = self.get_lang(wiki_ids)
             logging.info(f"Received request for revision {rev_ids} ({lang}).")
+        elif self.event_key in inputs:
+            # payload like {"event": {}...}}
+            source_event = inputs.get(self.event_key)
+            if not is_domain_wikipedia(source_event):
+                error_message = "This model is not recommended for use in projects outside of Wikipedia (e.g. Wiktionary, Wikinews, etc)"
+                logging.error(error_message)
+                raise InvalidInput(error_message)
+            lang = get_lang(inputs, self.event_key)
+            rev_id = get_rev_id(inputs, self.event_key)
+            check_input_param(lang=lang, rev_id=rev_id)
+            rev_ids.append(rev_id)
+        else:
+            # payload like {"rev_id": 12345, "lang": "en"}
+            lang = inputs.get("lang")
+            rev_id = inputs.get("rev_id")
+            check_input_param(lang=lang, rev_id=rev_id)
+            rev_ids.append(rev_id)
         return rev_ids, lang
 
     def get_revision_from_input(self, inputs) -> Dict[str, Any]:
@@ -118,7 +137,7 @@ class RevisionRevertRiskModelBatch(RevisionRevertRiskModel):
             # network in Lift Wing. Alternatively, it can be set to
             # https://{lang}.wikipedia.org to call MW API publicly.
             host=self.wiki_url or mw_host,
-            user_agent="WMF ML Team revert-risk-model isvc",
+            user_agent=self.custom_user_agent,
             session=self.get_http_client_session("mwapi"),
         )
         # Additional HTTP Host header must be set if the host is http://api-ro.discovery.wmnet
