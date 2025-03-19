@@ -14,4 +14,7 @@
 # new use case will pop up in the future.
 CPU_COUNT=$(/usr/bin/python3 -c "from python.resource_utils import get_cpu_count; print(get_cpu_count())")
 echo "CPU count detected from get_cpu_count: ${CPU_COUNT}"
-export OMP_NUM_THREADS=$CPU_COUNT
+# If NUM_THREADS is set, use it; otherwise, use CPU_COUNT
+# This is useful for testing and debugging purposes in a multiprocessing environment
+export OMP_NUM_THREADS=${NUM_THREADS:-$CPU_COUNT}
+echo "OMP_NUM_THREADS set to: $OMP_NUM_THREADS"

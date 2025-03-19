@@ -114,7 +114,7 @@ class ReferenceNeedModel(kserve.Model):
         return f"{protocol}://{updated_lang}.wikipedia.org"
 
     def get_http_client_session(self, endpoint):
-        """Returns a aiohttp session for the specific endpoint passed as input.
+        """Returns an aiohttp session for the specific endpoint passed as input.
         We need to do it since sharing a single session leads to unexpected
         side effects (like sharing headers, most notably the Host one)."""
         timeout = aiohttp.ClientTimeout(total=self.aiohttp_client_timeout)
