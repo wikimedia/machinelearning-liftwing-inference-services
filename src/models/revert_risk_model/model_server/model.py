@@ -22,6 +22,8 @@ if __name__ == "__main__":
     allow_revision_json_input = strtobool(
         os.environ.get("ALLOW_REVISION_JSON_INPUT", "False")
     )
+    eventgate_url = os.environ.get("EVENTGATE_URL")
+    eventgate_stream = os.environ.get("EVENTGATE_STREAM")
     if model_name == "revertrisk-language-agnostic":
         model = RevisionRevertRiskModelBatch(
             model_name,
@@ -31,6 +33,8 @@ if __name__ == "__main__":
             aiohttp_client_timeout,
             force_http,
             allow_revision_json_input,
+            eventgate_url,
+            eventgate_stream,
         )
     else:
         model = RevisionRevertRiskModel(

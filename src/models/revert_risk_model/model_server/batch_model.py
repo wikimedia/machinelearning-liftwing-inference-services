@@ -11,6 +11,7 @@ from knowledge_integrity.mediawiki import get_revision, Error
 from knowledge_integrity.schema import Revision, InvalidJSONError
 from kserve.errors import InferenceError, InvalidInput
 
+from python import events
 from python.preprocess_utils import (
     check_input_param,
     get_lang,
@@ -30,6 +31,8 @@ class RevisionRevertRiskModelBatch(RevisionRevertRiskModel):
         aiohttp_client_timeout: int,
         force_http: bool,
         allow_revision_json_input: bool,
+        eventgate_url: str,
+        eventgate_stream: str,
     ) -> None:
         super().__init__(
             name,
@@ -41,6 +44,9 @@ class RevisionRevertRiskModelBatch(RevisionRevertRiskModel):
             allow_revision_json_input,
         )
         self.event_key = "event"
+        self.eventgate_url = eventgate_url
+        self.eventgate_stream = eventgate_stream
+        self.tls_cert_bundle_path = "/etc/ssl/certs/wmf-ca-certificates.crt"
         self.custom_user_agent = "WMF ML Team revert-risk model inference (LiftWing)"
 
     async def get_revisions(
@@ -58,7 +64,20 @@ class RevisionRevertRiskModelBatch(RevisionRevertRiskModel):
             )
         return lang_set.pop()
 
-    def prepare_batch_input(self, inputs: Dict[str, Any]) -> Tuple[List[int], str]:
+    def parse_input_data(self, inputs: Dict[str, Any]) -> Tuple[List[int], str]:
+        """
+        Parse batch, event-based, and single input data that will be used to get
+        revision revert-risk predictions.
+
+        This method handles multiple input payload formats including:
+        - Batch inputs via the "instances" key (expects a list of revision objects,
+          each containing at least 'lang' and 'rev_id'. A maximum of 20 revisions
+          is allowed per request).
+        - Event-based inputs via the event key (e.g {"event": {...}}). In this case,
+          it ensures the event originates from Wikipedia and extracts the appropriate
+          language and revision identifier using helper functions.
+        - Single revision inputs provided with direct keys "rev_id" and "lang".
+        """
         wiki_ids = []
         rev_ids = []
         if "instances" in inputs:
@@ -77,7 +96,7 @@ class RevisionRevertRiskModelBatch(RevisionRevertRiskModel):
             lang = self.get_lang(wiki_ids)
             logging.info(f"Received request for revision {rev_ids} ({lang}).")
         elif self.event_key in inputs:
-            # payload like {"event": {}...}}
+            # payload like {"event": {...}}
             source_event = inputs.get(self.event_key)
             if not is_domain_wikipedia(source_event):
                 error_message = "This model is not recommended for use in projects outside of Wikipedia (e.g. Wiktionary, Wikinews, etc)"
@@ -128,7 +147,7 @@ class RevisionRevertRiskModelBatch(RevisionRevertRiskModel):
                 "Received revision data. Bypassing data retrieval from the MW API."
             )
             return self.get_revision_from_input(inputs)
-        rev_ids, lang = self.prepare_batch_input(inputs)
+        rev_ids, lang = self.parse_input_data(inputs)
         self.check_wiki_suffix(lang)
         self.check_supported_wikis(lang)
         mw_host = self.get_mediawiki_host(lang)
@@ -160,7 +179,7 @@ class RevisionRevertRiskModelBatch(RevisionRevertRiskModel):
         }
         return inputs
 
-    def predict(
+    async def predict(
         self, request: Dict[str, Any], headers: Dict[str, str] = None
     ) -> Dict[str, Any]:
         valid_rev = {
@@ -208,7 +227,43 @@ class RevisionRevertRiskModelBatch(RevisionRevertRiskModel):
                         f" Reason: {rev.code.value}"
                     )
             return {"predictions": predictions, "errors": error_msg}
+        if self.event_key in request:
+            # when the input contains an event, add predictions to output event
+            prediction_results = {
+                "predictions": predictions[0]["output"]["prediction"],
+                "probabilities": predictions[0]["output"]["probabilities"],
+            }
+            await self.send_event(
+                request[self.event_key],
+                prediction_results,
+                predictions[0]["model_version"],
+            )
         if "instances" not in request:
             # response for requests like {"rev_id": 12345, "lang": "en"}
             return predictions[0]
         return {"predictions": predictions}
+
+    async def send_event(
+        self,
+        page_change_event: Dict[str, Any],
+        prediction_results: Dict[str, Any],
+        model_version: str,
+    ) -> None:
+        """
+        Send a revision revert risk language-agnostic prediction classification change event to EventGate
+        generated from the page_change event and prediction_results passed as input.
+        """
+        revertrisk_language_agnostic_event = events.generate_prediction_classification_event(
+            page_change_event,
+            self.eventgate_stream,
+            "revertrisk-language-agnostic",  # same name is used in LW endpoint host header and will be used in changeprop for consistency
+            model_version,
+            prediction_results,
+        )
+        await events.send_event(
+            revertrisk_language_agnostic_event,
+            self.eventgate_url,
+            self.tls_cert_bundle_path,
+            self.custom_user_agent,
+            self.get_http_client_session("eventgate"),
+        )
