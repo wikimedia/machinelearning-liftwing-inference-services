@@ -12,12 +12,11 @@ def get_random_input_params():
 
 
 class EditCheckPeacock(FastHttpUser):
-    wait_time = between(1, 5)
+    wait_time = between(0.0, 0.1)
 
-    @task(3)
+    @task
     def get_prediction(self):
         original, modified = get_random_input_params()
-        # model = os.environ.get("MODEL_NAME", None)
         hostname = os.environ.get("HOST", "edit-check")
         namespace = os.environ.get("NS", "experimental")
         headers = {
