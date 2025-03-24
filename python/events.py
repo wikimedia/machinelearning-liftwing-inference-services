@@ -193,8 +193,18 @@ def generate_page_weighted_tags_event(
             "the ML team."
         )
 
+    if eventgate_stream.endswith(".v1"):
+        schema = "/mediawiki/cirrussearch/page_weighted_tags_change/1.0.0"
+    elif eventgate_stream.endswith(".rc0"):
+        schema = "/development/cirrussearch/page_weighted_tags_change/1.0.0"
+    else:
+        raise RuntimeError(
+            f"Unsupported event stream {eventgate_stream}, please contact "
+            "the ML team."
+        )
+
     event = {
-        "$schema": "/development/cirrussearch/page_weighted_tags_change/1.0.0",
+        "$schema": schema,
         "dt": source_event["dt"],
         "meta": _meta(source_event, eventgate_stream),
         "page": {
