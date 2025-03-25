@@ -1,5 +1,15 @@
-from pydantic import BaseModel
 from enum import Enum
+from typing import Any, Dict, List
+
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    field_validator,
+    ValidationError,
+)
+
+from config import MAX_BATCH_SIZE, MAX_CHAR_LENGTH
 
 
 class Language(str, Enum):
@@ -193,17 +203,75 @@ class CheckType(str, Enum):
     weasel = "weasel"
 
 
+class Instance(BaseModel):
+    lang: Language = Field(
+        ..., description="Language code of the text, e.g., 'en' for English."
+    )
+    check_type: CheckType = Field(
+        ..., description="Type of check to perform, e.g., 'peacock'."
+    )
+    original_text: str = Field(..., description="The original text to be checked.")
+    modified_text: str = Field(..., description="The modified text to be checked.")
+
+    @field_validator("original_text", "modified_text", mode="after")
+    def text_length(cls, value):
+        if len(value) > MAX_CHAR_LENGTH:
+            raise ValueError(
+                f"Text fields must be less than {MAX_CHAR_LENGTH} characters long"
+            )
+        return value
+
+    @field_validator("modified_text", mode="after")
+    def texts_must_be_different(cls, value, info):
+        other_text = info.data.get("original_text")
+        if other_text is not None and value == other_text:
+            raise ValueError("Original text and modified text must be different")
+        return value
+
+    model_config = ConfigDict(extra="forbid")
+
+
 class RequestModel(BaseModel):
-    lang: Language
-    check_type: CheckType
-    original_text: str
-    modified_text: str
+    instances: List[Dict[str, Any]] = Field(
+        ..., description="List of instances to be processed."
+    )
 
+    @field_validator("instances")
+    def check_instances_length(cls, value):
+        if len(value) == 0:
+            raise ValueError("At least one instance must be provided")
+        if len(value) > MAX_BATCH_SIZE:
+            raise ValueError(
+                f"Request length is greater than max batch size: {len(value)} > {MAX_BATCH_SIZE}"
+            )
+        return value
 
-# Example usage
-# request_data = {
-#     "lang": "en",
-#     "check_type": "peacock",
-#     "original_text": "original text example lala",
-#     "modified_text": "modified text example lololol",
-# }
+    def process_instances(self):
+        responses = {"Valid": [], "Malformed": []}
+
+        for index, instance_data in enumerate(self.instances):
+            try:
+                # Validate each instance fully
+                instance = Instance(**instance_data)
+                responses["Valid"].append(
+                    {
+                        "index": index,
+                        "status_code": 200,
+                        "instance": instance,
+                    }
+                )
+            except ValidationError as e:
+                # Collect all errors for invalid instances
+                errors = []
+                for error in e.errors():
+                    field = ".".join(str(loc) for loc in error["loc"])
+                    msg = error["msg"]
+                    errors.append(f"Error in field '{field}': {msg}")
+                responses["Malformed"].append(
+                    {
+                        "index": index,
+                        "status_code": 400,
+                        "errors": errors,
+                    }
+                )
+        return responses

@@ -26,10 +26,14 @@ class EditCheckPeacock(FastHttpUser):
         self.client.post(
             "/v1/models/edit-check-staging:predict",
             json={
-                "lang": "en",
-                "check_type": "peacock",
-                "original_text": original,
-                "modified_text": modified,
+                "instances": [
+                    {
+                        "lang": "en",
+                        "check_type": "peacock",
+                        "original_text": original,
+                        "modified_text": modified,
+                    }
+                ],
             },
             headers=headers,
         )
