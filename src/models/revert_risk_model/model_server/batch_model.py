@@ -230,7 +230,7 @@ class RevisionRevertRiskModelBatch(RevisionRevertRiskModel):
         if self.event_key in request:
             # when the input contains an event, add predictions to output event
             prediction_results = {
-                "predictions": predictions[0]["output"]["prediction"],
+                "predictions": [str(predictions[0]["output"]["prediction"]).lower()],
                 "probabilities": predictions[0]["output"]["probabilities"],
             }
             await self.send_event(
