@@ -13,7 +13,7 @@ services:
       MODEL_TO_DEPLOY: "reference-need"
       NUM_OF_WORKERS: 2
     volumes:
-      - ${PATH_TO_REFERENCE_NEED_MODEL}:/mnt/models/
+      - ${PATH_TO_REFERENCE_NEED_MODEL:-/dummy/path}:/mnt/models/
   reference-risk:
     platform: linux/amd64
     build:
@@ -27,4 +27,18 @@ services:
       MODEL_TO_DEPLOY: "reference-risk"
       NUM_OF_WORKERS: 1
     volumes:
-      - ${PATH_TO_REFERENCE_RISK_MODEL}:/mnt/models/
+      - ${PATH_TO_REFERENCE_RISK_MODEL:-/dummy/path}:/mnt/models/
+  edit-check:
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: .pipeline/edit_check/blubber.yaml
+      target: production
+    image: edit-check:prod
+    ports:
+      - "8080:8080"
+    environment:
+      MODEL_NAME: "edit-check"
+      MODEL_VERSION: "v1"
+    volumes:
+      - ${PATH_TO_EDIT_CHECK_MODEL:-/dummy/path}:/mnt/models/
