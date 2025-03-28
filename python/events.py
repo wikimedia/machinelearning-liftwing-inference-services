@@ -243,7 +243,7 @@ async def send_event(
                 "Sent the following event to "
                 "EventGate, that returned a HTTP response with status "
                 f"{resp.status} and text '{await resp.text()}'"
-                f":\n{json.dumps(event)}"
+                f": {json.dumps(event)}"
             )
             if resp.status >= 400:
                 logging.error(log_msg)
