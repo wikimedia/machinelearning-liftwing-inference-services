@@ -24,7 +24,7 @@ class EditCheckPeacock(FastHttpUser):
             "Host": f"{hostname}.{namespace}.wikimedia.org",
         }
         self.client.post(
-            "/v1/models/edit-check:predict",
+            "/v1/models/edit-check-staging:predict",
             json={
                 "lang": "en",
                 "check_type": "peacock",
