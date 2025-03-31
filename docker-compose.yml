@@ -42,3 +42,10 @@ services:
       MODEL_VERSION: "v1"
     volumes:
       - ${PATH_TO_EDIT_CHECK_MODEL:-/dummy/path}:/mnt/models/
+  edit-check-test:
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: .pipeline/edit_check/blubber.yaml
+      target: test
+    image: edit-check:test

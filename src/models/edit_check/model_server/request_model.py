@@ -9,7 +9,7 @@ from pydantic import (
     ValidationError,
 )
 
-from config import MAX_BATCH_SIZE, MAX_CHAR_LENGTH
+from src.models.edit_check.model_server.config import MAX_BATCH_SIZE, MAX_CHAR_LENGTH
 
 
 class Language(str, Enum):

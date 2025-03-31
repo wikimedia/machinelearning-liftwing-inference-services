@@ -89,8 +89,14 @@ variants:
       - from: local
         source: requirements-test.txt
         destination: .
-    entrypoint: ["./entrypoint.sh", "ci-lint"]
+      - from: local
+        source: test/unit/__init__.py
+        destination: test/unit/__init__.py
+      - from: local
+        source: test/unit/edit_check
+        destination: test/unit/edit_check
+    entrypoint: ["./entrypoint.sh", "ci-lint", "ci-unit"]
     python:
       version: python3
       use-system-site-packages: false
-      requirements: [requirements-test.txt]
+      requirements: [requirements-test.txt, test/unit/edit_check/requirements_text.txt]

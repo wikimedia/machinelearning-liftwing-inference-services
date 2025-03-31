@@ -5,12 +5,17 @@ from typing import Any, Dict, List, Tuple
 
 import kserve
 import torch
-from transformers import pipeline, AutoModelForSequenceClassification, AutoTokenizer
+from transformers import (
+    pipeline,
+    Pipeline,
+    AutoModelForSequenceClassification,
+    AutoTokenizer,
+)
 from kserve.errors import InvalidInput
 
 from python.preprocess_utils import validate_json_input
-from request_model import RequestModel
-from config import MAX_BATCH_SIZE, MODEL_NAME
+from src.models.edit_check.model_server.request_model import RequestModel
+from src.models.edit_check.model_server.config import MAX_BATCH_SIZE, MODEL_NAME
 
 logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
 
@@ -27,7 +32,7 @@ class EditCheckModel(kserve.Model):
         self.model_path = os.environ.get("MODEL_PATH", "/mnt/models/")
         self.model_pipeline = self.load()
 
-    def load(self) -> None:
+    def load(self) -> Pipeline:
         device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
         # Load the tokenizer
@@ -115,6 +120,7 @@ class EditCheckModel(kserve.Model):
         self,
         predictions: Tuple[List[str], Dict[str, List]],
         headers: Dict[str, str] = None,
+        return_index: bool = False,
     ) -> Dict[str, List[Dict[str, Any]]]:
         """Postprocess the predictions list.
         Extract the probability and the predicted class.
@@ -163,8 +169,9 @@ class EditCheckModel(kserve.Model):
         # Include malformed requests into response payload and sort it based on index.
         formatted_responses.extend(processed_requests["Malformed"])
         sorted_predictions = sorted(formatted_responses, key=lambda x: x["index"])
-        for prediction in sorted_predictions:
-            prediction.pop("index", None)
+        if not return_index:
+            for prediction in sorted_predictions:
+                prediction.pop("index", None)
         response_payload = {"predictions": sorted_predictions}
         return response_payload
 
