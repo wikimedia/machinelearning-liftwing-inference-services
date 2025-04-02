@@ -18,6 +18,8 @@ clean \
 clone-descartes \
 clone-wmf-kserve-numpy-200 \
 download-nltk-punkt \
+edit-check \
+install-torch \
 language-identification \
 logo-detection \
 readability \
@@ -119,6 +121,21 @@ articletopic-outlink-transformer:
 	. $(VENV)/bin/activate && \
 	$(PYTHON) src/models/outlink_topic_model/transformer/transformer.py \
 	--predictor_host="localhost:8181" --model_name="outlink-topic-model"
+
+# Command for edit-check model-server
+edit-check:
+	@$(MAKE) install-torch run-server MODEL_NAME="edit-check" \
+	MODEL_URL="edit-check/" \
+	MODEL_SERVER_PARENT_DIR="src/models/edit_check" \
+	MODEL_PATH="models/edit-check/peacock/" \
+	MODEL_SERVER_DIR="model_server" \
+	DEP_DIR="." \
+	CUT_DIRS=2 \
+	ACCEPT_REGEX="'(peacock)'"
+
+# install torch (used by edit-check and likely other model-servers that host LLMs or rely on docker-registry.wikimedia.org/amd-pytorch25:2.5.1rocm6.*)
+install-torch: $(VENV)/bin/activate
+	$(PIP) install torch==2.5.1 --extra-index-url https://download.pytorch.org/whl/cpu
 
 # Command for language-identification model-server
 language-identification:
