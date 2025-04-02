@@ -2,3 +2,5 @@ kserve==0.14.1
 pydantic==2.10.6
 transformers==4.46.2
 pydantic-settings==2.8.1
+shap==0.47.0
+matplotlib==3.10.1

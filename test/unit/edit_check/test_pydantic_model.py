@@ -19,6 +19,7 @@ mock_modules(
         "fastapi.middleware.cors",
         "torch",
         "transformers",
+        "shap",
     ]
 )
 
@@ -52,6 +53,8 @@ def test_valid_instance():
     instance = responses["Valid"][0]["instance"]
     assert instance.lang == "en"
     assert instance.check_type == "peacock"
+    # if "return_shap_values" is not provided, it defaults to False
+    assert instance.return_shap_values is False
 
 
 def test_identical_texts():
@@ -91,9 +94,10 @@ def test_postprocess_sorting_order():
 
     # Create a dummy instance to simulate the pydantic instance attribute.
     class DummyInstance:
-        def __init__(self, check_type, lang):
+        def __init__(self, check_type, lang, return_shap_values=False):
             self.check_type = check_type
             self.lang = lang
+            self.return_shap_values = return_shap_values
 
     # Create a dummy EditCheckModel instance to avoid calling __init__ attempting to load a model
     dummy_model = EditCheckModel.__new__(EditCheckModel)
@@ -121,10 +125,11 @@ def test_postprocess_sorting_order():
         {"label": "dummy_0", "score": 0.8},
         {"label": "dummy_1", "score": 0.9},
     ]
+    explainer_outputs = []
 
     # Assemble the processed_requests dictionary.
     processed_requests = {"Valid": valid_requests, "Malformed": [malformed1]}
-    predictions_tuple = (model_outputs, processed_requests)
+    predictions_tuple = (model_outputs, explainer_outputs, processed_requests)
 
     # Call postprocess with return_index True to preserve the index for verification.
     final_response = asyncio.run(

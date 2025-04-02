@@ -212,6 +212,9 @@ class Instance(BaseModel):
     )
     original_text: str = Field(..., description="The original text to be checked.")
     modified_text: str = Field(..., description="The modified text to be checked.")
+    return_shap_values: bool | None = Field(
+        default=False, description="Whether to return SHAP values."
+    )
 
     @field_validator("original_text", "modified_text", mode="after")
     def text_length(cls, value):

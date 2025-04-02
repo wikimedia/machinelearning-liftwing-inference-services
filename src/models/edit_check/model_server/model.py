@@ -7,12 +7,15 @@ import kserve
 import torch
 from fastapi.middleware.cors import CORSMiddleware
 from kserve.errors import InvalidInput
+import shap
 from transformers import (
     AutoModelForSequenceClassification,
     AutoTokenizer,
     Pipeline,
     pipeline,
 )
+
+# from shap.plots._text import unpack_shap_explanation_contents, process_shap_values
 
 from python.preprocess_utils import validate_json_input
 from src.models.edit_check.model_server.config import settings
@@ -34,6 +37,7 @@ class EditCheckModel(kserve.Model):
         self.ready = False
         self.model_path = os.environ.get("MODEL_PATH", "/mnt/models/")
         self.model_pipeline = self.load()
+        self.explainer = shap.Explainer(self.model_pipeline)
 
     def load(self) -> Pipeline:
         device = "cuda:0" if torch.cuda.is_available() else "cpu"
@@ -63,7 +67,7 @@ class EditCheckModel(kserve.Model):
 
     async def preprocess(
         self, inputs: Dict[str, Any], headers: Dict[str, str] = None
-    ) -> Tuple[List[str], Dict[str, List]]:
+    ) -> Tuple[List[str], List[str], Dict[str, List]]:
         """Preprocess method that validates and passed input request
             into Pydantic RequestModel object.
             Extracts the original and modified text into a list,
@@ -76,52 +80,60 @@ class EditCheckModel(kserve.Model):
             InvalidInput: Invalid input kserve error.
 
         Returns:
-            Tuple[List[str], List[Dict[str, Any]]]: Tuple of the text list input for the ml model, and a list of RequestModel instances.
+            Tuple[List[str], List[str], List[Dict[str, Any]]]: Tuple of the text list input for the ml mode, shap explainer, and a list of RequestModel instances.
         """
 
         try:
             flattened_pair_texts = []
+            text_for_explanation = []
             validated_input = validate_json_input(inputs)
             request_model = RequestModel(**validated_input)
             processed_requests = request_model.process_instances()
             for request in processed_requests["Valid"]:
                 flattened_pair_texts.append(request["instance"].original_text)
                 flattened_pair_texts.append(request["instance"].modified_text)
+                # Extract the modified text when return_shap_values is True
+                if request["instance"].return_shap_values:
+                    text_for_explanation.append(request["instance"].modified_text)
 
         except (ValueError, AttributeError, json.decoder.JSONDecodeError) as e:
             raise InvalidInput(f"Wrong request! Message: {e}.")
 
-        return flattened_pair_texts, processed_requests
+        return flattened_pair_texts, text_for_explanation, processed_requests
 
     async def predict(
         self,
-        request: Tuple[List[str], Dict[str, List]],
+        request: Tuple[List[str], List[str], Dict[str, List]],
         headers: Dict[str, str] = None,
-    ) -> Tuple[List[str], Dict[str, List]]:
+    ) -> Tuple[List[Any], List[Any], Dict[str, List]]:
         """Predict method using the model pipeline object for text classification.
 
         Args:
-            request (Tuple[List[str], Dict[str, List]]): Texts to be fed into the ml model, and input requests dict.
+            request (Tuple[List[str], List[str], Dict[str, List]]): Texts to be fed into the ml model, shap explainer, and input requests dict.
             headers (Dict[str, str], optional): _description_. Request headers to None.
 
         Returns:
-            Tuple[List[str], Dict[str, List]]: Predictions list and requests dict.
+            Tuple[List[Any], List[Any], Dict[str, List]]: Predictions list, explaniner outputs and requests dict.
         """
 
-        # Extract the two lists from preprocess output
-        text_for_prediction, processed_requests = request
+        # Extract the three lists from preprocess output
+        text_for_prediction, text_for_explanation, processed_requests = request
 
         # Predict both original and modified text
         tokenizer_kwargs = {"truncation": True, "max_length": MAXLEN}
         predictions = self.model_pipeline(
             text_for_prediction, **tokenizer_kwargs, batch_size=BATCH
         )
+        # Pass the modified text to the explainer
+        explainer_outputs = []
+        if len(text_for_explanation) > 0:
+            explainer_outputs = self.explainer(text_for_explanation)
 
-        return predictions, processed_requests
+        return predictions, explainer_outputs, processed_requests
 
     async def postprocess(
         self,
-        predictions: Tuple[List[str], Dict[str, List]],
+        predictions: Tuple[List[Any], List[Any], Dict[str, List]],
         headers: Dict[str, str] = None,
         return_index: bool = False,
     ) -> Dict[str, List[Dict[str, Any]]]:
@@ -129,7 +141,8 @@ class EditCheckModel(kserve.Model):
         Extract the probability and the predicted class.
         Apply the rules for original and modified text predictions.
         """
-        model_outputs, processed_requests = predictions
+        model_outputs, explainer_outputs, processed_requests = predictions
+        explainer_outputs_idx = 0
 
         if len(model_outputs) % 2:
             raise InvalidInput(
@@ -149,10 +162,26 @@ class EditCheckModel(kserve.Model):
             # Apply the defined peacock rules
             final_outcome = OUTCOME_RULE[f"{original_txt_label}{modified_txt_label}"]
 
-            # This will be needed when we can detect which are the peacock words in the text.
-            details: dict = {
-                "violations": ["string"]
-            }  # list of words or phrases that are problematic according to the model
+            details: dict = {}
+            # Return SHAP values and tokens if the request has return_shap_values set to True
+            if valid_request["instance"].return_shap_values:
+                shap_values = explainer_outputs[explainer_outputs_idx]
+                (
+                    unpacked_values,
+                    clustering,
+                ) = shap.plots._text.unpack_shap_explanation_contents(shap_values)
+                # Reprocess the shap_values and tokens based on clustering data
+                # https://github.com/shap/shap/blob/master/shap/plots/_text.py#L378
+                tokens, values, _ = shap.plots._text.process_shap_values(
+                    shap_values.data, unpacked_values[:, 1], 1, "", clustering, False
+                )
+                # Return top 3 tokens with highest SHAP values
+                details["violations"] = sorted(
+                    zip(tokens, values), key=lambda x: x[1], reverse=True
+                )[:3]
+                details["shap_values"] = values.tolist()
+                details["tokens"] = tokens.tolist()
+                explainer_outputs_idx += 1
 
             # Construct the final response payload
             formatted_responses.append(
