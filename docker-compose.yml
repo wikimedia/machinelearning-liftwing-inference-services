@@ -42,6 +42,20 @@ services:
       MODEL_VERSION: "v1"
     volumes:
       - ${PATH_TO_EDIT_CHECK_MODEL:-/dummy/path}:/mnt/models/
+  edit-check-cpu:
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: .pipeline/edit_check/blubber_cpu.yaml
+      target: production
+    image: edit-check:cpu
+    ports:
+      - "8080:8080"
+    environment:
+      MODEL_NAME: "edit-check"
+      MODEL_VERSION: "v1"
+    volumes:
+      - ${PATH_TO_EDIT_CHECK_MODEL:-/dummy/path}:/mnt/models/
   edit-check-test:
     platform: linux/amd64
     build:

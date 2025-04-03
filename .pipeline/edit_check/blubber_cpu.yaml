@@ -1,0 +1,54 @@
+# syntax=docker-registry.wikimedia.org/repos/releng/blubber/buildkit:v1.1.0
+version: v4
+base: docker-registry.wikimedia.org/bookworm:20240609
+runs:
+  insecurely: true
+  environment:
+    PYTHONPATH: /opt/lib/python/site-packages:/srv/edit_check:/opt/lib/venv/lib/python3.11/site-packages
+
+lives:
+  in: /srv/edit_check
+
+variants:
+  build:
+    python:
+      version: python3
+      requirements: ["src/models/edit_check/model_server/requirements_cpu.txt", "src/models/edit_check/model_server/requirements.txt", "python/requirements.txt"]
+    apt:
+      packages:
+        - build-essential
+        - python3-pip
+        - python3-dev
+        - python3-setuptools
+        - python3.11-venv
+        - git
+
+
+  production:
+    copies:
+      - from: local
+        source: src/models/edit_check/model_server
+        destination: src/models/edit_check/model_server
+      - from: local
+        source: python
+        destination: python
+      - from: local
+        source: model_server_entrypoint.sh
+        destination: entrypoint.sh
+      - from: local
+        source: common_settings.sh
+        destination: common_settings.sh
+      - from: build
+        source: /opt/lib/venv/lib/python3.11/site-packages/
+        destination: /opt/lib/venv/lib/python3.11/site-packages/
+
+    apt:
+      packages:
+        - python3
+        - python3-distutils
+        - python3-setuptools
+        - python3.11-venv
+    python:
+      version: python3
+      use-system-site-packages: false
+    entrypoint: ["./entrypoint.sh", "src/models/edit_check/model_server/model.py"]
