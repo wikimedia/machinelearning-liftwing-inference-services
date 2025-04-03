@@ -27,7 +27,7 @@ variants:
     copies:
       - from: local
         source: src/models/edit_check/model_server
-        destination: model_server
+        destination: src/models/edit_check/model_server
       - from: local
         source: python
         destination: python
@@ -54,7 +54,7 @@ variants:
     python:
       version: python3
       use-system-site-packages: false
-    entrypoint: ["./entrypoint.sh"]
+    entrypoint: ["./entrypoint.sh", "src/models/edit_check/model_server/model.py"]
 
   test:
     apt:
