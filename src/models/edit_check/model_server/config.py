@@ -1,5 +1,17 @@
-import os
+from pydantic_settings import BaseSettings
 
-MAX_BATCH_SIZE = int(os.environ.get("MAX_BATCH_SIZE", 100))
-MODEL_NAME = os.environ.get("MODEL_NAME")
-MAX_CHAR_LENGTH = int(os.environ.get("MAX_CHAR_LENGTH", 1000))
+
+"""
+Config class for edit-check project.
+Reads variables as environment variables.
+If environment variables do not exist, it uses the default values.
+"""
+
+
+class Settings(BaseSettings):
+    max_batch_size: int = 100
+    model_name: str = "edit-check"
+    max_char_length: int = 1000
+
+
+settings = Settings()

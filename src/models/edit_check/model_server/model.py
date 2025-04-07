@@ -15,11 +15,13 @@ from kserve.errors import InvalidInput
 
 from python.preprocess_utils import validate_json_input
 from src.models.edit_check.model_server.request_model import RequestModel
-from src.models.edit_check.model_server.config import MAX_BATCH_SIZE, MODEL_NAME
+from src.models.edit_check.model_server.config import settings
 
 logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
 
-BATCH = MAX_BATCH_SIZE * 2  # Batch size for the model pipeline which receives pairs.
+BATCH = (
+    settings.max_batch_size * 2
+)  # Batch size for the model pipeline which receives pairs.
 MAXLEN: int = 512  # Maximum length for tokenization
 OUTCOME_RULE: dict[str, bool] = {"00": False, "01": True, "10": False, "11": False}
 
@@ -177,6 +179,5 @@ class EditCheckModel(kserve.Model):
 
 
 if __name__ == "__main__":
-    model_name = MODEL_NAME
-    model = EditCheckModel(name=model_name)
+    model = EditCheckModel(name=settings.model_name)
     kserve.ModelServer(workers=1).start([model])

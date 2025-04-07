@@ -9,7 +9,7 @@ from pydantic import (
     ValidationError,
 )
 
-from src.models.edit_check.model_server.config import MAX_BATCH_SIZE, MAX_CHAR_LENGTH
+from src.models.edit_check.model_server.config import settings
 
 
 class Language(str, Enum):
@@ -215,9 +215,9 @@ class Instance(BaseModel):
 
     @field_validator("original_text", "modified_text", mode="after")
     def text_length(cls, value):
-        if len(value) > MAX_CHAR_LENGTH:
+        if len(value) > settings.max_char_length:
             raise ValueError(
-                f"Text fields must be less than {MAX_CHAR_LENGTH} characters long"
+                f"Text fields must be less than {settings.max_char_length} characters long"
             )
         return value
 
@@ -240,9 +240,9 @@ class RequestModel(BaseModel):
     def check_instances_length(cls, value):
         if len(value) == 0:
             raise ValueError("At least one instance must be provided")
-        if len(value) > MAX_BATCH_SIZE:
+        if len(value) > settings.max_batch_size:
             raise ValueError(
-                f"Request length is greater than max batch size: {len(value)} > {MAX_BATCH_SIZE}"
+                f"Request length is greater than max batch size: {len(value)} > {settings.max_batch_size}"
             )
         return value
 
