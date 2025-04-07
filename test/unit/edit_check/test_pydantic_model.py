@@ -4,18 +4,28 @@ import asyncio
 import pytest
 from pydantic import ValidationError
 
-# Patch out heavy modules with dummies to avoid installation and execution issues.
-sys.modules["kserve"] = MagicMock()
+
+def mock_modules(modules):
+    for mod in modules:
+        sys.modules[mod] = MagicMock()
+
+
+# Mocking the modules that are not available (or relevant) in the test environment
+mock_modules(
+    [
+        "kserve",
+        "kserve.errors",
+        "kserve.constants",
+        "fastapi.middleware.cors",
+        "torch",
+        "transformers",
+    ]
+)
+
 import kserve  # noqa: E402
 
-# Override kserve.Model with a dummy real class to avoid issues when creating dummy instances.
 kserve.Model = type("DummyKserveModel", (), {})
-
-
 kserve.constants.KSERVE_LOGLEVEL = 0
-sys.modules["kserve.errors"] = MagicMock()
-sys.modules["torch"] = MagicMock()
-sys.modules["transformers"] = MagicMock()
 
 from src.models.edit_check.model_server.request_model import RequestModel  # noqa: E402
 from src.models.edit_check.model_server.model import EditCheckModel  # noqa: E402

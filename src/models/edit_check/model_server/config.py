@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     max_batch_size: int = 100
     model_name: str = "edit-check"
     max_char_length: int = 1000
+    environment: str = "production"
 
 
 settings = Settings()

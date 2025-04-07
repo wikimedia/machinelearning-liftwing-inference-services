@@ -54,6 +54,7 @@ services:
     environment:
       MODEL_NAME: "edit-check"
       MODEL_VERSION: "v1"
+      ENVIRONMENT: "dev"
     volumes:
       - ${PATH_TO_EDIT_CHECK_MODEL:-/dummy/path}:/mnt/models/
   edit-check-test:

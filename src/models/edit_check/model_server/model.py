@@ -1,21 +1,22 @@
-import os
 import json
 import logging
+import os
 from typing import Any, Dict, List, Tuple
 
 import kserve
 import torch
+from fastapi.middleware.cors import CORSMiddleware
+from kserve.errors import InvalidInput
 from transformers import (
-    pipeline,
-    Pipeline,
     AutoModelForSequenceClassification,
     AutoTokenizer,
+    Pipeline,
+    pipeline,
 )
-from kserve.errors import InvalidInput
 
 from python.preprocess_utils import validate_json_input
-from src.models.edit_check.model_server.request_model import RequestModel
 from src.models.edit_check.model_server.config import settings
+from src.models.edit_check.model_server.request_model import RequestModel
 
 logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
 
@@ -180,4 +181,9 @@ class EditCheckModel(kserve.Model):
 
 if __name__ == "__main__":
     model = EditCheckModel(name=settings.model_name)
-    kserve.ModelServer(workers=1).start([model])
+    model_server = kserve.ModelServer(workers=1)
+    if settings.environment == "dev":
+        model_server._rest_server.app.add_middleware(
+            CORSMiddleware, allow_origins=["*"], allow_methods=["*"]
+        )
+    model_server.start([model])
