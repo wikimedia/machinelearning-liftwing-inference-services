@@ -82,7 +82,7 @@ class ArticleQualityModel(kserve.Model):
         inputs = validate_json_input(inputs)
         lang = inputs.get("lang")
         rev_id = inputs.get("rev_id")
-        article_html = get_article_html(lang, rev_id, self.protocol)
+        article_html = await get_article_html(lang, rev_id, self.protocol)
         raw_features = get_article_features(article_html)
         raw_features_dict = dict(zip(self.feature_order, raw_features))
         page_length_idx = self.feature_order.index("characters")

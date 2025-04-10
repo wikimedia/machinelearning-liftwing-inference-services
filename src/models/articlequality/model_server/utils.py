@@ -1,14 +1,14 @@
 import math
 import pandas as pd
 
-import requests
+import aiohttp
 from mwparserfromhtml import Article
 from mwparserfromhtml.parse.utils import is_transcluded
 from python.decorators import fetch_size_bytes
 
 
 @fetch_size_bytes("articlequality")
-def get_article_html(lang, revid, protocol):
+async def get_article_html(lang, revid, protocol):
     """Get an article revision's HTML.
 
     NOTE: fetching HTML for old revisions can be slow as it's not always cached.
@@ -17,14 +17,16 @@ def get_article_html(lang, revid, protocol):
     See: https://www.mediawiki.org/wiki/RESTBase/service_migration#Parsoid_endpoints
 
     """
-
     base_url = f"{protocol}://{lang}.wikipedia.org/w/rest.php/v1/revision/{revid}/html"
-
+    timeout = aiohttp.ClientTimeout(total=5)
     try:
-        response = requests.get(
-            base_url, headers={"User-Agent": "liftwing articlequality prototype"}
-        )
-        return response.text
+        async with aiohttp.ClientSession(
+            timeout=timeout, raise_for_status=True
+        ) as session:
+            async with session.get(
+                base_url, headers={"User-Agent": "liftwing articlequality model"}
+            ) as response:
+                return await response.text()
     except Exception:
         return None
 

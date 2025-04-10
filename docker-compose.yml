@@ -1,4 +1,17 @@
 services:
+  articlequality:
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: .pipeline/articlequality/blubber.yaml
+      target: production
+    image: articlequality:prod
+    ports:
+      - "8080:8080"
+    environment:
+      MODEL_NAME: "articlequality"
+    volumes:
+      - ${PATH_TO_ARTICLE_QUALITY_MODEL:-/dummy/path}:/mnt/models/
   reference-need:
     platform: linux/amd64
     build:

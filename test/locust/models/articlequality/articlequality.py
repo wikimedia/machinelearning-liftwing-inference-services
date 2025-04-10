@@ -6,14 +6,14 @@ revisions = pd.read_csv("data/revisions_lang_and_id.tsv", delimiter="\t", header
 
 
 def get_random_sample_from_df_input(df):
-    lang, rev_id = df.sample(n=1).squeeze().tolist()
+    lang, rev_id = df.sample(n=1, random_state=42).squeeze().tolist()
     return lang, rev_id
 
 
 class ArticlequalityLanguageAgnostic(FastHttpUser):
-    wait_time = between(1, 5)
+    wait_time = between(0.1, 0.3)
 
-    @task(3)
+    @task
     def get_prediction(self):
         lang, rev_id = get_random_sample_from_df_input(revisions)
         headers = {
