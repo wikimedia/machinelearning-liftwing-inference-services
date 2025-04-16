@@ -25,6 +25,16 @@ mock_modules(
 
 import kserve  # noqa: E402
 
+
+class DummyInvalidInput(Exception):
+    pass
+
+
+# Create a fake module for `kserve.errors`
+kserve_errors_mock = MagicMock()
+kserve_errors_mock.InvalidInput = DummyInvalidInput
+sys.modules["kserve.errors"] = kserve_errors_mock
+
 kserve.Model = type("DummyKserveModel", (), {})
 kserve.constants.KSERVE_LOGLEVEL = 0
 
@@ -55,6 +65,59 @@ def test_valid_instance():
     assert instance.check_type == "peacock"
     # if "return_shap_values" is not provided, it defaults to False
     assert instance.return_shap_values is False
+
+
+def test_valid_and_invalid_instance():
+    """
+    Create invalid and valid instances with missing required field.
+    """
+    invalid_data = {
+        "instances": [
+            {
+                "lang": "en",
+                "check_type": "peacock",
+                "original_text": "original text of a paragraph",
+                # "modified_text" is missing
+            },
+            {
+                "lang": "en",
+                "check_type": "peacock",
+                "original_text": "original text of a paragraph",
+                "modified_text": "modified text of a paragraph!",
+            },
+        ]
+    }
+
+    model = RequestModel(**invalid_data)
+    responses = model.process_instances()
+    assert len(responses["Valid"]) == 1
+    assert len(responses["Malformed"]) == 1
+    malformed_instance = responses["Malformed"][0]
+    assert malformed_instance["status_code"] == 400
+    assert malformed_instance["index"] == 0
+    assert "Field required" in malformed_instance["errors"][0]
+
+
+def test_invalid_top_lvl_instances():
+    """
+    Create a top lvl invalid request on the pydantic lvl.
+    """
+    invalid_top_lvl_request = {
+        "instancesssssss": [
+            {
+                "lang": "en",
+                "check_type": "peacock",
+                "original_text": "original text of a paragraph",
+                "modified_text": "modified text of a paragraph!",
+            }
+        ]
+    }
+
+    dummy_model = EditCheckModel.__new__(EditCheckModel)
+    dummy_model.name = "dummy_model"
+
+    with pytest.raises(DummyInvalidInput):
+        asyncio.run(dummy_model.preprocess(invalid_top_lvl_request))
 
 
 def test_identical_texts():

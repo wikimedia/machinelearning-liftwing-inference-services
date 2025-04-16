@@ -43,10 +43,25 @@ echo 'PATH_TO_EDIT_CHECK_MODEL=/full/path/to/model/dir' > .env
 ```
 
 ### 1.2. Build image
+
+<details>
+<summary>1.2a GPU image</summary>
+
 ```console
 docker compose build edit-check
 ```
+
 This process will build an edit-check image with all dependencies installed.
+</details>
+<details>
+<summary>1.2b CPU image</summary>
+
+```console
+docker compose build edit-check-cpu
+```
+
+This will build the cpu image for local testing in your localhost.
+</details>
 
 ### 1.3. Run container
 ```console
@@ -58,6 +73,12 @@ This will run the container that hosts the model-server.
 On the second terminal query the isvc using:
 ```console
 curl -s localhost:8080/v1/models/edit-check-staging:predict -X POST -d '{"instances": [{"lang": "en", "check_type": "peacock", "original_text": "original text example original", "modified_text": "modified text example with hype"}]}' -i -H "Content-type: application/json"
+```
+
+Query locally on the cpu-version
+
+```console
+curl -s localhost:8080/v1/models/edit-check:predict -X POST -d '{"instances": [{"lang": "en", "check_type": "peacock", "original_text": "original text example original", "modified_text": "modified text example with hype"}]}' -i -H "Content-type: application/json"
 ```
 
 </details>

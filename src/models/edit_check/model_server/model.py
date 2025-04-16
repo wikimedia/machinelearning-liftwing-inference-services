@@ -70,8 +70,8 @@ class EditCheckModel(kserve.Model):
     ) -> Tuple[List[str], List[str], Dict[str, List]]:
         """Preprocess method that validates and passed input request
             into Pydantic RequestModel object.
-            Extracts the original and modified text into a list,
-            and stores the RequestModel instances into a list for further usage.
+            Extracts the original/modified text into a list to be fed into the ml-model,
+            and stores the Valid/Malformed instances into a dict for further usage.
         Args:
             inputs (Dict[str, Any]): Input request comsidered as dict from Kserve.
             headers (Dict[str, str], optional): Request headers. Defaults to None.
@@ -80,7 +80,11 @@ class EditCheckModel(kserve.Model):
             InvalidInput: Invalid input kserve error.
 
         Returns:
-            Tuple[List[str], List[str], List[Dict[str, Any]]]: Tuple of the text list input for the ml mode, shap explainer, and a list of RequestModel instances.
+            Tuple[List[str], List[str], Dict[str, List]]:
+                A tuple containing:
+                - List[str]: The flattened_pair_texts list for the ml model.
+                - List[str]: The modified text list for the shap explainer (if return_shap_values True).
+                - Dict[str, List]: A dictionary of Valid/Malformed processed_requests instances.
         """
 
         try:
@@ -109,7 +113,7 @@ class EditCheckModel(kserve.Model):
         """Predict method using the model pipeline object for text classification.
 
         Args:
-            request (Tuple[List[str], List[str], Dict[str, List]]): Texts to be fed into the ml model, shap explainer, and input requests dict.
+            request (Tuple[List[str], List[str], Dict[str, List]]): Texts to be fed into the ml model, shap explainer, input requests dict.
             headers (Dict[str, str], optional): _description_. Request headers to None.
 
         Returns:
