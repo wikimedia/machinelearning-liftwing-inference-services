@@ -42,7 +42,8 @@ run-server: $(VENV)/bin/activate $(MODEL_PATH)
 	MODEL_PATH=$(MODEL_PATH) MODEL_NAME=$(MODEL_NAME) \
 	$(if $(MAX_FEATURE_VALS), MAX_FEATURE_VALS=$(MAX_FEATURE_VALS)) \
 	$(PYTHON) $(MODEL_SERVER_PARENT_DIR)/$(MODEL_SERVER_DIR)/model.py \
-	$(if $(PREDICTOR_PORT), --http_port=$(PREDICTOR_PORT))
+	$(if $(PREDICTOR_PORT), --http_port=$(PREDICTOR_PORT)) \
+	$(if $(MODEL_NAME_V2), MODEL_NAME_V2=$(MODEL_NAME_V2))
 
 # Clean the environment
 clean:
@@ -89,9 +90,12 @@ clone-descartes:
 # Command for articlequality model-server
 articlequality: clone-wmf-kserve-numpy-200
 	@$(MAKE) run-server MODEL_NAME="articlequality" \
-	MODEL_URL="articlequality/language-agnostic/20240801111508/model.pkl" \
+    MODEL_URL="articlequality/language-agnostic/20250425125943/model.pkl" \
+	MODEL_URL_V2="articlequality/language-agnostic/20250425125943/catboost_model.cbm" \
 	MODEL_SERVER_PARENT_DIR="src/models/articlequality" \
-	MODEL_PATH="models/articlequality/language-agnostic/20240801111508/model.pkl" \
+	MODEL_PATH="models/articlequality/language-agnostic/20250425125943/model.pkl" \
+	MODEL_PATH_V2="models/articlequality/language-agnostic/20250425125943/catboost_model.cbm" \
+	MODEL_NAME_V2="articlequality_v2" \
 	MODEL_SERVER_DIR="model_server" \
 	DEP_DIR=".." \
 	CUT_DIRS=2 \
@@ -228,4 +232,5 @@ $(MODEL_PATH):
 	wget --no-host-directories --recursive --reject "index.html*" \
 	--accept-regex $(ACCEPT_REGEX) --cut-dirs=$(CUT_DIRS) \
 	--directory-prefix=models \
-	--continue https://analytics.wikimedia.org/published/wmf-ml-models/$(MODEL_URL)
+	--continue https://analytics.wikimedia.org/published/wmf-ml-models/$(MODEL_URL) \
+	$(if $(MODEL_URL_V2), --continue https://analytics.wikimedia.org/published/wmf-ml-models/$(MODEL_URL_V2))

@@ -1,15 +1,18 @@
 import logging
 import math
-import os
 from distutils.util import strtobool
 from typing import Any, Dict, Tuple
 
 import kserve
 import numpy as np
+from kserve import ModelServer
 from kserve.errors import InferenceError
 from python.preprocess_utils import validate_json_input
 from python.decorators import preprocess_size_bytes
 from statsmodels.iolib.smpickle import load_pickle
+
+from src.models.articlequality.model_server.config import Settings
+from src.models.articlequality.model_server.model_v2 import ArticleQualityModelV2
 from utils import (
     get_article_features,
     get_article_html,
@@ -137,14 +140,17 @@ class ArticleQualityModel(kserve.Model):
 
 
 if __name__ == "__main__":
-    model_name = os.environ.get("MODEL_NAME")
-    model_path = os.environ.get("MODEL_PATH", "/mnt/models/model.pkl")
-    force_http = strtobool(os.environ.get("FORCE_HTTP", "False"))
-    max_feature_vals = os.environ.get("MAX_FEATURE_VALS", "data/feature_values.tsv")
+    settings = Settings()
     model = ArticleQualityModel(
-        name=model_name,
-        model_path=model_path,
-        max_feature_vals=max_feature_vals,
-        force_http=force_http,
+        name=settings.model_name,
+        model_path=settings.model_path,
+        max_feature_vals=settings.max_feature_vals,
+        force_http=settings.force_http,
     )
-    kserve.ModelServer(workers=1).start([model])
+    model_v2 = ArticleQualityModelV2(
+        name=settings.model_name_v2,
+        model_path=settings.model_path_v2,
+        force_http=settings.force_http,
+    )
+    server = ModelServer()
+    server.start([model, model_v2])

@@ -25,6 +25,7 @@ This build process will set up: a Python venv, install dependencies, download th
 On the second terminal query the isvc using:
 ```console
 curl -s localhost:8080/v1/models/articlequality:predict -X POST -d '{"rev_id": 12345, "lang": "en"}' -i -H "Content-type: application/json"
+curl -s localhost:8080/v1/models/articlequality_v2:predict -X POST -d '{"instances": [{"rev_id": 12345, "lang": "en"}, {"rev_id": 1285650302, "lang": "en"}]}' -i -H "Content-type: application/json"
 ```
 
 ### 1.3. Remove
@@ -65,5 +66,6 @@ PATH_TO_MAX_FEATURE_VALS is the absolute path to `data/feature_values.tsv`.
 On a separate terminal we can make a request to the server with:
 ```console
 curl -s localhost:8080/v1/models/articlequality:predict -X POST -d '{"rev_id": 12345, "lang": "en"}' -i -H "Content-type: application/json"
+curl -s localhost:8080/v1/models/articlequality_v2:predict -X POST -d '{"instances": [{"rev_id": 12345, "lang": "en"}, {"rev_id": 1285650302, "lang": "en"}]}' -i -H "Content-type: application/json"
 ```
 </details>

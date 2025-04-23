@@ -4,10 +4,14 @@ import pandas as pd
 import aiohttp
 from mwparserfromhtml import Article
 from mwparserfromhtml.parse.utils import is_transcluded
+from aiohttp.client_exceptions import ClientResponseError
+from kserve.errors import InferenceError
 from python.decorators import fetch_size_bytes
+from tenacity import retry, wait_fixed, stop_after_attempt
 
 
 @fetch_size_bytes("articlequality")
+@retry(wait=wait_fixed(0.5), stop=stop_after_attempt(2), reraise=True)
 async def get_article_html(lang, revid, protocol):
     """Get an article revision's HTML.
 
@@ -27,8 +31,12 @@ async def get_article_html(lang, revid, protocol):
                 base_url, headers={"User-Agent": "liftwing articlequality model"}
             ) as response:
                 return await response.text()
-    except Exception:
-        return None
+    except ClientResponseError as e:
+        error_message = f"Fetching html failed for the article revision with id: {revid}. Reason: {e.message}"
+        raise InferenceError(error_message, status=str(e.status))
+    except Exception as e:
+        error_message = f"Failed to get article revision with id: {revid}. Reason: {e}"
+        raise InferenceError(error_message)
 
 
 def _html_to_plaintext(article):
@@ -64,6 +72,57 @@ def _html_to_plaintext(article):
     ]
 
     return "\n".join(paragraphs) if paragraphs else None
+
+
+def get_article_features_v2(article_html):
+    try:
+        article = Article(article_html)
+    except TypeError:
+        print(f"Skipping article due to TypeError: {article_html}")
+        return 0, 0, 0, 0, 0, 0, 0, 0
+
+    plaintext = _html_to_plaintext(article)
+    page_length = len(plaintext) if plaintext else 0
+    refs = len(article.wikistew.get_citations())
+    wikilinks_objects = [
+        w for w in article.wikistew.get_wikilinks() if not is_transcluded(w.html_tag)
+    ]
+    wikilinks = len(
+        [
+            wikilink.link.lstrip(".")
+            for wikilink in wikilinks_objects
+            if not wikilink.link.endswith("redlink=1")
+        ]
+    )
+    categories = len(
+        [1 for c in article.wikistew.get_categories() if not is_transcluded(c.html_tag)]
+    )
+    max_icon_pixel_area = 100 * 100  # 10000 pixels
+    article_images = [
+        image
+        for image in article.wikistew.get_images()
+        if image.height * image.width > max_icon_pixel_area
+    ]
+    article_videos = [video for video in article.wikistew.get_video()]
+    article_audio = [audio for audio in article.wikistew.get_audio()]
+    media = len(article_images) + len(article_videos) + len(article_audio)
+    headings = len([h for h in article.wikistew.get_headings() if h.level <= 3])
+
+    len_images = len(article.wikistew.get_images())
+    len_first_paragraph = len(article.wikistew.get_first_paragraph())
+
+    # feature order should follow the order in the model.
+    # see the notebook or model.feature_names_ and ArticleQualityModel.feature_order
+    return [
+        page_length,
+        refs,
+        wikilinks,
+        categories,
+        media,
+        headings,
+        len_images,
+        len_first_paragraph,
+    ]
 
 
 def get_article_features(article_html):
