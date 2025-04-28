@@ -41,7 +41,7 @@ variants:
     copies:
       - from: local
         source: src/models/articlequality
-        destination: .
+        destination: src/models/articlequality
       - from: local
         source: python
         destination: python/
@@ -57,7 +57,7 @@ variants:
     python:
       version: python3
       use-system-site-packages: true
-    entrypoint: ["./entrypoint.sh"]
+    entrypoint: ["./entrypoint.sh", "src/models/articlequality/model_server/model.py"]
 
   test:
     apt:
