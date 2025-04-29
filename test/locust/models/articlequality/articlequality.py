@@ -18,10 +18,27 @@ class ArticlequalityLanguageAgnostic(FastHttpUser):
         lang, rev_id = get_random_sample_from_df_input(revisions)
         headers = {
             "Content-Type": "application/json",
-            "Host": "articlequality.article-models.wikimedia.org",
+            "Host": "articlequality.experimental.wikimedia.org",
         }
         self.client.post(
             "/v1/models/articlequality:predict",
             json={"rev_id": int(rev_id), "lang": lang},
+            headers=headers,
+        )
+
+
+class ArticlequalityLanguageAgnosticV2(FastHttpUser):
+    wait_time = between(0.1, 0.3)
+
+    @task
+    def get_prediction(self):
+        lang, rev_id = get_random_sample_from_df_input(revisions)
+        headers = {
+            "Content-Type": "application/json",
+            "Host": "articlequality.experimental.wikimedia.org",
+        }
+        self.client.post(
+            "/v1/models/articlequality_v2:predict",
+            json={"instances": [{"rev_id": int(rev_id), "lang": lang}]},
             headers=headers,
         )
