@@ -1,8 +1,37 @@
+line-length = 88
+
+# pyupgrade settings
+target-version = "py37"
+force-exclude = true
+
+[lint]
 exclude = [".tox", "*pyenchant_utils.py"]
-ignore = ["E501"]
-line-length = 120
 select = [
-    "E",
-    "F",
-    "W",
+    "E", # pycodestyle errors
+    "F", # pyflakes
+    "W", # pycodestyle warnings
+    # "I", # isort
+    "UP", # pyupgrade
 ]
+ignore = [
+    "E501",  # Allow too long lines
+    "UP032", # Allow using .format for strings
+]
+
+[format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "auto"
+skip-magic-trailing-comma = false
+
+[lint.isort]
+known-first-party = [] # Add your packages here if needed
+known-third-party = [] # Add third party packages here if needed
+section-order = [
+    "future",
+    "standard-library",
+    "third-party",
+    "first-party",
+    "local-folder",
+]
+combine-as-imports = true

@@ -177,7 +177,7 @@ class ReferenceNeedModel(kserve.Model):
         return {
             "model_name": self.name,
             "model_version": model_version,
-            "wiki_db": f'{request.get("lang")}wiki',
+            "wiki_db": f"{request.get('lang')}wiki",
             "revision_id": request.get("rev_id"),
             "reference_need_score": result.rn_score,
         }
@@ -199,7 +199,7 @@ class ReferenceRiskModel(ReferenceNeedModel):
         output = {
             "model_name": self.name,
             "model_version": result.model_version,
-            "wiki_db": f'{request.get("lang")}wiki',
+            "wiki_db": f"{request.get('lang')}wiki",
             "revision_id": request.get("rev_id"),
             "reference_count": result.reference_count,
             "survival_ratio": result.survival_ratio,

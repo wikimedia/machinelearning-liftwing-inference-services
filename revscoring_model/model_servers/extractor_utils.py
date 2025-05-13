@@ -157,8 +157,7 @@ async def get_revscoring_extractor_cache(
         TooManyRedirectsError,
     ) as e:
         logging.error(
-            "An error has occurred while fetching feature "
-            f"values from the MW API: {e}"
+            f"An error has occurred while fetching feature values from the MW API: {e}"
         )
         raise InferenceError(
             (
@@ -206,7 +205,7 @@ def fetch_features(
         )
     except Exception as e:
         raise InvalidInput(
-            "Generic error while extracting features " f"for rev-id {rev_id}: {e}"
+            f"Generic error while extracting features for rev-id {rev_id}: {e}"
         )
 
     return feature_values

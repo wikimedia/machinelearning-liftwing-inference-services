@@ -1,24 +1,7 @@
-black
 tox
 pre-commit
-ruff==0.0.225
-furl
-# the following are all pre-commit requirements mostly for black
-ruamel.yaml
-tokenize-rt
-hatchling
-hatch-vcs
-hatch-fancy-pypi-readme
-isort==5.13.1
-click
-mypy-extensions
-mypy_extensions>=0.4.3
-pathspec>=0.9.0
-platformdirs>=2
-poetry-core==1.8.1
+ruff==0.11.10
 pytest
-pytest-cov
-pytest-asyncio
-tomli>=1.1.0
-typed-ast>=1.4.2
-typing_extensions>=3.10.0.0
+# Precommit dependencies
+setuptools
+ruamel.yaml

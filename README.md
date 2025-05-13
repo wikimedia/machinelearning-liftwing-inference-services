@@ -26,9 +26,7 @@ We use the following pre-commit hooks:
 * check-yaml- checks yaml files for parseable syntax.
 * end-of-file-fixer - makes sure files end with a newline
 * trailing-whitespace - trims trailing whitespace
-* [pyupgrade](https://github.com/asottile/pyupgrade) - upgrade syntax for newer versions of the language
-* [black](https://github.com/psf/black) - black is a Python auto code formatter
-* [ruff](https://github.com/charliermarsh/ruff) - ruff is a linting tool for Python
+* [ruff](https://github.com/charliermarsh/ruff) - ruff is a linting and code formatting tool for Python
 
 A list of the out-of-the-box available pre-commit hooks can be found [here](https://pre-commit.com/hooks.html).
 

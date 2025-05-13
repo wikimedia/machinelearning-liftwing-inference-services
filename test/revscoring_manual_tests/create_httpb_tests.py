@@ -21,8 +21,8 @@ if __name__ == "__main__":
                     lang = wiki[:2]  # get the language code
                 else:
                     lang = wiki
-                host = f'https://{wiki}wiki-{model_type["model_name"]}.{model_type["hostname"]}.wikimedia.org'
-                path = f'/v1/models/{wiki}wiki-{model_type["model_name"]}:predict'
+                host = f"https://{wiki}wiki-{model_type['model_name']}.{model_type['hostname']}.wikimedia.org"
+                path = f"/v1/models/{wiki}wiki-{model_type['model_name']}:predict"
                 # FIXME: for some wikis, we need to use the second rev_id because the first one
                 # isn't found on mw api
                 if wiki in ["eswikibooks", "enwiktionary", "eswikiquote", "pl"]:

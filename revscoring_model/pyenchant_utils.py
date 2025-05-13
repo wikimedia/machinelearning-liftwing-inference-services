@@ -178,7 +178,6 @@ class EnchantStr(str):
 
 
 class UTF16EnchantStr(EnchantStr):
-
     # Defines the UNICODE replacement character
     REPLACEMENT_CHAR = chr(2**16 - 3)
 
