@@ -1,4 +1,5 @@
 import pytest
+
 from src.models.outlink_topic_model.transformer.transformer import OutlinkTransformer
 
 

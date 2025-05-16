@@ -1,7 +1,6 @@
 import logging
 
 import torch
-
 from base_model import RevisionRevertRiskModel
 
 

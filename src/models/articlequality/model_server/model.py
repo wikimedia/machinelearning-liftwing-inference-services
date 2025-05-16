@@ -7,18 +7,18 @@ import kserve
 import numpy as np
 from kserve import ModelServer
 from kserve.errors import InferenceError
-from python.preprocess_utils import validate_json_input
-from python.decorators import preprocess_size_bytes
 from statsmodels.iolib.smpickle import load_pickle
-
-from src.models.articlequality.model_server.config import Settings
-from src.models.articlequality.model_server.model_v2 import ArticleQualityModelV2
 from utils import (
     get_article_features,
     get_article_html,
     load_quality_max_featurevalues,
     normalize_features,
 )
+
+from python.decorators import preprocess_size_bytes
+from python.preprocess_utils import validate_json_input
+from src.models.articlequality.model_server.config import Settings
+from src.models.articlequality.model_server.model_v2 import ArticleQualityModelV2
 
 logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
 

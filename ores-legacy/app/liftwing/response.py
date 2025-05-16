@@ -3,6 +3,7 @@ import logging
 from typing import List
 
 import aiohttp
+
 from app.utils import create_error_response, manipulate_wp10_call
 
 logger = logging.getLogger(__name__)

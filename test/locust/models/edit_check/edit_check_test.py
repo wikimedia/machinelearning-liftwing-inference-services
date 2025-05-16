@@ -1,6 +1,6 @@
-import random
-import os
 import json
+import os
+import random
 
 from locust import FastHttpUser, between, task
 

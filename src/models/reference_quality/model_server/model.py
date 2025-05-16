@@ -14,6 +14,7 @@ from knowledge_integrity.models.reference_risk import (
 )
 from kserve.errors import InferenceError, InvalidInput
 
+from python import process_utils
 from python.config_utils import get_config
 from python.preprocess_utils import (
     check_input_param,
@@ -21,7 +22,6 @@ from python.preprocess_utils import (
     check_wiki_suffix,
     validate_json_input,
 )
-from python import process_utils
 
 logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
 

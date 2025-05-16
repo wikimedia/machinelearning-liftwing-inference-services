@@ -1,13 +1,14 @@
 import math
-import pandas as pd
 
 import aiohttp
-from mwparserfromhtml import Article
-from mwparserfromhtml.parse.utils import is_transcluded
+import pandas as pd
 from aiohttp.client_exceptions import ClientResponseError
 from kserve.errors import InferenceError
+from mwparserfromhtml import Article
+from mwparserfromhtml.parse.utils import is_transcluded
+from tenacity import retry, stop_after_attempt, wait_fixed
+
 from python.decorators import fetch_size_bytes
-from tenacity import retry, wait_fixed, stop_after_attempt
 
 
 @fetch_size_bytes("articlequality")

@@ -1,6 +1,5 @@
 from pydantic_settings import BaseSettings
 
-
 """
 Config class for article quality project.
 Reads variables as environment variables.

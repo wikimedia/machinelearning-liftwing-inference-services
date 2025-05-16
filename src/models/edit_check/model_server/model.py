@@ -4,10 +4,10 @@ import os
 from typing import Any, Dict, List, Tuple
 
 import kserve
+import shap
 import torch
 from fastapi.middleware.cors import CORSMiddleware
 from kserve.errors import InvalidInput
-import shap
 from transformers import (
     AutoModelForSequenceClassification,
     AutoTokenizer,
@@ -16,7 +16,6 @@ from transformers import (
 )
 
 # from shap.plots._text import unpack_shap_explanation_contents, process_shap_values
-
 from python.preprocess_utils import validate_json_input
 from src.models.edit_check.model_server.config import settings
 from src.models.edit_check.model_server.request_model import RequestModel

@@ -6,26 +6,17 @@ from typing import Any, Dict
 import kserve
 from aiohttp import ClientSession, ClientTimeout
 from kserve.errors import InvalidInput
-from python import events
-from python.preprocess_utils import (
-    check_input_param,
-    check_wiki_suffix,
-    get_lang,
-    get_page_title,
-    is_domain_wikipedia,
-    validate_json_input,
-)
 from utils import (
     calculate_sums,
-    get_cultural_countries,
     get_claims,
+    get_cultural_countries,
     get_geographic_country,
     init_groundtruth_db,
     load_categories,
+    load_countries_data,
     load_country_aggregations,
     load_country_IDFs,
     load_country_properties,
-    load_countries_data,
     load_geometries,
     normalize_sums,
     sort_results_by_score,
@@ -35,6 +26,15 @@ from utils import (
     update_scores,
 )
 
+from python import events
+from python.preprocess_utils import (
+    check_input_param,
+    check_wiki_suffix,
+    get_lang,
+    get_page_title,
+    is_domain_wikipedia,
+    validate_json_input,
+)
 
 logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
 

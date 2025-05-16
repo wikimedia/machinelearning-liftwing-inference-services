@@ -5,8 +5,8 @@ from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
-    field_validator,
     ValidationError,
+    field_validator,
 )
 
 from src.models.edit_check.model_server.config import settings

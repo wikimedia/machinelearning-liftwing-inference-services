@@ -1,10 +1,10 @@
-from typing import Dict, Any
-import pytest
+from typing import Any, Dict
 from unittest.mock import patch
 
+import pytest
+from knowledge_integrity.schema import Revision
 
 from src.models.revert_risk_model.model_server.base_model import RevisionRevertRiskModel
-from knowledge_integrity.schema import Revision
 
 
 @pytest.fixture

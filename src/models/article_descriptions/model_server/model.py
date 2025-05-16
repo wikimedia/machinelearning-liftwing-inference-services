@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import os
 import re
@@ -6,7 +7,6 @@ from distutils.util import strtobool
 from typing import Any, Dict, Optional
 
 import aiohttp
-import asyncio
 import kserve
 import mwapi
 from kserve.errors import InferenceError, InvalidInput

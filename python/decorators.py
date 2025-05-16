@@ -1,16 +1,18 @@
 import asyncio
+import inspect
 import json
 import logging
 import time
-import inspect
 from functools import wraps
+
+from kserve.logging import trace_logger
+
 from python.metric_utils import (
     FETCH_SIZE_BYTE,
     PRE_SIZE_BYTE,
     get_labels,
     total_size,
 )
-from kserve.logging import trace_logger
 
 
 def elapsed_time_async(func):

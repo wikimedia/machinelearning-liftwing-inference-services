@@ -1,6 +1,7 @@
+import asyncio
 import sys
 from unittest.mock import MagicMock
-import asyncio
+
 import pytest
 from pydantic import ValidationError
 
@@ -38,8 +39,8 @@ sys.modules["kserve.errors"] = kserve_errors_mock
 kserve.Model = type("DummyKserveModel", (), {})
 kserve.constants.KSERVE_LOGLEVEL = 0
 
-from src.models.edit_check.model_server.request_model import RequestModel  # noqa: E402
 from src.models.edit_check.model_server.model import EditCheckModel  # noqa: E402
+from src.models.edit_check.model_server.request_model import RequestModel  # noqa: E402
 
 
 def test_valid_instance():

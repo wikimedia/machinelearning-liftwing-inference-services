@@ -1,9 +1,10 @@
+import argparse
 import os
 import sys
-import argparse
-import requests
-import pandas as pd
 from distutils.util import strtobool
+
+import pandas as pd
+import requests
 
 
 def load_all_results_to_df(root_dir):

@@ -1,12 +1,12 @@
 import logging
 from typing import Any, Dict, List
 
-from catboost import CatBoostClassifier
-
 import kserve
+from catboost import CatBoostClassifier
 from kserve.errors import InferenceError
-from python.preprocess_utils import validate_json_input
+
 from python.decorators import preprocess_size_bytes
+from python.preprocess_utils import validate_json_input
 from src.models.articlequality.model_server.request_model import RequestModel
 from src.models.articlequality.model_server.utils import (
     get_article_features_v2,

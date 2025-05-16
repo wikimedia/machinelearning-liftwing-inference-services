@@ -1,5 +1,7 @@
-import pytest
 import time
+
+import pytest
+
 from python.decorators import log_slow_function
 
 

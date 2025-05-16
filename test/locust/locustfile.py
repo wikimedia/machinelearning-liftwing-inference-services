@@ -2,9 +2,9 @@ import importlib
 import os
 
 import pandas as pd
-from locust import events
-
 from utils import load_all_results_to_df
+
+from locust import events
 
 model = os.environ.get("MODEL", None)
 if model:

@@ -5,6 +5,9 @@ from distutils.util import strtobool
 from typing import Union
 
 import yaml
+from fastapi import FastAPI, HTTPException, Query, Request, status
+from starlette.responses import RedirectResponse
+
 from app.liftwing.response import make_liftiwing_calls
 from app.response_models import ResponseModel
 from app.utils import (
@@ -15,8 +18,6 @@ from app.utils import (
     log_user_request,
     merge_liftwing_responses,
 )
-from fastapi import FastAPI, HTTPException, Query, Request, status
-from starlette.responses import RedirectResponse
 
 logger = logging.getLogger(__name__)
 

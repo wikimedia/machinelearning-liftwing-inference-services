@@ -5,8 +5,8 @@ from typing import Any, Dict, Tuple
 from kserve.errors import InferenceError
 from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 
-from src.models.llm import LLM
 from python.preprocess_utils import validate_json_input
+from src.models.llm import LLM
 
 
 class NLLB(LLM):

@@ -1,6 +1,5 @@
 from pydantic_settings import BaseSettings
 
-
 """
 Config class for edit-check project.
 Reads variables as environment variables.

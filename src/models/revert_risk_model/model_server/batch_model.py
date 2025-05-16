@@ -1,14 +1,14 @@
 import asyncio
+import json
 import logging
 from http import HTTPStatus
-from typing import Any, List, Dict, Tuple, Sequence, Optional
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
-import json
 import mwapi
-from fastapi import HTTPException
 from base_model import RevisionRevertRiskModel
-from knowledge_integrity.mediawiki import get_revision, Error
-from knowledge_integrity.schema import Revision, InvalidJSONError
+from fastapi import HTTPException
+from knowledge_integrity.mediawiki import Error, get_revision
+from knowledge_integrity.schema import InvalidJSONError, Revision
 from kserve.errors import InferenceError, InvalidInput
 
 from python import events

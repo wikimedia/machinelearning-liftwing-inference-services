@@ -1,5 +1,5 @@
-import os
 import base64
+import os
 import random
 
 from locust import FastHttpUser, between, task

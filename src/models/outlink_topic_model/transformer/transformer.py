@@ -9,6 +9,7 @@ import kserve
 import mwapi
 from fastapi import HTTPException
 from kserve.errors import InferenceError, InvalidInput
+
 from python.logging_utils import set_log_level
 from python.preprocess_utils import (
     get_lang,
@@ -16,7 +17,6 @@ from python.preprocess_utils import (
     is_domain_wikipedia,
     validate_json_input,
 )
-
 
 logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
 

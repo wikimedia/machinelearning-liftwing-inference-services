@@ -2,14 +2,14 @@ import json
 import logging
 import os
 import re
-import sqlitedict
+from typing import Dict, List, Optional, Union
 
 import mwapi
 import pandas as pd
+import sqlitedict
 from aiohttp import ClientSession
 from kserve.errors import InferenceError
 from shapely.geometry import Point, shape
-from typing import List, Dict, Optional, Union
 
 logging.basicConfig(level=logging.DEBUG)
 

@@ -7,10 +7,10 @@ force-exclude = true
 [lint]
 exclude = [".tox", "*pyenchant_utils.py"]
 select = [
-    "E", # pycodestyle errors
-    "F", # pyflakes
-    "W", # pycodestyle warnings
-    # "I", # isort
+    "E",  # pycodestyle errors
+    "F",  # pyflakes
+    "W",  # pycodestyle warnings
+    "I",  # isort
     "UP", # pyupgrade
 ]
 ignore = [
@@ -25,7 +25,7 @@ line-ending = "auto"
 skip-magic-trailing-comma = false
 
 [lint.isort]
-known-first-party = [] # Add your packages here if needed
+known-first-party = ["python"] # Add your packages here if needed
 known-third-party = [] # Add third party packages here if needed
 section-order = [
     "future",
