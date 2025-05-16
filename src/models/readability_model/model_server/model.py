@@ -1,7 +1,7 @@
 import logging
 import os
 from http import HTTPStatus
-from typing import Any, Dict
+from typing import Any
 
 import aiohttp
 import kserve
@@ -47,8 +47,8 @@ class ReadabilityModel(kserve.Model):
         self.ready = True
 
     async def preprocess(
-        self, inputs: Dict[str, Any], headers: Dict[str, str] = None
-    ) -> Dict[str, Any]:
+        self, inputs: dict[str, Any], headers: dict[str, str] = None
+    ) -> dict[str, Any]:
         inputs = validate_json_input(inputs)
         lang = inputs.get("lang")
         rev_id = inputs.get("rev_id")
@@ -105,8 +105,8 @@ class ReadabilityModel(kserve.Model):
         return inputs
 
     def predict(
-        self, request: Dict[str, Any], headers: Dict[str, str] = None
-    ) -> Dict[str, Any]:
+        self, request: dict[str, Any], headers: dict[str, str] = None
+    ) -> dict[str, Any]:
         result = classify(self.model, request["revision"])
         output = {
             "score": result.score,

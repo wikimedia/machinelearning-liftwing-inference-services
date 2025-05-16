@@ -2,7 +2,7 @@ import importlib
 import json
 import logging
 from http import HTTPStatus
-from typing import Any, Dict
+from typing import Any
 
 import aiohttp
 import kserve
@@ -85,7 +85,7 @@ class RevisionRevertRiskModel(kserve.Model):
         self.model = self.ModelLoader.load_model(self.model_path)
         self.ready = True
 
-    def get_revision_from_input(self, inputs) -> Dict[str, Any]:
+    def get_revision_from_input(self, inputs) -> dict[str, Any]:
         revision_json = json.dumps(inputs["revision_data"])
         try:
             inputs["revision"] = Revision.from_json(revision_json)
@@ -109,8 +109,8 @@ class RevisionRevertRiskModel(kserve.Model):
         return inputs
 
     async def preprocess(
-        self, inputs: Dict[str, Any], headers: Dict[str, str] = None
-    ) -> Dict[str, Any]:
+        self, inputs: dict[str, Any], headers: dict[str, str] = None
+    ) -> dict[str, Any]:
         inputs = validate_json_input(inputs)
         if "revision_data" in inputs and self.allow_revision_json_input:
             logging.info(
@@ -162,8 +162,8 @@ class RevisionRevertRiskModel(kserve.Model):
             )
 
     def predict(
-        self, request: Dict[str, Any], headers: Dict[str, str] = None
-    ) -> Dict[str, Any]:
+        self, request: dict[str, Any], headers: dict[str, str] = None
+    ) -> dict[str, Any]:
         rev_id = request.get("rev_id")
         lang = request.get("lang")
         rev = request.get("revision")

@@ -5,7 +5,7 @@ import os
 import shutil
 import tempfile
 import time
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 import aiohttp
 import keras
@@ -40,8 +40,8 @@ class LogoDetectionModel(kserve.Model):
         return model
 
     async def preprocess(
-        self, payload: Dict[str, Any], headers: Dict[str, str] = None
-    ) -> Tuple[Dataset, str]:
+        self, payload: dict[str, Any], headers: dict[str, str] = None
+    ) -> tuple[Dataset, str]:
         latency = {}
         preprocess_start_time = time.time()
         payload = validate_json_input(payload)
@@ -57,8 +57,8 @@ class LogoDetectionModel(kserve.Model):
         return dataset, temp_dir, latency, debug
 
     def predict(
-        self, preprocess_results: Tuple[Dataset, str], headers: Dict[str, str] = None
-    ) -> Dict[str, Any]:
+        self, preprocess_results: tuple[Dataset, str], headers: dict[str, str] = None
+    ) -> dict[str, Any]:
         predict_start_time = time.time()
         dataset, temp_dir, latency, debug = preprocess_results
         predictions = self.generate_predictions(dataset, temp_dir)
@@ -70,7 +70,7 @@ class LogoDetectionModel(kserve.Model):
             predictions["latency"] = latency
         return predictions
 
-    def generate_predictions(self, dataset: Dataset, temp_dir: str) -> Dict[str, Any]:
+    def generate_predictions(self, dataset: Dataset, temp_dir: str) -> dict[str, Any]:
         """
         Generates predictions for the given dataset using the specified
         model.
@@ -152,7 +152,7 @@ class LogoDetectionModel(kserve.Model):
             self.cleanup_temp_dir_on_error(temp_dir, error_message)
 
     async def download_images_to_temp_dir(
-        self, input_data: List[Dict[str, str]], temp_dir: str
+        self, input_data: list[dict[str, str]], temp_dir: str
     ) -> None:
         """
         Downloads images from URLs provided in the input data asynchronously
@@ -167,7 +167,7 @@ class LogoDetectionModel(kserve.Model):
                 tasks.append(task)
             await asyncio.gather(*tasks)
 
-    async def save_base64_image(self, data: Dict[str, str], temp_dir: str) -> None:
+    async def save_base64_image(self, data: dict[str, str], temp_dir: str) -> None:
         """
         Saves base64 encoded image from input data to the specified
         temporary directory.
@@ -192,7 +192,7 @@ class LogoDetectionModel(kserve.Model):
             f.write(image_bytes)
 
     async def save_base64_images(
-        self, input_data: List[Dict[str, str]], temp_dir: str
+        self, input_data: list[dict[str, str]], temp_dir: str
     ) -> None:
         """
         Saves base64 encoded images from input data to the specified
@@ -213,7 +213,7 @@ class LogoDetectionModel(kserve.Model):
         logging.error(error_message)
         raise InferenceError(error_message)
 
-    def validate_input_data(self, payload: Dict[str, Any]) -> None:
+    def validate_input_data(self, payload: dict[str, Any]) -> None:
         """
         Validates the input data to ensure it has the required fields
         and their values are of the expected types.

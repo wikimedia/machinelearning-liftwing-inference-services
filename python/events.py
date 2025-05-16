@@ -2,12 +2,12 @@ import json
 import logging
 import ssl
 import uuid
-from typing import Any, Dict
+from typing import Any
 
 import aiohttp
 
 
-def _meta(source_event: Dict[str, Any], eventgate_stream: str) -> Dict[str, Any]:
+def _meta(source_event: dict[str, Any], eventgate_stream: str) -> dict[str, Any]:
     """Generates the metadata field for new events emitted by the inference-services
     it sets the mandatory "stream" field with eventgate_stream but also propagates
     the domain and request_id from the source event and generates a new unique ID."""
@@ -26,8 +26,8 @@ def _meta(source_event: Dict[str, Any], eventgate_stream: str) -> Dict[str, Any]
 
 
 def _revision_score_from_revision_create(
-    rev_create_event: Dict[str, Any], eventgate_stream: str
-) -> Dict:
+    rev_create_event: dict[str, Any], eventgate_stream: str
+) -> dict:
     """Generates a revision-score event (most of it, excluding the score bits)
     from a revision-create one's data."""
     revision_score_event = {
@@ -53,8 +53,8 @@ def _revision_score_from_revision_create(
 
 
 def _revision_score_from_page_change(
-    page_change_event: Dict[str, Any], eventgate_stream: str
-) -> Dict:
+    page_change_event: dict[str, Any], eventgate_stream: str
+) -> dict:
     """Generates a revision-score event (most of it, excluding the score bits)
     from a page_change one's data."""
 
@@ -100,12 +100,12 @@ def _revision_score_from_page_change(
 
 
 def generate_revision_score_event(
-    event: Dict[str, Any],
+    event: dict[str, Any],
     eventgate_stream: str,
     model_version: str,
-    predictions: Dict,
+    predictions: dict,
     model_name: str,
-) -> Dict:
+) -> dict:
     """Generates a revision-score event, tailored for a given model,
     from a revision-create event.
     """
@@ -145,12 +145,12 @@ def generate_revision_score_event(
 
 
 def generate_prediction_classification_event(
-    source_event: Dict[str, Any],
+    source_event: dict[str, Any],
     eventgate_stream: str,
     model_name: str,
     model_version: str,
-    prediction_results: Dict,
-) -> Dict:
+    prediction_results: dict,
+) -> dict:
     """Generates a prediction_classification event, tailored for a given model,
     from a page_change event.
     """
@@ -182,8 +182,8 @@ def generate_prediction_classification_event(
 
 
 def generate_page_weighted_tags_event(
-    source_event: Dict[str, Any], eventgate_stream: str, tags_to_set: Dict[str, Any]
-) -> Dict:
+    source_event: dict[str, Any], eventgate_stream: str, tags_to_set: dict[str, Any]
+) -> dict:
     """
     Generates a page_weighted_tags_change event, tailored for a given model,
     from a page_change event.
@@ -211,7 +211,7 @@ def generate_page_weighted_tags_event(
 
 
 async def send_event(
-    event: Dict[str, Any],
+    event: dict[str, Any],
     eventgate_url: str,
     tls_bundle_path: str,
     user_agent: str,

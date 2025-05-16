@@ -1,5 +1,3 @@
-from typing import List
-
 from pydantic import BaseModel
 
 
@@ -9,4 +7,4 @@ class ArticleInstance(BaseModel):
 
 
 class RequestModel(BaseModel):
-    instances: List[ArticleInstance]
+    instances: list[ArticleInstance]

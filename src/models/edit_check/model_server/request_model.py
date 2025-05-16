@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Any, Dict, List
+from typing import Any
 
 from pydantic import (
     BaseModel,
@@ -235,7 +235,7 @@ class Instance(BaseModel):
 
 
 class RequestModel(BaseModel):
-    instances: List[Dict[str, Any]] = Field(
+    instances: list[dict[str, Any]] = Field(
         ..., description="List of instances to be processed."
     )
 

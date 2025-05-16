@@ -1,6 +1,6 @@
 import logging
 import os
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 import ctranslate2 as ctr2
 import sentencepiece as spm
@@ -22,7 +22,7 @@ class NLLBCTranslate(NLLB):
         tokenizer.load(os.path.join(self.model_path, "sentencepiece.bpe.model"))
         return tokenizer
 
-    def load(self) -> Tuple[ctr2.Translator, spm.SentencePieceProcessor]:
+    def load(self) -> tuple[ctr2.Translator, spm.SentencePieceProcessor]:
         model = ctr2.Translator(
             self.model_path,
             intra_threads=self.intra_threads,
@@ -37,8 +37,8 @@ class NLLBCTranslate(NLLB):
         return model, tokenizer
 
     async def preprocess(
-        self, inputs: Dict[str, Any], headers: Dict[str, str] = None
-    ) -> Dict[str, Any]:
+        self, inputs: dict[str, Any], headers: dict[str, str] = None
+    ) -> dict[str, Any]:
         """
         Reading the source and the target language from the request.
         The list of available languages can be found in the paper "No Language Left Behind: Scaling Human-Centered Machine Translation"
@@ -60,8 +60,8 @@ class NLLBCTranslate(NLLB):
             )
 
     async def predict(
-        self, request: Dict[str, Any], headers: Dict[str, str] = None
-    ) -> Dict[str, Any]:
+        self, request: dict[str, Any], headers: dict[str, str] = None
+    ) -> dict[str, Any]:
         tgt_lang = request.get("tgt_lang")
         sentences = request.get("sentences")
         num_beams = request.get("num_beams", 1)
@@ -73,7 +73,7 @@ class NLLBCTranslate(NLLB):
         )
         return {"model_name": self.model_name, "response": response}
 
-    def encode_sentence(self, sentence: List[str], src_lang: str) -> List[str]:
+    def encode_sentence(self, sentence: list[str], src_lang: str) -> list[str]:
         return self.tokenizer.encode(sentence, out_type=str) + ["</s>", src_lang]
 
     def decode_result(self, result: ctr2.TranslationResult) -> str:
@@ -81,7 +81,7 @@ class NLLBCTranslate(NLLB):
         return decoded_result
 
     async def translate_sentences(
-        self, sentences: List[str], src_lang: str, tgt_lang: str, num_beams: int
+        self, sentences: list[str], src_lang: str, tgt_lang: str, num_beams: int
     ):
         tokenized_sentences = [
             self.encode_sentence(sentence, src_lang) for sentence in sentences

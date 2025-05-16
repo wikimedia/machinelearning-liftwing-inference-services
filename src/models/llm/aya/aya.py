@@ -1,5 +1,4 @@
 import os
-from typing import Tuple
 
 from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 
@@ -12,7 +11,7 @@ class Aya(LLM):
         self.device_map = os.environ.get("DEVICE", "cuda:0")
         super().__init__(model_name)
 
-    def load(self) -> Tuple[AutoModelForCausalLM, AutoTokenizer]:
+    def load(self) -> tuple[AutoModelForCausalLM, AutoTokenizer]:
         if self.quantization_mode == "int4":
             quantization_config = BitsAndBytesConfig(load_in_4bit=True)
         elif self.quantization_mode == "int8":

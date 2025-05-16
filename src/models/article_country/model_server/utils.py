@@ -2,7 +2,7 @@ import json
 import logging
 import os
 import re
-from typing import Dict, List, Optional, Union
+from typing import Optional, Union
 
 import mwapi
 import pandas as pd
@@ -41,7 +41,7 @@ def init_groundtruth_db(
     return groundtruth_db
 
 
-def get_groundtruth(qid: str, groundtruth_db: sqlitedict.SqliteDict) -> List[str]:
+def get_groundtruth(qid: str, groundtruth_db: sqlitedict.SqliteDict) -> list[str]:
     """
     For a given QID, return the list of countries from the pre-computed groundtruth DB.
     The stored value is expected to be a ";"-separated string.
@@ -59,7 +59,7 @@ async def title_to_links(
     mwapi_client_session: ClientSession,
     groundtruth_db: sqlitedict.SqliteDict,
     limit: int = 500,
-) -> Dict[str, int]:
+) -> dict[str, int]:
     """
     Gather a count of wikilink-based country hints for the given article title.
     For each outlink in the article, if the outlink's Wikidata QID is in the groundtruth DB,
@@ -120,7 +120,7 @@ async def title_to_links(
     return country_counts
 
 
-def load_country_IDFs(file_name: str) -> Dict:
+def load_country_IDFs(file_name: str) -> dict:
     """
     Load country IDFs from country_IDFs.tsv
     """
@@ -189,8 +189,8 @@ async def title_to_qid(
 
 
 def get_cultural_countries(
-    claims: Dict, country_properties: Dict, qid_to_region: Dict
-) -> List[tuple]:
+    claims: dict, country_properties: dict, qid_to_region: dict
+) -> list[tuple]:
     """
     Extracts cultural regions/countries from the provided Wikidata claims.
     """
@@ -214,7 +214,7 @@ def get_cultural_countries(
 
 
 def get_geographic_country(
-    claims: Dict, qid_to_geometry: Dict, qid_to_region: Dict
+    claims: dict, qid_to_geometry: dict, qid_to_region: dict
 ) -> Optional[str]:
     """
     Checks if the Wikidata claims contain geographic coordinates
@@ -240,7 +240,7 @@ def get_geographic_country(
 
 
 def point_in_country(
-    lon: float, lat: float, qid_to_geometry: Dict, qid_to_region: Dict
+    lon: float, lat: float, qid_to_geometry: dict, qid_to_region: dict
 ) -> str:
     """
     Determine which region contains a lat-lon coordinate.
@@ -257,7 +257,7 @@ def point_in_country(
 
 async def get_claims(
     protocol: str, mwapi_client_session: ClientSession, qid: Optional[str] = None
-) -> Dict:
+) -> dict:
     """
     Get claims from wikibase entity item of provided QID.
     """
@@ -293,9 +293,9 @@ async def title_to_categories(
     title: str,
     lang: str,
     protocol: str,
-    category_to_country: Dict,
+    category_to_country: dict,
     mwapi_client_session: ClientSession,
-) -> Dict:
+) -> dict:
     """
     Gather categories for an article and check if any map to countries
     """
@@ -336,7 +336,7 @@ async def title_to_categories(
     return country_categories
 
 
-def load_country_properties(file_name: str) -> Dict:
+def load_country_properties(file_name: str) -> dict:
     """
     Load country properties from country_properties.tsv.
     """
@@ -349,7 +349,7 @@ def load_country_properties(file_name: str) -> Dict:
     return country_properties
 
 
-def load_countries_data(file_name: str) -> Dict:
+def load_countries_data(file_name: str) -> dict:
     """
     Load canonical mapping of QID -> region name for labeling from countries.tsv.
     """
@@ -364,7 +364,7 @@ def load_countries_data(file_name: str) -> Dict:
     return qid_to_region
 
 
-def load_country_aggregations(qid_to_region: Dict, file_name: str) -> Dict:
+def load_country_aggregations(qid_to_region: dict, file_name: str) -> dict:
     """
     Load country-region aggregations from country_aggregation.tsv and update qid_to_region.
     """
@@ -381,7 +381,7 @@ def load_country_aggregations(qid_to_region: Dict, file_name: str) -> Dict:
     return qid_to_region
 
 
-def load_geometries(model_path: str, file_name: str, qid_to_region: Dict) -> Dict:
+def load_geometries(model_path: str, file_name: str, qid_to_region: dict) -> dict:
     """
     Load region geometries from the geojson file and return qid_to_geometry.
     """
@@ -418,7 +418,7 @@ def load_geometries(model_path: str, file_name: str, qid_to_region: Dict) -> Dic
     return qid_to_geometry
 
 
-def load_categories(model_path: str, file_name: str, qid_to_region: Dict) -> Dict:
+def load_categories(model_path: str, file_name: str, qid_to_region: dict) -> dict:
     """
     Load category data from category-countries.tsv.gz and return category_to_country dictionary.
     """
@@ -454,7 +454,7 @@ def load_categories(model_path: str, file_name: str, qid_to_region: Dict) -> Dic
     return category_to_country
 
 
-def calculate_sums(prediction_data: Dict) -> List[float]:
+def calculate_sums(prediction_data: dict) -> list[float]:
     """
     Calculate the sum of categories, wikidata properties, and wikilinks for each prediction result
     """
@@ -472,7 +472,7 @@ def calculate_sums(prediction_data: Dict) -> List[float]:
     return sums
 
 
-def normalize_sums(sums: List[float]) -> List[float]:
+def normalize_sums(sums: list[float]) -> list[float]:
     """
     Apply min-max normalization to sums using fixed bounds of 0.0 (min) and 1.0 (max).
 
@@ -491,7 +491,7 @@ def normalize_sums(sums: List[float]) -> List[float]:
     return [(sum_item - min_val) / (max_val - min_val) for sum_item in sums]
 
 
-def update_scores(prediction_data: Dict, normalized_scores: List[float]) -> None:
+def update_scores(prediction_data: dict, normalized_scores: list[float]) -> None:
     """
     Update scores in the JSON prediction data based on the normalized values
     """
@@ -500,7 +500,7 @@ def update_scores(prediction_data: Dict, normalized_scores: List[float]) -> None
         result["score"] = normalized_scores[i]
 
 
-def sort_results_by_score(prediction_data: Dict) -> Dict:
+def sort_results_by_score(prediction_data: dict) -> dict:
     """
     Sort results in the prediction data so they are ranked by score in descending order
     """

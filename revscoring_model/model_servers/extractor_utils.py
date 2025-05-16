@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from typing import Dict, Optional
+from typing import Optional
 
 import aiohttp
 import mwapi
@@ -179,8 +179,8 @@ async def get_revscoring_extractor_cache(
 
 @elapsed_time
 def fetch_features(
-    rev_id, model_features: tuple, extractor: Extractor, cache: Optional[Dict] = None
-) -> Dict:
+    rev_id, model_features: tuple, extractor: Extractor, cache: Optional[dict] = None
+) -> dict:
     """Retrieve model features using a Revscoring extractor provided
     as input.
      Parameters:

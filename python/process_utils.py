@@ -1,7 +1,7 @@
 import asyncio
 import logging
 from concurrent.futures import ProcessPoolExecutor
-from typing import Any, Callable, Optional, Tuple
+from typing import Any, Callable, Optional
 
 from kserve import utils as kserve_utils
 
@@ -11,7 +11,7 @@ from .decorators import elapsed_time_async
 def create_process_pool(
     asyncio_aux_workers: int = None,
     initializer: Optional[Callable[..., None]] = None,
-    initargs: Tuple = (),
+    initargs: tuple = (),
 ) -> ProcessPoolExecutor:
     """Create a Python Process pool to offload blocking/long cpu-bound code
     that can potentially block/stall the main asyncio loop thread.
@@ -46,7 +46,7 @@ def refresh_process_pool(
     process_pool: ProcessPoolExecutor,
     asyncio_aux_workers: int = None,
     initializer: Optional[Callable[..., None]] = None,
-    initargs: Tuple = (),
+    initargs: tuple = (),
 ):
     """Shutdown and re-create a process pool. Useful when exeptions like
     BrokenProcessPool are raised (the pool is unusable after that).

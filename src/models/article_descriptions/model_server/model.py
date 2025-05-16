@@ -4,7 +4,7 @@ import os
 import re
 import time
 from distutils.util import strtobool
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 import aiohttp
 import kserve
@@ -40,8 +40,8 @@ class ArticleDescriptionsModel(kserve.Model):
         self.ready = True
 
     async def preprocess(
-        self, payload: Dict[str, Any], headers: Dict[str, str] = None
-    ) -> Dict[str, Any]:
+        self, payload: dict[str, Any], headers: dict[str, str] = None
+    ) -> dict[str, Any]:
         payload = validate_json_input(payload)
         lang = payload.get("lang")
         title = payload.get("title")
@@ -86,8 +86,8 @@ class ArticleDescriptionsModel(kserve.Model):
         return preprocessed_data
 
     def predict(
-        self, preprocessed_data: Dict[str, Any], headers: Dict[str, str] = None
-    ) -> Dict[str, Any]:
+        self, preprocessed_data: dict[str, Any], headers: dict[str, str] = None
+    ) -> dict[str, Any]:
         first_paragraphs = preprocessed_data["features"]["first-paragraphs"]
         descriptions = preprocessed_data["features"]["descriptions"]
         lang = preprocessed_data["lang"]
@@ -210,7 +210,7 @@ class ArticleDescriptionsModel(kserve.Model):
             logging.error(f"Failed to retrieve first paragraph: {e}")
             return ""
 
-    async def get_wikidata_info(self, lang: str, title: str) -> Dict[str, Any]:
+    async def get_wikidata_info(self, lang: str, title: str) -> dict[str, Any]:
         """Get article descriptions from Wikidata"""
         mw_host, host_header = self.get_mw_host_and_header()
         session = mwapi.AsyncSession(

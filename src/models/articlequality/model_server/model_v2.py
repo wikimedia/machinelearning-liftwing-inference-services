@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Dict, List
+from typing import Any
 
 import kserve
 from catboost import CatBoostClassifier
@@ -52,11 +52,11 @@ class ArticleQualityModelV2(kserve.Model):
         self.ready = True
 
     async def preprocess(
-        self, inputs: Dict[str, Any], headers: Dict[str, str] = None
-    ) -> Dict[str, List[Dict[str, Any]]]:
-        validated_inputs: Dict[str, List[Dict[str, Any]]] = validate_json_input(inputs)
+        self, inputs: dict[str, Any], headers: dict[str, str] = None
+    ) -> dict[str, list[dict[str, Any]]]:
+        validated_inputs: dict[str, list[dict[str, Any]]] = validate_json_input(inputs)
         request_model = RequestModel(**validated_inputs)
-        features_dict: Dict[str, List[Dict[str, Any]]] = {"features": []}
+        features_dict: dict[str, list[dict[str, Any]]] = {"features": []}
         for validated_input in request_model.instances:
             lang = validated_input.lang
             rev_id = validated_input.rev_id
@@ -74,8 +74,8 @@ class ArticleQualityModelV2(kserve.Model):
 
     @preprocess_size_bytes("articlequality", key_name="features")
     def predict(
-        self, request: Dict[str, List[Dict[str, Any]]], headers: Dict[str, str] = None
-    ) -> Dict[str, Any]:
+        self, request: dict[str, list[dict[str, Any]]], headers: dict[str, str] = None
+    ) -> dict[str, Any]:
         """
         Returns following attributes for each input in predictions list:
         index: Index of the input.

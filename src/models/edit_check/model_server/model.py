@@ -1,7 +1,7 @@
 import json
 import logging
 import os
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 import kserve
 import shap
@@ -65,8 +65,8 @@ class EditCheckModel(kserve.Model):
         return model_pipeline
 
     async def preprocess(
-        self, inputs: Dict[str, Any], headers: Dict[str, str] = None
-    ) -> Tuple[List[str], List[str], Dict[str, List]]:
+        self, inputs: dict[str, Any], headers: dict[str, str] = None
+    ) -> tuple[list[str], list[str], dict[str, list]]:
         """Preprocess method that validates and passed input request
             into Pydantic RequestModel object.
             Extracts the original/modified text into a list to be fed into the ml-model,
@@ -106,9 +106,9 @@ class EditCheckModel(kserve.Model):
 
     async def predict(
         self,
-        request: Tuple[List[str], List[str], Dict[str, List]],
-        headers: Dict[str, str] = None,
-    ) -> Tuple[List[Any], List[Any], Dict[str, List]]:
+        request: tuple[list[str], list[str], dict[str, list]],
+        headers: dict[str, str] = None,
+    ) -> tuple[list[Any], list[Any], dict[str, list]]:
         """Predict method using the model pipeline object for text classification.
 
         Args:
@@ -136,10 +136,10 @@ class EditCheckModel(kserve.Model):
 
     async def postprocess(
         self,
-        predictions: Tuple[List[Any], List[Any], Dict[str, List]],
-        headers: Dict[str, str] = None,
+        predictions: tuple[list[Any], list[Any], dict[str, list]],
+        headers: dict[str, str] = None,
         return_index: bool = False,
-    ) -> Dict[str, List[Dict[str, Any]]]:
+    ) -> dict[str, list[dict[str, Any]]]:
         """Postprocess the predictions list.
         Extract the probability and the predicted class.
         Apply the rules for original and modified text predictions.

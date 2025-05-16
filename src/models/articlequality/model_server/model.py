@@ -1,7 +1,7 @@
 import logging
 import math
 from distutils.util import strtobool
-from typing import Any, Dict, Tuple
+from typing import Any
 
 import kserve
 import numpy as np
@@ -60,7 +60,7 @@ class ArticleQualityModel(kserve.Model):
         self.max_qual_vals = load_quality_max_featurevalues(self.max_feature_vals)
         self.ready = True
 
-    def extract_score_range(self) -> Tuple[float, float]:
+    def extract_score_range(self) -> tuple[float, float]:
         """Extract the top score and score range from the model."""
         top_input = []
         low_input = []
@@ -80,8 +80,8 @@ class ArticleQualityModel(kserve.Model):
         return top_score, score_range
 
     async def preprocess(
-        self, inputs: Dict[str, Any], headers: Dict[str, str] = None
-    ) -> Dict[str, Any]:
+        self, inputs: dict[str, Any], headers: dict[str, str] = None
+    ) -> dict[str, Any]:
         inputs = validate_json_input(inputs)
         lang = inputs.get("lang")
         rev_id = inputs.get("rev_id")
@@ -110,8 +110,8 @@ class ArticleQualityModel(kserve.Model):
 
     @preprocess_size_bytes("articlequality", key_name="features")
     def predict(
-        self, request: Dict[str, Any], headers: Dict[str, str] = None
-    ) -> Dict[str, Any]:
+        self, request: dict[str, Any], headers: dict[str, str] = None
+    ) -> dict[str, Any]:
         output = {}
         features = request["features"]
         extended_output = strtobool(request.get("extended_output", "False"))

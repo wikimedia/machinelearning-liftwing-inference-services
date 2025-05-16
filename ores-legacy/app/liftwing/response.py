@@ -1,6 +1,5 @@
 import asyncio
 import logging
-from typing import List
 
 import aiohttp
 
@@ -68,8 +67,8 @@ async def get_liftwing_response(
 
 async def make_liftiwing_calls(
     context: str,
-    models: List[str],
-    rev_ids: List[int],
+    models: list[str],
+    rev_ids: list[int],
     features: bool = None,
     liftwing_url: str = "https://inference.discovery.wmnet",
 ):

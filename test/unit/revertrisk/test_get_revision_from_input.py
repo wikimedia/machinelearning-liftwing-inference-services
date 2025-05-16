@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any
 from unittest.mock import patch
 
 import pytest
@@ -8,7 +8,7 @@ from src.models.revert_risk_model.model_server.base_model import RevisionRevertR
 
 
 @pytest.fixture
-def input_data() -> Dict[str, Any]:
+def input_data() -> dict[str, Any]:
     return {
         "revision_data": {
             "id": 1234,

@@ -1,7 +1,6 @@
 import base64
 import binascii
 import io
-from typing import Dict
 
 import kserve
 import PIL
@@ -35,7 +34,7 @@ class ImageContentFiltrationModel(kserve.Model):
         self.model = model
         self.ready = True
 
-    def predict(self, request: Dict, headers: Dict[str, str] = None) -> Dict:
+    def predict(self, request: dict, headers: dict[str, str] = None) -> dict:
         try:
             inputs = request["instances"]
             # Input follows the Tensorflow V1 HTTP API for binary values

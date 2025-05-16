@@ -1,7 +1,7 @@
 import logging
 import os
 from distutils.util import strtobool
-from typing import Any, Dict
+from typing import Any
 
 import kserve
 from aiohttp import ClientSession, ClientTimeout
@@ -88,8 +88,8 @@ class ArticleCountryModel(kserve.Model):
         self.ready = True
 
     async def preprocess(
-        self, inputs: Dict[str, Any], headers: Dict[str, str] = None
-    ) -> Dict[str, Any]:
+        self, inputs: dict[str, Any], headers: dict[str, str] = None
+    ) -> dict[str, Any]:
         inputs = validate_json_input(inputs)
         if self.event_key in inputs:
             # process inputs from source event stream
@@ -166,8 +166,8 @@ class ArticleCountryModel(kserve.Model):
         return preprocessed_data
 
     async def predict(
-        self, request: Dict[str, Any], headers: Dict[str, str] = None
-    ) -> Dict[str, Any]:
+        self, request: dict[str, Any], headers: dict[str, str] = None
+    ) -> dict[str, Any]:
         # -------------------------------------------------------------
         # Get values from preprocess and define a prediction structure
         # -------------------------------------------------------------
@@ -305,8 +305,8 @@ class ArticleCountryModel(kserve.Model):
 
     async def send_prediction_classification_change_event(
         self,
-        page_change_event: Dict[str, Any],
-        prediction_results: Dict[str, Any],
+        page_change_event: dict[str, Any],
+        prediction_results: dict[str, Any],
         model_version: str,
     ) -> None:
         """
@@ -332,8 +332,8 @@ class ArticleCountryModel(kserve.Model):
 
     async def send_weighted_tags_change_event(
         self,
-        page_change_event: Dict[str, Any],
-        tags_to_set: Dict[str, Any],
+        page_change_event: dict[str, Any],
+        tags_to_set: dict[str, Any],
     ) -> None:
         """
         Send a cirrussearch page_weighted_tags_change event to EventGate, generated

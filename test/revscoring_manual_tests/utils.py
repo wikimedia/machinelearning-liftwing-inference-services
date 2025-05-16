@@ -1,10 +1,10 @@
 import json
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 import yaml
 
 
-def load_data() -> Tuple[Dict[str, List[Dict[str, Any]]], Dict[str, Tuple[int, int]]]:
+def load_data() -> tuple[dict[str, list[dict[str, Any]]], dict[str, tuple[int, int]]]:
     with open("deployed_models.yaml") as f:
         deployed_models = yaml.safe_load(f)
     with open("rev_ids.json") as f:

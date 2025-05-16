@@ -1,26 +1,26 @@
 import json
 import logging
 import re
-from typing import Any, Dict, Union
+from typing import Any, Union
 
 from kserve.errors import InvalidInput
 
 
-def is_domain_wikipedia(event: Dict) -> bool:
+def is_domain_wikipedia(event: dict) -> bool:
     if "meta" in event and "domain" in event["meta"]:
         return "wikipedia" in event["meta"]["domain"]
     else:
         return False
 
 
-def check_input_param(**kwargs: Dict[str, Any]):
+def check_input_param(**kwargs: dict[str, Any]):
     for key, value in kwargs.items():
         if value is None:
             logging.error(f"Missing {key} in input data.")
             raise InvalidInput(f"The parameter {key} is required.")
 
 
-def get_lang(inputs: Dict, event_input_key) -> str:
+def get_lang(inputs: dict, event_input_key) -> str:
     try:
         if event_input_key in inputs:
             if inputs[event_input_key]["$schema"].startswith(
@@ -51,7 +51,7 @@ def get_lang(inputs: Dict, event_input_key) -> str:
     return lang
 
 
-def get_page_title(inputs: Dict, event_input_key) -> str:
+def get_page_title(inputs: dict, event_input_key) -> str:
     try:
         if event_input_key in inputs:
             if inputs[event_input_key]["$schema"].startswith(
@@ -80,7 +80,7 @@ def get_page_title(inputs: Dict, event_input_key) -> str:
     return page_title
 
 
-def get_rev_id(inputs: Dict, event_input_key) -> int:
+def get_rev_id(inputs: dict, event_input_key) -> int:
     """
     Extracts the revision ID i.e rev_id from an event dictionary.
     This function handles different event schemas related to MediaWiki
@@ -114,7 +114,7 @@ def get_rev_id(inputs: Dict, event_input_key) -> int:
     return rev_id
 
 
-def validate_json_input(inputs: Union[Dict, bytes]) -> Dict:
+def validate_json_input(inputs: Union[dict, bytes]) -> dict:
     """
     Transform inputs to a Dict if inputs are passed as bytes.
     Kserve 0.11 introduced allows any content-type to be passed in the request.

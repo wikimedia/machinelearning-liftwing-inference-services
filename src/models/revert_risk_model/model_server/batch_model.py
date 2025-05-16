@@ -1,8 +1,9 @@
 import asyncio
 import json
 import logging
+from collections.abc import Sequence
 from http import HTTPStatus
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Optional
 
 import mwapi
 from base_model import RevisionRevertRiskModel
@@ -50,12 +51,12 @@ class RevisionRevertRiskModelBatch(RevisionRevertRiskModel):
         self.custom_user_agent = "WMF ML Team revert-risk model inference (LiftWing)"
 
     async def get_revisions(
-        self, session: mwapi.AsyncSession, rev_ids: List[int], lang: str
+        self, session: mwapi.AsyncSession, rev_ids: list[int], lang: str
     ) -> Optional[Sequence[Revision]]:
         tasks = [get_revision(session, rev_id, lang) for rev_id in rev_ids]
         return await asyncio.gather(*tasks)
 
-    def get_lang(self, lang_lst: List[str]) -> str:
+    def get_lang(self, lang_lst: list[str]) -> str:
         lang_set = set(lang_lst)
         if len(lang_set) > 1:
             logging.error("More than one language in the request.")
@@ -64,7 +65,7 @@ class RevisionRevertRiskModelBatch(RevisionRevertRiskModel):
             )
         return lang_set.pop()
 
-    def parse_input_data(self, inputs: Dict[str, Any]) -> Tuple[List[int], str]:
+    def parse_input_data(self, inputs: dict[str, Any]) -> tuple[list[int], str]:
         """
         Parse batch, event-based, and single input data that will be used to get
         revision revert-risk predictions.
@@ -114,7 +115,7 @@ class RevisionRevertRiskModelBatch(RevisionRevertRiskModel):
             rev_ids.append(rev_id)
         return rev_ids, lang
 
-    def get_revision_from_input(self, inputs) -> Dict[str, Any]:
+    def get_revision_from_input(self, inputs) -> dict[str, Any]:
         revision_json = json.dumps(inputs["revision_data"])
         try:
             rev = Revision.from_json(revision_json)
@@ -139,8 +140,8 @@ class RevisionRevertRiskModelBatch(RevisionRevertRiskModel):
         return inputs
 
     async def preprocess(
-        self, inputs: Dict[str, Any], headers: Dict[str, str] = None
-    ) -> Dict[str, Any]:
+        self, inputs: dict[str, Any], headers: dict[str, str] = None
+    ) -> dict[str, Any]:
         inputs = validate_json_input(inputs)
         if "revision_data" in inputs and self.allow_revision_json_input:
             logging.info(
@@ -180,8 +181,8 @@ class RevisionRevertRiskModelBatch(RevisionRevertRiskModel):
         return inputs
 
     async def predict(
-        self, request: Dict[str, Any], headers: Dict[str, str] = None
-    ) -> Dict[str, Any]:
+        self, request: dict[str, Any], headers: dict[str, str] = None
+    ) -> dict[str, Any]:
         valid_rev = {
             k: v for k, v in request["revision"].items() if not isinstance(v, Error)
         }
@@ -245,8 +246,8 @@ class RevisionRevertRiskModelBatch(RevisionRevertRiskModel):
 
     async def send_event(
         self,
-        page_change_event: Dict[str, Any],
-        prediction_results: Dict[str, Any],
+        page_change_event: dict[str, Any],
+        prediction_results: dict[str, Any],
         model_version: str,
     ) -> None:
         """

@@ -3,7 +3,7 @@ import logging
 import os
 from distutils.util import strtobool
 from enum import Enum
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 import aiohttp
 import kserve
@@ -156,7 +156,7 @@ class RevscoringModel(kserve.Model):
             http_cache=mw_http_cache,
         )
 
-    async def preprocess(self, inputs: Dict, headers: Dict[str, str] = None) -> Dict:
+    async def preprocess(self, inputs: dict, headers: dict[str, str] = None) -> dict:
         """Use MW API session and Revscoring API to extract feature values
         of edit text based on its revision id"""
         # This is the same request_id that kserve logs alongside with
@@ -198,7 +198,7 @@ class RevscoringModel(kserve.Model):
             }
         return inputs
 
-    def get_revision_score_event(self, rev_create_event: Dict[str, Any]) -> Dict:
+    def get_revision_score_event(self, rev_create_event: dict[str, Any]) -> dict:
         return events.generate_revision_score_event(
             rev_create_event,
             self.EVENTGATE_STREAM,
@@ -207,7 +207,7 @@ class RevscoringModel(kserve.Model):
             self.model_kind.value,
         )
 
-    def get_output(self, request: Dict, extended_output: bool):
+    def get_output(self, request: dict, extended_output: bool):
         wiki_db, model_name = self.name.split("-")
         rev_id = request.get("rev_id")
         output = {
@@ -240,13 +240,13 @@ class RevscoringModel(kserve.Model):
                 self.get_http_client_session("eventgate"),
             )
 
-    def get_revision_event(self, inputs: Dict, event_input_key) -> Optional[str]:
+    def get_revision_event(self, inputs: dict, event_input_key) -> Optional[str]:
         try:
             return inputs[event_input_key]
         except KeyError:
             return None
 
-    def get_rev_id(self, inputs: Dict, event_input_key) -> Dict:
+    def get_rev_id(self, inputs: dict, event_input_key) -> dict:
         """Get a revision id from the inputs provided.
         The revision id can be contained into an event dict
         or passed directly as value.
@@ -281,7 +281,7 @@ class RevscoringModel(kserve.Model):
             raise InvalidInput('Expected "rev_id" to be an integer.')
         return rev_id
 
-    async def predict(self, request: Dict, headers: Dict[str, str] = None) -> Dict:
+    async def predict(self, request: dict, headers: dict[str, str] = None) -> dict:
         feature_values = request.get(self.FEATURE_VAL_KEY)
         extended_output = request.get(self.EXTENDED_OUTPUT_KEY)
         self.prediction_results = self.score(feature_values)

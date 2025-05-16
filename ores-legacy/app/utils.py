@@ -5,7 +5,7 @@ import time
 from collections import defaultdict
 from copy import copy
 from functools import wraps
-from typing import Any, Dict, List
+from typing import Any
 
 import yaml
 from fastapi import HTTPException, Request, status
@@ -75,7 +75,7 @@ def get_check_models(context: str, models: str = None):
     return models_list, models_in_context
 
 
-def merge_liftwing_responses(context: str, responses: List[str]) -> defaultdict:
+def merge_liftwing_responses(context: str, responses: list[str]) -> defaultdict:
     result = defaultdict(lambda: defaultdict(lambda: defaultdict()))
     for d in responses:
         if not d:
@@ -183,7 +183,7 @@ def log_user_request(func: callable):
     return wrapper_func
 
 
-def check_unsupported_features(**kwargs: Dict[str, Any]):
+def check_unsupported_features(**kwargs: dict[str, Any]):
     for k in kwargs:
         if kwargs[k]:
             raise HTTPException(

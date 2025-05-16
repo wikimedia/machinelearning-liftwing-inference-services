@@ -2,7 +2,6 @@ import argparse
 import logging
 import os
 from http import HTTPStatus
-from typing import Dict, Set
 
 import aiohttp
 import kserve
@@ -50,7 +49,7 @@ class OutlinkTransformer(kserve.Model):
             )
         return self._http_client_session[endpoint]
 
-    async def get_outlinks(self, title: str, lang: str, limit=1000) -> Set:
+    async def get_outlinks(self, title: str, lang: str, limit=1000) -> set:
         """Gather set of up to `limit` outlinks for an article."""
         session = mwapi.AsyncSession(
             host=self.WIKI_URL or f"https://{lang}.wikipedia.org",
@@ -92,7 +91,7 @@ class OutlinkTransformer(kserve.Model):
         logging.debug("%s (%s) fetched %d outlinks", title, lang, len(outlink_qids))
         return outlink_qids
 
-    async def preprocess(self, inputs: Dict, headers: Dict[str, str] = None) -> Dict:
+    async def preprocess(self, inputs: dict, headers: dict[str, str] = None) -> dict:
         inputs = validate_json_input(inputs)
         lang = get_lang(inputs, self.EVENT_KEY)
         page_title = get_page_title(inputs, self.EVENT_KEY)
@@ -146,7 +145,7 @@ class OutlinkTransformer(kserve.Model):
             request[self.EVENT_KEY] = inputs[self.EVENT_KEY]
         return request
 
-    def postprocess(self, outputs: Dict, headers: Dict[str, str] = None) -> Dict:
+    def postprocess(self, outputs: dict, headers: dict[str, str] = None) -> dict:
         topics = outputs["topics"]
         lang = outputs["lang"]
         page_title = outputs["page_title"]

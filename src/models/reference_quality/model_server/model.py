@@ -2,7 +2,7 @@ import logging
 import os
 from concurrent.futures import process
 from distutils.util import strtobool
-from typing import Any, Dict
+from typing import Any
 
 import aiohttp
 import kserve
@@ -129,8 +129,8 @@ class ReferenceNeedModel(kserve.Model):
         return self._http_client_session[endpoint]
 
     async def preprocess(
-        self, inputs: Dict[str, Any], headers: Dict[str, str] = None
-    ) -> Dict[str, Any]:
+        self, inputs: dict[str, Any], headers: dict[str, str] = None
+    ) -> dict[str, Any]:
         inputs = validate_json_input(inputs)
         lang = inputs.get("lang")
         rev_id = inputs.get("rev_id")
@@ -165,8 +165,8 @@ class ReferenceNeedModel(kserve.Model):
         return inputs
 
     async def predict(
-        self, request: Dict[str, Any], headers: Dict[str, str] = None
-    ) -> Dict[str, Any]:
+        self, request: dict[str, Any], headers: dict[str, str] = None
+    ) -> dict[str, Any]:
         if self.async_classifier_pool is None:
             result = classify(self.model, request["revision"], self.batch_size)
             model_version = self.model.model_version
@@ -193,8 +193,8 @@ class ReferenceRiskModel(ReferenceNeedModel):
         self.ready = True
 
     def predict(
-        self, request: Dict[str, Any], headers: Dict[str, str] = None
-    ) -> Dict[str, Any]:
+        self, request: dict[str, Any], headers: dict[str, str] = None
+    ) -> dict[str, Any]:
         result = self.model.classify(request["revision"])
         output = {
             "model_name": self.name,

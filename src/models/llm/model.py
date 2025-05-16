@@ -3,7 +3,7 @@ import importlib
 import logging
 import os
 from distutils.util import strtobool
-from typing import Any, Dict, Tuple
+from typing import Any
 
 import kserve
 import torch
@@ -43,7 +43,7 @@ class LLM(kserve.Model):
                 "RuntimeError: No GPU found. A GPU is needed for quantization."
             )
 
-    def load(self) -> Tuple[AutoModelForCausalLM, AutoTokenizer]:
+    def load(self) -> tuple[AutoModelForCausalLM, AutoTokenizer]:
         model = AutoModelForCausalLM.from_pretrained(
             self.model_path,
             local_files_only=True,
@@ -75,8 +75,8 @@ class LLM(kserve.Model):
             # TODO: in the event where we have a GPU error the model should be reloaded to the GPU.
 
     def preprocess(
-        self, inputs: Dict[str, Any], headers: Dict[str, str] = None
-    ) -> Dict[str, Any]:
+        self, inputs: dict[str, Any], headers: dict[str, str] = None
+    ) -> dict[str, Any]:
         try:
             self.check_gpu()
             inputs = validate_json_input(inputs)
@@ -110,8 +110,8 @@ class LLM(kserve.Model):
             )
 
     def predict(
-        self, request: Dict[str, Any], headers: Dict[str, str] = None
-    ) -> Dict[str, Any]:
+        self, request: dict[str, Any], headers: dict[str, str] = None
+    ) -> dict[str, Any]:
         with torch.inference_mode():
             outputs = self.model.generate(
                 request["input_ids"],

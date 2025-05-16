@@ -1,6 +1,6 @@
 import logging
 import os
-from typing import Any, Dict, Tuple
+from typing import Any
 
 from kserve.errors import InferenceError
 from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
@@ -23,7 +23,7 @@ class NLLB(LLM):
         )
         return tokenizer
 
-    def load(self) -> Tuple[AutoModelForSeq2SeqLM, AutoTokenizer]:
+    def load(self) -> tuple[AutoModelForSeq2SeqLM, AutoTokenizer]:
         model = AutoModelForSeq2SeqLM.from_pretrained(
             self.model_path,
             local_files_only=True,
@@ -36,8 +36,8 @@ class NLLB(LLM):
         return model, tokenizer
 
     def preprocess(
-        self, inputs: Dict[str, Any], headers: Dict[str, str] = None
-    ) -> Dict[str, Any]:
+        self, inputs: dict[str, Any], headers: dict[str, str] = None
+    ) -> dict[str, Any]:
         """
         Reading the source and the target language from the request.
         The list of available languages can be found in the paper "No Language Left Behind: Scaling Human-Centered Machine Translation"
@@ -65,8 +65,8 @@ class NLLB(LLM):
             )
 
     def predict(
-        self, request: Dict[str, Any], headers: Dict[str, str] = None
-    ) -> Dict[str, Any]:
+        self, request: dict[str, Any], headers: dict[str, str] = None
+    ) -> dict[str, Any]:
         tgt_lang = request.get("tgt_lang")
         logging.info(f"Translating from {self.src_lang} to {tgt_lang}")
         translated_tokens = self.model.generate(

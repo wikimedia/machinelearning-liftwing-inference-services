@@ -1,6 +1,5 @@
 import logging
 import os
-from typing import Dict
 
 import aiohttp
 import fasttext
@@ -65,7 +64,7 @@ class OutlinksTopicModel(kserve.Model):
             self.get_http_client_session("eventgate"),
         )
 
-    async def predict(self, request: Dict, headers: Dict[str, str] = None) -> Dict:
+    async def predict(self, request: dict, headers: dict[str, str] = None) -> dict:
         features_str = request["features_str"]
         page_title = request["page_title"]
         lang = request["lang"]

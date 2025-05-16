@@ -2,7 +2,7 @@ import csv
 import logging
 import os
 import re
-from typing import Any, Dict
+from typing import Any
 
 from fasttext.FastText import _FastText
 from kserve import Model, ModelServer
@@ -17,14 +17,14 @@ class LanguageIdentificationModel(Model):
         self.name = name
         self.max_text_length = int(os.environ.get("MAX_TEXT_LENGTH", 100))
         self.ready = False
-        self.languages: Dict[str, str] = self.create_language_lookup()
+        self.languages: dict[str, str] = self.create_language_lookup()
         self.model = self.load()
 
-    def create_language_lookup(self) -> Dict[str, str]:
+    def create_language_lookup(self) -> dict[str, str]:
         current_dir = os.path.dirname(os.path.abspath(__file__))
         csv_path = os.path.join(current_dir, "languages.tsv")
         csv_reader = csv.DictReader(open(csv_path), delimiter="\t")
-        languages: Dict[str, str] = {}
+        languages: dict[str, str] = {}
         for index, row in enumerate(csv_reader):
             if index == 0:
                 continue  # Skip header
@@ -52,8 +52,8 @@ class LanguageIdentificationModel(Model):
         return re.sub(r"[\n\r\v\t ]+", " ", text).strip()[: self.max_text_length]
 
     def preprocess(
-        self, inputs: Dict[str, Any], headers: Dict[str, str] = None
-    ) -> Dict[str, Any]:
+        self, inputs: dict[str, Any], headers: dict[str, str] = None
+    ) -> dict[str, Any]:
         inputs = validate_json_input(inputs)
         text = inputs.get("text", None)
         check_input_param(text=text)
@@ -68,8 +68,8 @@ class LanguageIdentificationModel(Model):
         return normalized_text
 
     def predict(
-        self, normalized_text: str, headers: Dict[str, str] = None
-    ) -> Dict[str, Any]:
+        self, normalized_text: str, headers: dict[str, str] = None
+    ) -> dict[str, Any]:
         label, score = self.model.predict(normalized_text)
         language = label[0].replace("__label__", "")
 

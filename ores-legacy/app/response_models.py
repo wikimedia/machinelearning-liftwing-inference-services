@@ -1,11 +1,11 @@
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Optional, Union
 
 from pydantic import BaseModel, validator
 
 
 class Score(BaseModel):
-    prediction: Union[str, List[str]]
-    probability: Dict[str, float]
+    prediction: Union[str, list[str]]
+    probability: dict[str, float]
 
     @validator("prediction", pre=False)
     def parse_bool_if_string(cls, v):
@@ -28,12 +28,12 @@ class ScoreInfo(BaseModel):
 
 
 class WikiScores(BaseModel):
-    models: Dict[str, ModelInfo]
-    scores: Optional[Dict[str, Dict[str, ScoreInfo]]]
+    models: dict[str, ModelInfo]
+    scores: Optional[dict[str, dict[str, ScoreInfo]]]
 
 
 class WikiModels(BaseModel):
-    models: Dict[str, ModelInfo]
+    models: dict[str, ModelInfo]
 
 
 class ResponseModel(BaseModel):
@@ -86,7 +86,7 @@ class ResponseModel(BaseModel):
     wikidatawiki: Optional[WikiScores]
     zhwiki: Optional[WikiScores]
 
-    def dict(self, *args, **kwargs) -> Dict[str, Any]:
+    def dict(self, *args, **kwargs) -> dict[str, Any]:
         """
         Override the default dict method to exclude None values from the response
         If we don't do this all Optional values will be included in the response e.g.
