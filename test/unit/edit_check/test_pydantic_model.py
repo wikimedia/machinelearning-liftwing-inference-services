@@ -51,7 +51,7 @@ def test_valid_instance():
         "instances": [
             {
                 "lang": "en",
-                "check_type": "peacock",
+                "check_type": "tone",
                 "original_text": "original text of a paragraph",
                 "modified_text": "modified text of a paragraph!",
             }
@@ -63,7 +63,7 @@ def test_valid_instance():
     assert len(responses["Malformed"]) == 0
     instance = responses["Valid"][0]["instance"]
     assert instance.lang == "en"
-    assert instance.check_type == "peacock"
+    assert instance.check_type == "tone"
     # if "return_shap_values" is not provided, it defaults to False
     assert instance.return_shap_values is False
 
@@ -76,13 +76,13 @@ def test_valid_and_invalid_instance():
         "instances": [
             {
                 "lang": "en",
-                "check_type": "peacock",
+                "check_type": "tone",
                 "original_text": "original text of a paragraph",
                 # "modified_text" is missing
             },
             {
                 "lang": "en",
-                "check_type": "peacock",
+                "check_type": "tone",
                 "original_text": "original text of a paragraph",
                 "modified_text": "modified text of a paragraph!",
             },
@@ -107,7 +107,7 @@ def test_invalid_top_lvl_instances():
         "instancesssssss": [
             {
                 "lang": "en",
-                "check_type": "peacock",
+                "check_type": "tone",
                 "original_text": "original text of a paragraph",
                 "modified_text": "modified text of a paragraph!",
             }
@@ -129,7 +129,7 @@ def test_identical_texts():
         "instances": [
             {
                 "lang": "en",
-                "check_type": "peacock",
+                "check_type": "tone",
                 "original_text": "Same text",
                 "modified_text": "Same text",
             }
@@ -171,12 +171,12 @@ def test_postprocess_sorting_order():
     valid1 = {
         "index": 2,
         "status_code": 200,
-        "instance": DummyInstance("peacock", "en"),
+        "instance": DummyInstance("tone", "en"),
     }
     valid2 = {
         "index": 1,
         "status_code": 200,
-        "instance": DummyInstance("peacock", "en"),
+        "instance": DummyInstance("tone", "en"),
     }
     malformed1 = {"index": 0, "status_code": 400, "errors": ["Malformed request"]}
     valid_requests = [valid1, valid2]

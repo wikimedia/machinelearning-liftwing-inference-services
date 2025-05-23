@@ -72,13 +72,13 @@ This will run the container that hosts the model-server.
 ### 1.4. Query
 On the second terminal query the isvc using:
 ```console
-curl -s localhost:8080/v1/models/edit-check-staging:predict -X POST -d '{"instances": [{"lang": "en", "check_type": "peacock", "original_text": "original text example original", "modified_text": "modified text example with hype"}]}' -i -H "Content-type: application/json"
+curl -s localhost:8080/v1/models/edit-check-staging:predict -X POST -d '{"instances": [{"lang": "en", "check_type": "tone", "original_text": "original text example original", "modified_text": "modified text example with hype"}]}' -i -H "Content-type: application/json"
 ```
 
 Query locally on the cpu-version
 
 ```console
-curl -s localhost:8080/v1/models/edit-check:predict -X POST -d '{"instances": [{"lang": "en", "check_type": "peacock", "original_text": "original text example original", "modified_text": "modified text example with hype"}]}' -i -H "Content-type: application/json"
+curl -s localhost:8080/v1/models/edit-check:predict -X POST -d '{"instances": [{"lang": "en", "check_type": "tone", "original_text": "original text example original", "modified_text": "modified text example with hype"}]}' -i -H "Content-type: application/json"
 ```
 
 </details>
@@ -95,7 +95,7 @@ This build process will set up: a Python venv, install dependencies, download da
 ### 2.2. Query
 On the second terminal query the isvc using:
 ```console
-curl -s localhost:8080/v1/models/edit-check:predict -X POST -d '{"instances": [{"lang": "en", "check_type": "peacock", "original_text": "original text example original", "modified_text": "modified text example with hype"}]}' -i -H "Content-type: application/json"
+curl -s localhost:8080/v1/models/edit-check:predict -X POST -d '{"instances": [{"lang": "en", "check_type": "tone", "original_text": "original text example original", "modified_text": "modified text example with hype"}]}' -i -H "Content-type: application/json"
 ```
 
 ### 2.3. Remove
@@ -151,6 +151,6 @@ MODEL_NAME=edit-check MODEL_PATH=PATH_TO_MODEL_DIR python3 src/models/edit_check
 
 On a separate terminal we can make a request to the server with:
 ```console
-curl -s localhost:8080/v1/models/edit-check:predict -X POST -d '{"instances": [{"lang": "en", "check_type": "peacock", "original_text": "original text example original", "modified_text": "modified text example with hype"}]}' -i -H "Content-type: application/json"
+curl -s localhost:8080/v1/models/edit-check:predict -X POST -d '{"instances": [{"lang": "en", "check_type": "tone", "original_text": "original text example original", "modified_text": "modified text example with hype"}]}' -i -H "Content-type: application/json"
 ```
 </details>

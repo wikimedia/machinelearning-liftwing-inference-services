@@ -40,13 +40,13 @@ async def test_preprocess_text_for_explanation():
         "instances": [
             {
                 "lang": "en",
-                "check_type": "peacock",
+                "check_type": "tone",
                 "original_text": "original text 1",
                 "modified_text": "modified text 1",
             },
             {
                 "lang": "en",
-                "check_type": "peacock",
+                "check_type": "tone",
                 "original_text": "original text 2",
                 "modified_text": "modified text 2",
                 "return_shap_values": True,
@@ -66,7 +66,7 @@ class DummyExplainerOutput:
 
 
 class DummyRequestInstance:
-    def __init__(self, check_type="peacock", lang="en", return_shap_values=False):
+    def __init__(self, check_type="tone", lang="en", return_shap_values=False):
         self.check_type = check_type
         self.lang = lang
         self.return_shap_values = return_shap_values

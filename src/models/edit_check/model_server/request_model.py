@@ -198,7 +198,7 @@ class Language(str, Enum):
 
 
 class CheckType(str, Enum):
-    peacock = "peacock"
+    tone = "tone"
     npov = "npov"
     weasel = "weasel"
 
@@ -208,7 +208,7 @@ class Instance(BaseModel):
         ..., description="Language code of the text, e.g., 'en' for English."
     )
     check_type: CheckType = Field(
-        ..., description="Type of check to perform, e.g., 'peacock'."
+        ..., description="Type of check to perform, e.g., 'tone'."
     )
     original_text: str = Field(..., description="The original text to be checked.")
     modified_text: str = Field(..., description="The modified text to be checked.")

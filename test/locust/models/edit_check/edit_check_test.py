@@ -18,7 +18,7 @@ def get_random_batch(n_instances: int = 1):
         original, modified = get_random_input_params()
         dd = {
             "lang": "en",
-            "check_type": "peacock",
+            "check_type": "tone",
             "original_text": original,
             "modified_text": modified,
         }
