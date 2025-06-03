@@ -2,6 +2,7 @@ tox
 pre-commit
 ruff==0.11.10
 pytest
+pytest-asyncio
 # Precommit dependencies
 setuptools
 ruamel.yaml

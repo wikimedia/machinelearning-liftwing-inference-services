@@ -15,7 +15,7 @@ def is_domain_wikipedia(event: dict) -> bool:
 
 def check_input_param(**kwargs: dict[str, Any]):
     for key, value in kwargs.items():
-        if value is None:
+        if not value:
             logging.error(f"Missing {key} in input data.")
             raise InvalidInput(f"The parameter {key} is required.")
 
