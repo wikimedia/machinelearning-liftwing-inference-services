@@ -73,7 +73,9 @@ class RevisionRevertRiskModel(kserve.Model):
             hasattr(self.model, "supported_wikis")
             and lang not in self.model.supported_wikis
         ):
-            logging.info(f"Unsupported lang: {lang}.")
+            error_message = f"Unsupported lang: {lang}."
+            logging.info(error_message)
+            raise InvalidInput(error_message)
 
     def check_wiki_suffix(self, lang):
         if lang.endswith("wiki"):
