@@ -338,3 +338,10 @@ pipelines:
           image:
             name: '${setup.project}-edit-check'
             tags: [stable]
+
+  pre-commit-check:
+    blubberfile: pre-commit-check/blubber.yaml
+    stages:
+      - name: run-test
+        build: test
+        run: true

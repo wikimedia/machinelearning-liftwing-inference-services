@@ -1,0 +1,24 @@
+# syntax=docker-registry.wikimedia.org/repos/releng/blubber/buildkit:v1.1.0
+version: v4
+base: docker-registry.wikimedia.org/bullseye:20250601
+runs:
+  insecurely: true
+  environment:
+    PYTHONPATH: /srv/pre-commit-check
+lives:
+  in: /srv/pre-commit-check
+
+variants:
+  test:
+    apt:
+      packages:
+        - python3-pip
+        - python3-setuptools
+        - git
+    copies:
+      - local
+    entrypoint: ["./ci_entrypoint.sh", "ci-lint"]
+    python:
+      version: python3
+      use-system-flag: false
+      requirements: ["requirements-test.txt"]

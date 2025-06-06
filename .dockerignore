@@ -1,0 +1,4 @@
+.pytest_cache/
+.ropeproject/
+.ruff_cache/
+.tox/

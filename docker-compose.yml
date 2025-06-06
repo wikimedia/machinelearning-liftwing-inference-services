@@ -77,3 +77,10 @@ services:
       dockerfile: .pipeline/edit_check/blubber.yaml
       target: test
     image: edit-check:test
+  pre-commit-check:
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: .pipeline/pre-commit-check/blubber.yaml
+      target: test
+    image: pre-commit-check:test
