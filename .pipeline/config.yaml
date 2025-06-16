@@ -1,13 +1,4 @@
 pipelines:
-  outlink:
-    blubberfile: outlink/blubber.yaml
-    stages:
-      - name: run-test
-        build: test
-        run: true
-      - name: production
-        build: production
-
   outlink-publish:
     blubberfile: outlink/blubber.yaml
     stages:
@@ -36,14 +27,6 @@ pipelines:
           image:
             name: '${setup.project}-outlink-transformer'
             tags: [stable]
-
-  nsfw:
-    stages:
-      - name: run-test
-        build: test
-        run: true
-      - name: production
-        build: production
 
   nsfw-publish:
     blubberfile: nsfw/blubber.yaml
@@ -74,15 +57,6 @@ pipelines:
             name: '${setup.project}-revertrisk'
             tags: [stable]
 
-  revertrisk-multilingual:
-    blubberfile: revertrisk/multilingual.yaml
-    stages:
-      - name: run-test
-        build: test
-        run: true
-      - name: production
-        build: production
-
   revertrisk-multilingual-publish:
     blubberfile: revertrisk/multilingual.yaml
     stages:
@@ -92,15 +66,6 @@ pipelines:
           image:
             name: '${setup.project}-revertrisk-multilingual'
             tags: [stable]
-
-  revertrisk-wikidata:
-    blubberfile: revertrisk/wikidata.yaml
-    stages:
-      - name: run-test
-        build: test
-        run: true
-      - name: production
-        build: production
 
   revertrisk-wikidata-publish:
     blubberfile: revertrisk/wikidata.yaml
@@ -112,14 +77,6 @@ pipelines:
             name: '${setup.project}-revertrisk-wikidata'
             tags: [stable]
 
-  revscoring:
-    stages:
-      - name: run-test
-        build: test
-        run: true
-      - name: production
-        build: production
-
   revscoring-publish:
     blubberfile: revscoring/blubber.yaml
     stages:
@@ -129,15 +86,6 @@ pipelines:
           image:
             name: '${setup.project}-revscoring'
             tags: [stable]
-
-  ores-legacy:
-    blubberfile: ores-legacy/blubber.yaml
-    stages:
-      - name: run-test
-        build: test
-        run: true
-      - name: production
-        build: production
 
   ores-legacy-publish:
     blubberfile: ores-legacy/blubber.yaml
@@ -149,15 +97,6 @@ pipelines:
             name: '${setup.project}-ores-legacy'
             tags: [stable]
 
-  llm:
-    blubberfile: llm/blubber.yaml
-    stages:
-      - name: run-test
-        build: test
-        run: true
-      - name: production
-        build: production
-
   llm-publish:
     blubberfile: llm/blubber.yaml
     stages:
@@ -167,15 +106,6 @@ pipelines:
           image:
             name: '${setup.project}-llm'
             tags: [stable]
-
-  readability:
-    blubberfile: readability/blubber.yaml
-    stages:
-      - name: run-test
-        build: test
-        run: true
-      - name: production
-        build: production
 
   readability-publish:
     blubberfile: readability/blubber.yaml
@@ -187,15 +117,6 @@ pipelines:
             name: '${setup.project}-readability'
             tags: [stable]
 
-  langid:
-    blubberfile: langid/blubber.yaml
-    stages:
-      - name: run-test
-        build: test
-        run: true
-      - name: production
-        build: production
-
   langid-publish:
     blubberfile: langid/blubber.yaml
     stages:
@@ -205,15 +126,6 @@ pipelines:
           image:
             name: '${setup.project}-langid'
             tags: [stable]
-
-  article-descriptions:
-    blubberfile: article_descriptions/blubber.yaml
-    stages:
-      - name: run-test
-        build: test
-        run: true
-      - name: production
-        build: production
 
   article-descriptions-publish:
     blubberfile: article_descriptions/blubber.yaml
@@ -225,15 +137,6 @@ pipelines:
             name: '${setup.project}-article-descriptions'
             tags: [stable]
 
-  huggingface:
-    blubberfile: huggingface/blubber.yaml
-    stages:
-      - name: run-test
-        build: test
-        run: true
-      - name: production
-        build: production
-
   huggingface-publish:
     blubberfile: huggingface/blubber.yaml
     stages:
@@ -243,15 +146,6 @@ pipelines:
           image:
             name: '${setup.project}-huggingface'
             tags: [stable]
-
-  logo-detection:
-    blubberfile: logo_detection/blubber.yaml
-    stages:
-      - name: run-test
-        build: test
-        run: true
-      - name: production
-        build: production
 
   logo-detection-publish:
     blubberfile: logo_detection/blubber.yaml
@@ -263,15 +157,6 @@ pipelines:
             name: '${setup.project}-logo-detection'
             tags: [stable]
 
-  articlequality:
-    blubberfile: articlequality/blubber.yaml
-    stages:
-      - name: run-test
-        build: test
-        run: true
-      - name: production
-        build: production
-
   articlequality-publish:
     blubberfile: articlequality/blubber.yaml
     stages:
@@ -282,15 +167,6 @@ pipelines:
             name: '${setup.project}-articlequality'
             tags: [stable]
 
-  reference-quality:
-    blubberfile: reference_quality/blubber.yaml
-    stages:
-      - name: run-test
-        build: test
-        run: true
-      - name: production
-        build: production
-
   reference-quality-publish:
     blubberfile: reference_quality/blubber.yaml
     stages:
@@ -300,15 +176,6 @@ pipelines:
           image:
             name: '${setup.project}-reference-quality'
             tags: [stable]
-
-  article-country:
-    blubberfile: article_country/blubber.yaml
-    stages:
-      - name: run-test
-        build: test
-        run: true
-      - name: production
-        build: production
 
   article-country-publish:
     blubberfile: article_country/blubber.yaml

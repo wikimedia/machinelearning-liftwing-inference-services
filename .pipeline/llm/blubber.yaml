@@ -66,39 +66,3 @@ variants:
       use-system-site-packages: true
       no-deps: false
     entrypoint: ["./entrypoint.sh",  "src/models/llm/model.py"]
-
-  test:
-    apt:
-      packages:
-        - python3-pip
-        - python3-setuptools
-        - python3-venv
-        - git
-    copies:
-      - from: local
-        source: src/models/llm/
-        destination: src/models/llm/
-      - from: local
-        source: python
-        destination: python/
-      - from: local
-        source: tox.ini
-        destination: .
-      - from: local
-        source: .pre-commit-config.yaml
-        destination: .
-      - from: local
-        source: ci_entrypoint.sh
-        destination: entrypoint.sh
-      - from: local
-        source: ruff.toml
-        destination: .
-      - from: local
-        source: requirements-test.txt
-        destination: .
-    entrypoint: ["./entrypoint.sh", "ci-lint"]
-    python:
-      version: python3
-      use-system-site-packages: true
-      no-deps: false
-      requirements: [requirements-test.txt]

@@ -58,35 +58,3 @@ variants:
       version: python3
       use-system-site-packages: true
     entrypoint: ["./entrypoint.sh", "src/models/articlequality/model_server/model.py"]
-
-  test:
-    apt:
-      packages:
-        - git
-        - python3-pip
-        - python3-setuptools
-        - python3-venv
-    copies:
-      - from: local
-        source: src/models/articlequality
-        destination: src/models/articlequality
-      - from: local
-        source: tox.ini
-        destination: .
-      - from: local
-        source: .pre-commit-config.yaml
-        destination: .
-      - from: local
-        source: ci_entrypoint.sh
-        destination: entrypoint.sh
-      - from: local
-        source: ruff.toml
-        destination: .
-      - from: local
-        source: requirements-test.txt
-        destination: .
-    entrypoint: ["./entrypoint.sh", "ci-lint"]
-    python:
-      version: python3
-      use-system-site-packages: true
-      requirements: [requirements-test.txt]

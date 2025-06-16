@@ -51,35 +51,3 @@ variants:
       version: python3
       use-system-site-packages: false
     entrypoint: ["./entrypoint.sh"]
-
-  test:
-    apt:
-      packages:
-        - python3-pip
-        - python3-setuptools
-        - python3-venv
-        - git
-    copies:
-      - from: local
-        source: src/models/article_country
-        destination: src/models/article_country
-      - from: local
-        source: tox.ini
-        destination: .
-      - from: local
-        source: .pre-commit-config.yaml
-        destination: .
-      - from: local
-        source: ci_entrypoint.sh
-        destination: entrypoint.sh
-      - from: local
-        source: ruff.toml
-        destination: .
-      - from: local
-        source: requirements-test.txt
-        destination: .
-    entrypoint: ["./entrypoint.sh", "ci-lint"]
-    python:
-      version: python3
-      use-system-site-packages: false
-      requirements: [requirements-test.txt]
