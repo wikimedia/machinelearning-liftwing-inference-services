@@ -32,6 +32,7 @@ from src.models.edit_check.model_server.model import EditCheckModel  # noqa: E40
 # Create a dummy EditCheckModel instance to avoid calling __init__ attempting to load a model
 dummy_model = EditCheckModel.__new__(EditCheckModel)
 dummy_model.name = "dummy_model"
+dummy_model.use_metadata = True
 
 
 @pytest.mark.asyncio
@@ -40,12 +41,14 @@ async def test_preprocess_text_for_explanation():
         "instances": [
             {
                 "lang": "en",
+                "page_title": "Test_Page",
                 "check_type": "tone",
                 "original_text": "original text 1",
                 "modified_text": "modified text 1",
             },
             {
                 "lang": "en",
+                "page_title": "Test_Page",
                 "check_type": "tone",
                 "original_text": "original text 2",
                 "modified_text": "modified text 2",
@@ -56,7 +59,7 @@ async def test_preprocess_text_for_explanation():
     # Call preprocess
     _, text_for_explanation, _ = await dummy_model.preprocess(inputs)
     assert len(text_for_explanation) == 1
-    assert text_for_explanation == ["modified text 2"]
+    assert text_for_explanation == ["en[SEP]Test_Page[SEP]modified text 2"]
 
 
 class DummyExplainerOutput:
@@ -66,9 +69,16 @@ class DummyExplainerOutput:
 
 
 class DummyRequestInstance:
-    def __init__(self, check_type="tone", lang="en", return_shap_values=False):
+    def __init__(
+        self,
+        check_type="tone",
+        lang="en",
+        page_title="Test_Page",
+        return_shap_values=False,
+    ):
         self.check_type = check_type
         self.lang = lang
+        self.page_title = page_title
         self.return_shap_values = return_shap_values
 
 

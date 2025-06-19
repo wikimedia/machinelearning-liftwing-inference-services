@@ -207,6 +207,9 @@ class Instance(BaseModel):
     lang: Language = Field(
         ..., description="Language code of the text, e.g., 'en' for English."
     )
+    page_title: str = Field(
+        ..., description="Page title. Could be the intended title for a new page."
+    )
     check_type: CheckType = Field(
         ..., description="Type of check to perform, e.g., 'tone'."
     )

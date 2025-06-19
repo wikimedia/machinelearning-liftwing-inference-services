@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+from distutils.util import strtobool
 from typing import Any
 
 import kserve
@@ -37,6 +38,9 @@ class EditCheckModel(kserve.Model):
         self.model_path = os.environ.get("MODEL_PATH", "/mnt/models/")
         self.model_pipeline = self.load()
         self.explainer = shap.Explainer(self.model_pipeline)
+        self.use_metadata = strtobool(
+            os.environ.get("USE_METADATA", "False")
+        )  # if using lang and page_title in model input
 
     def load(self) -> Pipeline:
         device = "cuda:0" if torch.cuda.is_available() else "cpu"
@@ -93,12 +97,26 @@ class EditCheckModel(kserve.Model):
             request_model = RequestModel(**validated_input)
             processed_requests = request_model.process_instances()
             for request in processed_requests["Valid"]:
-                flattened_pair_texts.append(request["instance"].original_text)
-                flattened_pair_texts.append(request["instance"].modified_text)
-                # Extract the modified text when return_shap_values is True
-                if request["instance"].return_shap_values:
-                    text_for_explanation.append(request["instance"].modified_text)
-
+                inst = request["instance"]
+                if not self.use_metadata:  # Model input: {text}
+                    flattened_pair_texts.append(inst.original_text)
+                    flattened_pair_texts.append(inst.modified_text)
+                    # Extract the modified text when return_shap_values is True
+                    if inst.return_shap_values:
+                        text_for_explanation.append(inst.modified_text)
+                else:  # Model input: {lang}[SEP]{page_title}[SEP]{text}
+                    flattened_pair_texts.append(
+                        "[SEP]".join((inst.lang, inst.page_title, inst.original_text))
+                    )
+                    flattened_pair_texts.append(
+                        "[SEP]".join((inst.lang, inst.page_title, inst.modified_text))
+                    )
+                    if inst.return_shap_values:
+                        text_for_explanation.append(
+                            "[SEP]".join(
+                                (inst.lang, inst.page_title, inst.modified_text)
+                            )
+                        )
         except (ValueError, AttributeError, json.decoder.JSONDecodeError) as e:
             raise InvalidInput(f"Wrong request! Message: {e}.")
 
@@ -195,6 +213,7 @@ class EditCheckModel(kserve.Model):
                     "model_version": "v1",
                     "check_type": valid_request["instance"].check_type,
                     "language": valid_request["instance"].lang,
+                    "page_title": valid_request["instance"].page_title,
                     "prediction": final_outcome,
                     "probability": round(modified_txt_score, 3),
                     "details": details,

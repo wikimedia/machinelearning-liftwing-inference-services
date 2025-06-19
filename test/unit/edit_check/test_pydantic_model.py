@@ -51,6 +51,7 @@ def test_valid_instance():
         "instances": [
             {
                 "lang": "en",
+                "page_title": "Test_Page",
                 "check_type": "tone",
                 "original_text": "original text of a paragraph",
                 "modified_text": "modified text of a paragraph!",
@@ -76,12 +77,14 @@ def test_valid_and_invalid_instance():
         "instances": [
             {
                 "lang": "en",
+                "page_title": "Test_Page",
                 "check_type": "tone",
                 "original_text": "original text of a paragraph",
                 # "modified_text" is missing
             },
             {
                 "lang": "en",
+                "page_title": "Test_Page",
                 "check_type": "tone",
                 "original_text": "original text of a paragraph",
                 "modified_text": "modified text of a paragraph!",
@@ -107,6 +110,7 @@ def test_invalid_top_lvl_instances():
         "instancesssssss": [
             {
                 "lang": "en",
+                "page_title": "Test_Page",
                 "check_type": "tone",
                 "original_text": "original text of a paragraph",
                 "modified_text": "modified text of a paragraph!",
@@ -129,6 +133,7 @@ def test_identical_texts():
         "instances": [
             {
                 "lang": "en",
+                "page_title": "Test_Page",
                 "check_type": "tone",
                 "original_text": "Same text",
                 "modified_text": "Same text",
@@ -161,6 +166,7 @@ def test_postprocess_sorting_order():
         def __init__(self, check_type, lang, return_shap_values=False):
             self.check_type = check_type
             self.lang = lang
+            self.page_title = "Test_Page"
             self.return_shap_values = return_shap_values
 
     # Create a dummy EditCheckModel instance to avoid calling __init__ attempting to load a model
