@@ -1,12 +1,14 @@
 import importlib
 import json
 import logging
+import os
 from http import HTTPStatus
 from typing import Any
 
 import aiohttp
 import kserve
 import mwapi
+import pandas as pd
 from fastapi import HTTPException
 from knowledge_integrity.mediawiki import Error, get_revision
 from knowledge_integrity.schema import InvalidJSONError, Revision
@@ -43,6 +45,7 @@ class RevisionRevertRiskModel(kserve.Model):
         self.host_rewrite_config = get_config(key="mw_host_replace")
         self._http_client_session = {}
         self.device = None
+        self.wp_language_codes = set()
         self.load()
 
     def get_http_client_session(self, endpoint):
@@ -68,6 +71,13 @@ class RevisionRevertRiskModel(kserve.Model):
             updated_lang = self.host_rewrite_config.get(lang, lang)
             return f"{protocol}://{updated_lang}.wikipedia.org"
 
+    def check_canonical_wikis(self, lang):
+        # Validate lang parameter against canonical wikis
+        if lang not in self.wp_language_codes:
+            error_message = f"lang '{lang}' does not exist in the canonical Wikipedia language list."
+            logging.error(error_message)
+            raise InvalidInput(error_message)
+
     def check_supported_wikis(self, lang):
         if (
             hasattr(self.model, "supported_wikis")
@@ -81,8 +91,48 @@ class RevisionRevertRiskModel(kserve.Model):
                 "Language field should not have a 'wiki' suffix, i.e. use 'en', not 'enwiki'"
             )
 
+    def load_canonical_wikis(self) -> None:
+        """
+        Loads and processes the canonical wikis list
+        """
+        try:
+            wikis_tsv_path = os.path.join(
+                os.path.dirname(__file__), "..", "data", "wikis.tsv"
+            )
+            canonical_wikis = pd.read_csv(
+                wikis_tsv_path,
+                sep="\t",
+                usecols=[
+                    "database_group",
+                    "language_code",
+                    "status",
+                    "visibility",
+                    "editability",
+                ],
+            )
+
+            wp_codes = canonical_wikis[
+                (canonical_wikis["database_group"] == "wikipedia")
+                & (canonical_wikis["status"] == "open")
+                & (canonical_wikis["visibility"] == "public")
+                & (canonical_wikis["editability"] == "public")
+            ]["language_code"]
+
+            # Store the list in a set for fast O(1) average time complexity lookups.
+            self.wp_language_codes = set(wp_codes.unique())
+            logging.info(
+                f"Successfully loaded {len(self.wp_language_codes)} canonical wiki languages."
+            )
+
+        except FileNotFoundError as e:
+            logging.error(
+                "'wikis.tsv' not found. This file is required for canonical wiki validation."
+            )
+            raise e
+
     def load(self) -> None:
         self.model = self.ModelLoader.load_model(self.model_path)
+        self.load_canonical_wikis()
         self.ready = True
 
     def get_revision_from_input(self, inputs) -> dict[str, Any]:
@@ -122,7 +172,9 @@ class RevisionRevertRiskModel(kserve.Model):
         logging.info(f"Received request for revision {rev_id} ({lang}).")
 
         check_input_param(lang=lang, rev_id=rev_id)
+
         self.check_wiki_suffix(lang)
+        self.check_canonical_wikis(lang)
         self.check_supported_wikis(lang)
         mw_host = self.get_mediawiki_host(lang)
         session = mwapi.AsyncSession(

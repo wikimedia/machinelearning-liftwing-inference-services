@@ -150,6 +150,7 @@ class RevisionRevertRiskModelBatch(RevisionRevertRiskModel):
             return self.get_revision_from_input(inputs)
         rev_ids, lang = self.parse_input_data(inputs)
         self.check_wiki_suffix(lang)
+        self.check_canonical_wikis(lang)
         self.check_supported_wikis(lang)
         mw_host = self.get_mediawiki_host(lang)
         session = mwapi.AsyncSession(

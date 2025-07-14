@@ -1,6 +1,6 @@
 # syntax=docker-registry.wikimedia.org/repos/releng/blubber/buildkit:v0.21.0
 version: v4
-base: docker-registry.wikimedia.org/bullseye:20231126
+base: docker-registry.wikimedia.org/bullseye:20250723
 runs:
   insecurely: true
   environment:
@@ -24,6 +24,9 @@ variants:
 
   production:
     copies:
+      - from: local
+        source: src/models/revert_risk_model/data
+        destination: data
       - from: local
         source: src/models/revert_risk_model/model_server
         destination: model_server
@@ -57,6 +60,9 @@ variants:
         - python3-setuptools
         - git
     copies:
+      - from: local
+        source: src/models/revert_risk_model/data
+        destination: src/models/revert_risk_model/data
       - from: local
         source: src/models/revert_risk_model/model_server
         destination: src/models/revert_risk_model/model_server

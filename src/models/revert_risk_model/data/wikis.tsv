@@ -1,0 +1,1051 @@
+database_code	domain_name	database_group	language_code	mobile_domain_name	language_name	status	visibility	editability	english_name
+aawiki	aa.wikipedia.org	wikipedia	aa	aa.m.wikipedia.org	Afar	closed	public	public	Afar Wikipedia
+aawikibooks	aa.wikibooks.org	wikibooks	aa	aa.m.wikibooks.org	Afar	closed	public	public	Afar Wikibooks
+aawiktionary	aa.wiktionary.org	wiktionary	aa	aa.m.wiktionary.org	Afar	closed	public	public	Afar Wiktionary
+abwiki	ab.wikipedia.org	wikipedia	ab	ab.m.wikipedia.org	Abkhazian	open	public	public	Abkhazian Wikipedia
+abwiktionary	ab.wiktionary.org	wiktionary	ab	ab.m.wiktionary.org	Abkhazian	closed	public	public	Abkhazian Wiktionary
+acewiki	ace.wikipedia.org	wikipedia	ace	ace.m.wikipedia.org	Acehnese	open	public	public	Achinese Wikipedia
+advisorswiki	advisors.wikimedia.org	advisors	en	advisors.m.wikimedia.org	English	open	private	private	Wikimedia Advisors
+advisorywiki	advisory.wikimedia.org	advisory	en	advisory.m.wikimedia.org	English	closed	public	public	Advisory Board
+adywiki	ady.wikipedia.org	wikipedia	ady	ady.m.wikipedia.org	Adyghe	open	public	public	Adyghe Wikipedia
+aewikimedia	ae.wikimedia.org	aewikimedia	en	ae.m.wikimedia.org	English	open	public	private	Wikimedians of United Arab Emirates User Group
+afwiki	af.wikipedia.org	wikipedia	af	af.m.wikipedia.org	Afrikaans	open	public	public	Afrikaans Wikipedia
+afwikibooks	af.wikibooks.org	wikibooks	af	af.m.wikibooks.org	Afrikaans	open	public	public	Afrikaans Wikibooks
+afwikiquote	af.wikiquote.org	wikiquote	af	af.m.wikiquote.org	Afrikaans	open	public	public	Afrikaans Wikiquote
+afwiktionary	af.wiktionary.org	wiktionary	af	af.m.wiktionary.org	Afrikaans	open	public	public	Afrikaans Wiktionary
+akwiki	ak.wikipedia.org	wikipedia	ak	ak.m.wikipedia.org	Akan	closed	public	public	Akan Wikipedia
+akwikibooks	ak.wikibooks.org	wikibooks	ak	ak.m.wikibooks.org	Akan	closed	public	public	Akan Wikibooks
+akwiktionary	ak.wiktionary.org	wiktionary	ak	ak.m.wiktionary.org	Akan	closed	public	public	Akan Wiktionary
+alswiki	als.wikipedia.org	wikipedia	gsw	als.m.wikipedia.org	Alemannic	open	public	public	Alemannisch Wikipedia
+altwiki	alt.wikipedia.org	wikipedia	alt	alt.m.wikipedia.org	Southern Altai	open	public	public	Altai Wikipedia
+amiwiki	ami.wikipedia.org	wikipedia	ami	ami.m.wikipedia.org	Amis	open	public	public	Amis Wikipedia
+amwiki	am.wikipedia.org	wikipedia	am	am.m.wikipedia.org	Amharic	open	public	public	Amharic Wikipedia
+amwikimedia	am.wikimedia.org	amwikimedia	en	am.m.wikimedia.org	English	open	public	private	Wikimedia Armenia
+amwikiquote	am.wikiquote.org	wikiquote	am	am.m.wikiquote.org	Amharic	closed	public	public	Amharic Wikiquote
+amwiktionary	am.wiktionary.org	wiktionary	am	am.m.wiktionary.org	Amharic	open	public	public	Amharic Wiktionary
+angwiki	ang.wikipedia.org	wikipedia	ang	ang.m.wikipedia.org	Old English	open	public	public	Old English Wikipedia
+angwikibooks	ang.wikibooks.org	wikibooks	ang	ang.m.wikibooks.org	Old English	closed	public	public	Old English Wikibooks
+angwikiquote	ang.wikiquote.org	wikiquote	ang	ang.m.wikiquote.org	Old English	closed	public	public	Old English Wikiquote
+angwikisource	ang.wikisource.org	wikisource	ang	ang.m.wikisource.org	Old English	closed	public	public	Old English Wikisource
+angwiktionary	ang.wiktionary.org	wiktionary	ang	ang.m.wiktionary.org	Old English	open	public	public	Old English Wiktionary
+annwiki	ann.wikipedia.org	wikipedia	ann	ann.m.wikipedia.org	Obolo	open	public	public	Obolo Wikipedia
+anpwiki	anp.wikipedia.org	wikipedia	anp	anp.m.wikipedia.org	Angika	open	public	public	Angika Wikipedia
+anwiki	an.wikipedia.org	wikipedia	an	an.m.wikipedia.org	Aragonese	open	public	public	Aragonese Wikipedia
+anwiktionary	an.wiktionary.org	wiktionary	an	an.m.wiktionary.org	Aragonese	open	public	public	Aragonese Wiktionary
+apiportalwiki	api.wikimedia.org	apiportal	en	api.m.wikimedia.org	English	open	public	public	Wikimedia Api Portal
+arbcom_cswiki	arbcom-cs.wikipedia.org	arbcom-cs	en	arbcom-cs.m.wikipedia.org	English	open	private	private	Czech Wikipedia Arbitration Committee
+arbcom_dewiki	arbcom-de.wikipedia.org	arbcom-de	en	arbcom-de.m.wikipedia.org	English	open	private	private	German Wikipedia Arbitration Committee
+arbcom_enwiki	arbcom-en.wikipedia.org	arbcom-en	en	arbcom-en.m.wikipedia.org	English	open	private	private	English Wikipedia Arbitration Committee
+arbcom_fiwiki	arbcom-fi.wikipedia.org	arbcom-fi	en	arbcom-fi.m.wikipedia.org	English	open	private	private	Finnish Wikipedia Arbitration Committee
+arbcom_itwiki	wikipedia-it-arbcom.wikimedia.org	arbcom-it	en	wikipedia-it-arbcom.m.wikimedia.org	English	open	private	private	Italian Wikipedia Arbitration Committee
+arbcom_nlwiki	arbcom-nl.wikipedia.org	arbcom-nl	en	arbcom-nl.m.wikipedia.org	English	open	private	private	Dutch Wikipedia Arbitration Committee
+arbcom_ruwiki	arbcom-ru.wikipedia.org	arbcom-ru	en	arbcom-ru.m.wikipedia.org	English	open	private	private	Russian Wikipedia Arbitration Committee
+arbcom_zhwiki	wikipedia-zh-arbcom.wikimedia.org	arbcom-zh	en	wikipedia-zh-arbcom.m.wikimedia.org	English	open	private	private	Chinese Wikipedia Arbitration Committee
+arcwiki	arc.wikipedia.org	wikipedia	arc	arc.m.wikipedia.org	Aramaic	open	public	public	Syriac Wikipedia
+arwiki	ar.wikipedia.org	wikipedia	ar	ar.m.wikipedia.org	Arabic	open	public	public	Arabic Wikipedia
+arwikibooks	ar.wikibooks.org	wikibooks	ar	ar.m.wikibooks.org	Arabic	open	public	public	Arabic Wikibooks
+arwikimedia	ar.wikimedia.org	arwikimedia	en	ar.m.wikimedia.org	English	open	public	public	Wikimedia Argentina
+arwikinews	ar.wikinews.org	wikinews	ar	ar.m.wikinews.org	Arabic	open	public	public	Arabic Wikinews
+arwikiquote	ar.wikiquote.org	wikiquote	ar	ar.m.wikiquote.org	Arabic	open	public	public	Arabic Wikiquote
+arwikisource	ar.wikisource.org	wikisource	ar	ar.m.wikisource.org	Arabic	open	public	public	Arabic Wikisource
+arwikiversity	ar.wikiversity.org	wikiversity	ar	ar.m.wikiversity.org	Arabic	open	public	public	Arabic Wikiversity
+arwiktionary	ar.wiktionary.org	wiktionary	ar	ar.m.wiktionary.org	Arabic	open	public	public	Arabic Wiktionary
+arywiki	ary.wikipedia.org	wikipedia	ary	ary.m.wikipedia.org	Moroccan Arabic	open	public	public	Moroccan Arabic Wikipedia
+arzwiki	arz.wikipedia.org	wikipedia	arz	arz.m.wikipedia.org	Egyptian Arabic	open	public	public	Egyptian Arabic Wikipedia
+astwiki	ast.wikipedia.org	wikipedia	ast	ast.m.wikipedia.org	Asturian	open	public	public	Asturian Wikipedia
+astwikibooks	ast.wikibooks.org	wikibooks	ast	ast.m.wikibooks.org	Asturian	closed	public	public	Asturian Wikibooks
+astwikiquote	ast.wikiquote.org	wikiquote	ast	ast.m.wikiquote.org	Asturian	closed	public	public	Asturian Wikiquote
+astwiktionary	ast.wiktionary.org	wiktionary	ast	ast.m.wiktionary.org	Asturian	open	public	public	Asturian Wiktionary
+aswiki	as.wikipedia.org	wikipedia	as	as.m.wikipedia.org	Assamese	open	public	public	Assamese Wikipedia
+aswikibooks	as.wikibooks.org	wikibooks	as	as.m.wikibooks.org	Assamese	closed	public	public	Assamese Wikibooks
+aswikiquote	as.wikiquote.org	wikiquote	as	as.m.wikiquote.org	Assamese	open	public	public	Assamese Wikiquote
+aswikisource	as.wikisource.org	wikisource	as	as.m.wikisource.org	Assamese	open	public	public	Assamese Wikisource
+aswiktionary	as.wiktionary.org	wiktionary	as	as.m.wiktionary.org	Assamese	closed	public	public	Assamese Wiktionary
+atjwiki	atj.wikipedia.org	wikipedia	atj	atj.m.wikipedia.org	Atikamekw	open	public	public	Atikamekw Wikipedia
+auditcomwiki	auditcom.wikimedia.org	auditcom	en	auditcom.m.wikimedia.org	English	open	private	private	Audit Committee
+avkwiki	avk.wikipedia.org	wikipedia	avk	avk.m.wikipedia.org	Kotava	open	public	public	Kotava Wikipedia
+avwiki	av.wikipedia.org	wikipedia	av	av.m.wikipedia.org	Avaric	open	public	public	Avaric Wikipedia
+avwiktionary	av.wiktionary.org	wiktionary	av	av.m.wiktionary.org	Avaric	closed	public	public	Avaric Wiktionary
+awawiki	awa.wikipedia.org	wikipedia	awa	awa.m.wikipedia.org	Awadhi	open	public	public	Awadhi Wikipedia
+aywiki	ay.wikipedia.org	wikipedia	ay	ay.m.wikipedia.org	Aymara	open	public	public	Aymara Wikipedia
+aywikibooks	ay.wikibooks.org	wikibooks	ay	ay.m.wikibooks.org	Aymara	closed	public	public	Aymara Wikibooks
+aywiktionary	ay.wiktionary.org	wiktionary	ay	ay.m.wiktionary.org	Aymara	open	public	public	Aymara Wiktionary
+azbwiki	azb.wikipedia.org	wikipedia	azb	azb.m.wikipedia.org	South Azerbaijani	open	public	public	South Azerbaijani Wikipedia
+azwiki	az.wikipedia.org	wikipedia	az	az.m.wikipedia.org	Azerbaijani	open	public	public	Azerbaijani Wikipedia
+azwikibooks	az.wikibooks.org	wikibooks	az	az.m.wikibooks.org	Azerbaijani	open	public	public	Azerbaijani Wikibooks
+azwikimedia	az.wikimedia.org	azwikimedia	en	az.m.wikimedia.org	English	open	public	private	Azerbaijani Wikimedians User Group
+azwikiquote	az.wikiquote.org	wikiquote	az	az.m.wikiquote.org	Azerbaijani	open	public	public	Azerbaijani Wikiquote
+azwikisource	az.wikisource.org	wikisource	az	az.m.wikisource.org	Azerbaijani	open	public	public	Azerbaijani Wikisource
+azwiktionary	az.wiktionary.org	wiktionary	az	az.m.wiktionary.org	Azerbaijani	open	public	public	Azerbaijani Wiktionary
+banwiki	ban.wikipedia.org	wikipedia	ban	ban.m.wikipedia.org	Balinese	open	public	public	Balinese Wikipedia
+banwikisource	ban.wikisource.org	wikisource	ban	ban.m.wikisource.org	Balinese	open	public	public	Balinese Wikisource
+barwiki	bar.wikipedia.org	wikipedia	bar	bar.m.wikipedia.org	Bavarian	open	public	public	Bavarian Wikipedia
+bat_smgwiki	bat-smg.wikipedia.org	wikipedia	sgs	bat-smg.m.wikipedia.org	Samogitian	open	public	public	Samogitian Wikipedia
+bawiki	ba.wikipedia.org	wikipedia	ba	ba.m.wikipedia.org	Bashkir	open	public	public	Bashkir Wikipedia
+bawikibooks	ba.wikibooks.org	wikibooks	ba	ba.m.wikibooks.org	Bashkir	open	public	public	Bashkir Wikibooks
+bbcwiki	bbc.wikipedia.org	wikipedia	bbc	bbc.m.wikipedia.org	Batak Toba	open	public	public	Toba Batak Wikipedia
+bclwiki	bcl.wikipedia.org	wikipedia	bcl	bcl.m.wikipedia.org	Central Bikol	open	public	public	Bikol Central Wikipedia
+bclwikiquote	bcl.wikiquote.org	wikiquote	bcl	bcl.m.wikiquote.org	Central Bikol	open	public	public	Central Bikol Wikiquote
+bclwikisource	bcl.wikisource.org	wikisource	bcl	bcl.m.wikisource.org	Central Bikol	open	public	public	Central Bikol Wikisource
+bclwiktionary	bcl.wiktionary.org	wiktionary	bcl	bcl.m.wiktionary.org	Central Bikol	open	public	public	Central Bikol Wiktionary
+bdrwiki	bdr.wikipedia.org	wikipedia	bdr	bdr.m.wikipedia.org	West Coast Bajau	open	public	public	West Coast Bajau Wikipedia
+bdwikimedia	bd.wikimedia.org	bdwikimedia	en	bd.m.wikimedia.org	English	open	public	public	Wikimedia Bangladesh
+be_x_oldwiki	be-tarask.wikipedia.org	wikipedia	be-tarask	be-tarask.m.wikipedia.org	Belarusian (Taraškievica orthography)	open	public	public	Belarusian (Taraškievica) Wikipedia
+betawikiversity	beta.wikiversity.org	betawikiversity	en	beta.m.wikiversity.org	English	open	public	public	Wikiversity Beta
+bewiki	be.wikipedia.org	wikipedia	be	be.m.wikipedia.org	Belarusian	open	public	public	Belarusian Wikipedia
+bewikibooks	be.wikibooks.org	wikibooks	be	be.m.wikibooks.org	Belarusian	open	public	public	Belarusian Wikibooks
+bewikimedia	be.wikimedia.org	bewikimedia	en	be.m.wikimedia.org	English	open	public	public	Wikimedia Belgium
+bewikiquote	be.wikiquote.org	wikiquote	be	be.m.wikiquote.org	Belarusian	open	public	public	Belarusian Wikiquote
+bewikisource	be.wikisource.org	wikisource	be	be.m.wikisource.org	Belarusian	open	public	public	Belarusian Wikisource
+bewiktionary	be.wiktionary.org	wiktionary	be	be.m.wiktionary.org	Belarusian	open	public	public	Belarusian Wiktionary
+bewwiki	bew.wikipedia.org	wikipedia	bew	bew.m.wikipedia.org	Betawi	open	public	public	Betawi Wikipedia
+bgwiki	bg.wikipedia.org	wikipedia	bg	bg.m.wikipedia.org	Bulgarian	open	public	public	Bulgarian Wikipedia
+bgwikibooks	bg.wikibooks.org	wikibooks	bg	bg.m.wikibooks.org	Bulgarian	open	public	public	Bulgarian Wikibooks
+bgwikinews	bg.wikinews.org	wikinews	bg	bg.m.wikinews.org	Bulgarian	closed	public	public	Bulgarian Wikinews
+bgwikiquote	bg.wikiquote.org	wikiquote	bg	bg.m.wikiquote.org	Bulgarian	open	public	public	Bulgarian Wikiquote
+bgwikisource	bg.wikisource.org	wikisource	bg	bg.m.wikisource.org	Bulgarian	open	public	public	Bulgarian Wikisource
+bgwiktionary	bg.wiktionary.org	wiktionary	bg	bg.m.wiktionary.org	Bulgarian	open	public	public	Bulgarian Wiktionary
+bhwiki	bh.wikipedia.org	wikipedia	bh	bh.m.wikipedia.org	Bhojpuri	open	public	public	Bhojpuri Wikipedia
+bhwiktionary	bh.wiktionary.org	wiktionary	bh	bh.m.wiktionary.org	Bhojpuri	closed	public	public	Bhojpuri Wiktionary
+biwiki	bi.wikipedia.org	wikipedia	bi	bi.m.wikipedia.org	Bislama	open	public	public	Bislama Wikipedia
+biwikibooks	bi.wikibooks.org	wikibooks	bi	bi.m.wikibooks.org	Bislama	closed	public	public	Bislama Wikibooks
+biwiktionary	bi.wiktionary.org	wiktionary	bi	bi.m.wiktionary.org	Bislama	closed	public	public	Bislama Wiktionary
+bjnwiki	bjn.wikipedia.org	wikipedia	bjn	bjn.m.wikipedia.org	Banjar	open	public	public	Banjar Wikipedia
+bjnwikiquote	bjn.wikiquote.org	wikiquote	bjn	bjn.m.wikiquote.org	Banjar	open	public	public	Banjar Wikiquote
+bjnwiktionary	bjn.wiktionary.org	wiktionary	bjn	bjn.m.wiktionary.org	Banjar	open	public	public	Banjar Wiktionary
+blkwiki	blk.wikipedia.org	wikipedia	blk	blk.m.wikipedia.org	Pa'O	open	public	public	Pa'O Wikipedia
+blkwiktionary	blk.wiktionary.org	wiktionary	blk	blk.m.wiktionary.org	Pa'O	open	public	public	Pa'O Wiktionary
+bmwiki	bm.wikipedia.org	wikipedia	bm	bm.m.wikipedia.org	Bambara	open	public	public	Bambara Wikipedia
+bmwikibooks	bm.wikibooks.org	wikibooks	bm	bm.m.wikibooks.org	Bambara	closed	public	public	Bambara Wikibooks
+bmwikiquote	bm.wikiquote.org	wikiquote	bm	bm.m.wikiquote.org	Bambara	closed	public	public	Bambara Wikiquote
+bmwiktionary	bm.wiktionary.org	wiktionary	bm	bm.m.wiktionary.org	Bambara	closed	public	public	Bambara Wiktionary
+bnwiki	bn.wikipedia.org	wikipedia	bn	bn.m.wikipedia.org	Bangla	open	public	public	Bengali Wikipedia
+bnwikibooks	bn.wikibooks.org	wikibooks	bn	bn.m.wikibooks.org	Bangla	open	public	public	Bengali Wikibooks
+bnwikiquote	bn.wikiquote.org	wikiquote	bn	bn.m.wikiquote.org	Bangla	open	public	public	Bengali Wikiquote
+bnwikisource	bn.wikisource.org	wikisource	bn	bn.m.wikisource.org	Bangla	open	public	public	Bengali Wikisource
+bnwikivoyage	bn.wikivoyage.org	wikivoyage	bn	bn.m.wikivoyage.org	Bangla	open	public	public	Bengali Wikivoyage
+bnwiktionary	bn.wiktionary.org	wiktionary	bn	bn.m.wiktionary.org	Bangla	open	public	public	Bengali Wiktionary
+boardgovcomwiki	boardgovcom.wikimedia.org	boardgovcom	en	boardgovcom.m.wikimedia.org	English	open	private	private	Board Governance Committee
+boardwiki	board.wikimedia.org	board	en	board.m.wikimedia.org	English	open	private	private	Wikimedia Board
+bowiki	bo.wikipedia.org	wikipedia	bo	bo.m.wikipedia.org	Tibetan	open	public	public	Tibetan Wikipedia
+bowikibooks	bo.wikibooks.org	wikibooks	bo	bo.m.wikibooks.org	Tibetan	closed	public	public	Tibetan Wikibooks
+bowiktionary	bo.wiktionary.org	wiktionary	bo	bo.m.wiktionary.org	Tibetan	closed	public	public	Tibetan Wiktionary
+bpywiki	bpy.wikipedia.org	wikipedia	bpy	bpy.m.wikipedia.org	Bishnupriya	open	public	public	Bishnupriya Wikipedia
+brwiki	br.wikipedia.org	wikipedia	br	br.m.wikipedia.org	Breton	open	public	public	Breton Wikipedia
+brwikimedia	br.wikimedia.org	brwikimedia	en	br.m.wikimedia.org	English	open	public	public	Wikimedia Brazil
+brwikiquote	br.wikiquote.org	wikiquote	br	br.m.wikiquote.org	Breton	open	public	public	Breton Wikiquote
+brwikisource	br.wikisource.org	wikisource	br	br.m.wikisource.org	Breton	open	public	public	Breton Wikisource
+brwiktionary	br.wiktionary.org	wiktionary	br	br.m.wiktionary.org	Breton	open	public	public	Breton Wiktionary
+bswiki	bs.wikipedia.org	wikipedia	bs	bs.m.wikipedia.org	Bosnian	open	public	public	Bosnian Wikipedia
+bswikibooks	bs.wikibooks.org	wikibooks	bs	bs.m.wikibooks.org	Bosnian	open	public	public	Bosnian Wikibooks
+bswikinews	bs.wikinews.org	wikinews	bs	bs.m.wikinews.org	Bosnian	open	public	public	Bosnian Wikinews
+bswikiquote	bs.wikiquote.org	wikiquote	bs	bs.m.wikiquote.org	Bosnian	open	public	public	Bosnian Wikiquote
+bswikisource	bs.wikisource.org	wikisource	bs	bs.m.wikisource.org	Bosnian	open	public	public	Bosnian Wikisource
+bswiktionary	bs.wiktionary.org	wiktionary	bs	bs.m.wiktionary.org	Bosnian	open	public	public	Bosnian Wiktionary
+btmwiki	btm.wikipedia.org	wikipedia	btm	btm.m.wikipedia.org	Batak Mandailing	open	public	public	Mandailing Wikipedia
+btmwiktionary	btm.wiktionary.org	wiktionary	btm	btm.m.wiktionary.org	Batak Mandailing	open	public	public	Mandailing Wiktionary
+bugwiki	bug.wikipedia.org	wikipedia	bug	bug.m.wikipedia.org	Buginese	open	public	public	Buginese Wikipedia
+bxrwiki	bxr.wikipedia.org	wikipedia	bxr	bxr.m.wikipedia.org	Russia Buriat	open	public	public	Buryat Wikipedia
+cawiki	ca.wikipedia.org	wikipedia	ca	ca.m.wikipedia.org	Catalan	open	public	public	Catalan Wikipedia
+cawikibooks	ca.wikibooks.org	wikibooks	ca	ca.m.wikibooks.org	Catalan	open	public	public	Catalan Wikibooks
+cawikimedia	ca.wikimedia.org	cawikimedia	en	ca.m.wikimedia.org	English	open	public	public	Wikimedia Canada
+cawikinews	ca.wikinews.org	wikinews	ca	ca.m.wikinews.org	Catalan	open	public	public	Catalan Wikinews
+cawikiquote	ca.wikiquote.org	wikiquote	ca	ca.m.wikiquote.org	Catalan	open	public	public	Catalan Wikiquote
+cawikisource	ca.wikisource.org	wikisource	ca	ca.m.wikisource.org	Catalan	open	public	public	Catalan Wikisource
+cawiktionary	ca.wiktionary.org	wiktionary	ca	ca.m.wiktionary.org	Catalan	open	public	public	Catalan Wiktionary
+cbk_zamwiki	cbk-zam.wikipedia.org	wikipedia	cbk-zam	cbk-zam.m.wikipedia.org	Chavacano	open	public	public	Chavacano de Zamboanga Wikipedia
+cdowiki	cdo.wikipedia.org	wikipedia	cdo	cdo.m.wikipedia.org	Mindong	open	public	public	Min Dong Chinese Wikipedia
+cebwiki	ceb.wikipedia.org	wikipedia	ceb	ceb.m.wikipedia.org	Cebuano	open	public	public	Cebuano Wikipedia
+cewiki	ce.wikipedia.org	wikipedia	ce	ce.m.wikipedia.org	Chechen	open	public	public	Chechen Wikipedia
+chairwiki	chair.wikimedia.org	chair	en	chair.m.wikimedia.org	English	open	private	private	Wikimedia Board Chair
+chapcomwiki	affcom.wikimedia.org	chapcom	en	affcom.m.wikimedia.org	English	open	private	private	Affcom
+checkuserwiki	checkuser.wikimedia.org	checkuser	en	checkuser.m.wikimedia.org	English	open	private	private	CheckUser volunteers
+chowiki	cho.wikipedia.org	wikipedia	cho	cho.m.wikipedia.org	Choctaw	closed	public	public	Choctaw Wikipedia
+chrwiki	chr.wikipedia.org	wikipedia	chr	chr.m.wikipedia.org	Cherokee	open	public	public	Cherokee Wikipedia
+chrwiktionary	chr.wiktionary.org	wiktionary	chr	chr.m.wiktionary.org	Cherokee	open	public	public	Cherokee Wiktionary
+chwiki	ch.wikipedia.org	wikipedia	ch	ch.m.wikipedia.org	Chamorro	open	public	public	Chamorro Wikipedia
+chwikibooks	ch.wikibooks.org	wikibooks	ch	ch.m.wikibooks.org	Chamorro	closed	public	public	Chamorro Wikibooks
+chwiktionary	ch.wiktionary.org	wiktionary	ch	ch.m.wiktionary.org	Chamorro	closed	public	public	Chamorro Wiktionary
+chywiki	chy.wikipedia.org	wikipedia	chy	chy.m.wikipedia.org	Cheyenne	open	public	public	Cheyenne Wikipedia
+ckbwiki	ckb.wikipedia.org	wikipedia	ckb	ckb.m.wikipedia.org	Central Kurdish	open	public	public	Central Kurdish Wikipedia
+ckbwiktionary	ckb.wiktionary.org	wiktionary	ckb	ckb.m.wiktionary.org	Central Kurdish	open	public	public	Central Kurdish Wiktionary
+cnwikimedia	cn.wikimedia.org	cnwikimedia	en	cn.m.wikimedia.org	English	closed	public	private	Wikimedia China
+collabwiki	collab.wikimedia.org	collab	en	collab.m.wikimedia.org	English	open	private	private	Collab
+commonswiki	commons.wikimedia.org	commons	en	commons.m.wikimedia.org	English	open	public	public	Wikimedia Commons
+cowiki	co.wikipedia.org	wikipedia	co	co.m.wikipedia.org	Corsican	open	public	public	Corsican Wikipedia
+cowikibooks	co.wikibooks.org	wikibooks	co	co.m.wikibooks.org	Corsican	closed	public	public	Corsican Wikibooks
+cowikimedia	co.wikimedia.org	cowikimedia	en	co.m.wikimedia.org	English	open	public	public	Wikimedia Colombia
+cowikiquote	co.wikiquote.org	wikiquote	co	co.m.wikiquote.org	Corsican	closed	public	public	Corsican Wikiquote
+cowiktionary	co.wiktionary.org	wiktionary	co	co.m.wiktionary.org	Corsican	open	public	public	Corsican Wiktionary
+crhwiki	crh.wikipedia.org	wikipedia	crh	crh.m.wikipedia.org	Crimean Tatar	open	public	public	Crimean Tatar Wikipedia
+crwiki	cr.wikipedia.org	wikipedia	cr	cr.m.wikipedia.org	Cree	open	public	public	Cree Wikipedia
+crwikiquote	cr.wikiquote.org	wikiquote	cr	cr.m.wikiquote.org	Cree	closed	public	public	Cree Wikiquote
+crwiktionary	cr.wiktionary.org	wiktionary	cr	cr.m.wiktionary.org	Cree	closed	public	public	Cree Wiktionary
+csbwiki	csb.wikipedia.org	wikipedia	csb	csb.m.wikipedia.org	Kashubian	open	public	public	Kashubian Wikipedia
+csbwiktionary	csb.wiktionary.org	wiktionary	csb	csb.m.wiktionary.org	Kashubian	open	public	public	Kashubian Wiktionary
+cswiki	cs.wikipedia.org	wikipedia	cs	cs.m.wikipedia.org	Czech	open	public	public	Czech Wikipedia
+cswikibooks	cs.wikibooks.org	wikibooks	cs	cs.m.wikibooks.org	Czech	open	public	public	Czech Wikibooks
+cswikinews	cs.wikinews.org	wikinews	cs	cs.m.wikinews.org	Czech	open	public	public	Czech Wikinews
+cswikiquote	cs.wikiquote.org	wikiquote	cs	cs.m.wikiquote.org	Czech	open	public	public	Czech Wikiquote
+cswikisource	cs.wikisource.org	wikisource	cs	cs.m.wikisource.org	Czech	open	public	public	Czech Wikisource
+cswikiversity	cs.wikiversity.org	wikiversity	cs	cs.m.wikiversity.org	Czech	open	public	public	Czech Wikiversity
+cswikivoyage	cs.wikivoyage.org	wikivoyage	cs	cs.m.wikivoyage.org	Czech	open	public	public	Czech Wikivoyage
+cswiktionary	cs.wiktionary.org	wiktionary	cs	cs.m.wiktionary.org	Czech	open	public	public	Czech Wiktionary
+cuwiki	cu.wikipedia.org	wikipedia	cu	cu.m.wikipedia.org	Church Slavic	open	public	public	Church Slavic Wikipedia
+cvwiki	cv.wikipedia.org	wikipedia	cv	cv.m.wikipedia.org	Chuvash	open	public	public	Chuvash Wikipedia
+cvwikibooks	cv.wikibooks.org	wikibooks	cv	cv.m.wikibooks.org	Chuvash	open	public	public	Chuvash Wikibooks
+cywiki	cy.wikipedia.org	wikipedia	cy	cy.m.wikipedia.org	Welsh	open	public	public	Welsh Wikipedia
+cywikibooks	cy.wikibooks.org	wikibooks	cy	cy.m.wikibooks.org	Welsh	open	public	public	Welsh Wikibooks
+cywikiquote	cy.wikiquote.org	wikiquote	cy	cy.m.wikiquote.org	Welsh	open	public	public	Welsh Wikiquote
+cywikisource	cy.wikisource.org	wikisource	cy	cy.m.wikisource.org	Welsh	open	public	public	Welsh Wikisource
+cywiktionary	cy.wiktionary.org	wiktionary	cy	cy.m.wiktionary.org	Welsh	open	public	public	Welsh Wiktionary
+dagwiki	dag.wikipedia.org	wikipedia	dag	dag.m.wikipedia.org	Dagbani	open	public	public	Dagbani Wikipedia
+dawiki	da.wikipedia.org	wikipedia	da	da.m.wikipedia.org	Danish	open	public	public	Danish Wikipedia
+dawikibooks	da.wikibooks.org	wikibooks	da	da.m.wikibooks.org	Danish	open	public	public	Danish Wikibooks
+dawikiquote	da.wikiquote.org	wikiquote	da	da.m.wikiquote.org	Danish	open	public	public	Danish Wikiquote
+dawikisource	da.wikisource.org	wikisource	da	da.m.wikisource.org	Danish	open	public	public	Danish Wikisource
+dawiktionary	da.wiktionary.org	wiktionary	da	da.m.wiktionary.org	Danish	open	public	public	Danish Wiktionary
+dewiki	de.wikipedia.org	wikipedia	de	de.m.wikipedia.org	German	open	public	public	German Wikipedia
+dewikibooks	de.wikibooks.org	wikibooks	de	de.m.wikibooks.org	German	open	public	public	German Wikibooks
+dewikinews	de.wikinews.org	wikinews	de	de.m.wikinews.org	German	open	public	public	German Wikinews
+dewikiquote	de.wikiquote.org	wikiquote	de	de.m.wikiquote.org	German	open	public	public	German Wikiquote
+dewikisource	de.wikisource.org	wikisource	de	de.m.wikisource.org	German	open	public	public	German Wikisource
+dewikiversity	de.wikiversity.org	wikiversity	de	de.m.wikiversity.org	German	open	public	public	German Wikiversity
+dewikivoyage	de.wikivoyage.org	wikivoyage	de	de.m.wikivoyage.org	German	open	public	public	German Wikivoyage
+dewiktionary	de.wiktionary.org	wiktionary	de	de.m.wiktionary.org	German	open	public	public	German Wiktionary
+dgawiki	dga.wikipedia.org	wikipedia	dga	dga.m.wikipedia.org	Southern Dagaare	open	public	public	Dagaare Wikipedia
+dinwiki	din.wikipedia.org	wikipedia	din	din.m.wikipedia.org	Dinka	open	public	public	Dinka Wikipedia
+diqwiki	diq.wikipedia.org	wikipedia	diq	diq.m.wikipedia.org	Dimli	open	public	public	Zazaki Wikipedia
+diqwiktionary	diq.wiktionary.org	wiktionary	diq	diq.m.wiktionary.org	Dimli	open	public	public	Zazaki Wiktionary
+dkwikimedia	dk.wikimedia.org	dkwikimedia	en	dk.m.wikimedia.org	English	open	public	public	Wikimedia Denmark
+donatewiki	donate.wikimedia.org	donate	en	donate.m.wikimedia.org	English	open	public	private	Donate
+dsbwiki	dsb.wikipedia.org	wikipedia	dsb	dsb.m.wikipedia.org	Lower Sorbian	open	public	public	Lower Sorbian Wikipedia
+dtpwiki	dtp.wikipedia.org	wikipedia	dtp	dtp.m.wikipedia.org	Central Dusun	open	public	public	Central Dusun Wikipedia
+dtywiki	dty.wikipedia.org	wikipedia	dty	dty.m.wikipedia.org	Doteli	open	public	public	Doteli Wikipedia
+dvwiki	dv.wikipedia.org	wikipedia	dv	dv.m.wikipedia.org	Divehi	open	public	public	Divehi Wikipedia
+dvwiktionary	dv.wiktionary.org	wiktionary	dv	dv.m.wiktionary.org	Divehi	open	public	public	Divehi Wiktionary
+dzwiki	dz.wikipedia.org	wikipedia	dz	dz.m.wikipedia.org	Dzongkha	open	public	public	Dzongkha Wikipedia
+dzwiktionary	dz.wiktionary.org	wiktionary	dz	dz.m.wiktionary.org	Dzongkha	closed	public	public	Dzongkha Wiktionary
+ecwikimedia	ec.wikimedia.org	ecwikimedia	en	ec.m.wikimedia.org	English	open	private	private	Wikimedistas de Ecuador
+eewiki	ee.wikipedia.org	wikipedia	ee	ee.m.wikipedia.org	Ewe	open	public	public	Ewe Wikipedia
+electcomwiki	electcom.wikimedia.org	electcom	en	electcom.m.wikimedia.org	English	open	private	private	Wikimedia Foundation Elections Committee
+elwiki	el.wikipedia.org	wikipedia	el	el.m.wikipedia.org	Greek	open	public	public	Greek Wikipedia
+elwikibooks	el.wikibooks.org	wikibooks	el	el.m.wikibooks.org	Greek	open	public	public	Greek Wikibooks
+elwikinews	el.wikinews.org	wikinews	el	el.m.wikinews.org	Greek	open	public	public	Greek Wikinews
+elwikiquote	el.wikiquote.org	wikiquote	el	el.m.wikiquote.org	Greek	open	public	public	Greek Wikiquote
+elwikisource	el.wikisource.org	wikisource	el	el.m.wikisource.org	Greek	open	public	public	Greek Wikisource
+elwikiversity	el.wikiversity.org	wikiversity	el	el.m.wikiversity.org	Greek	open	public	public	Greek Wikiversity
+elwikivoyage	el.wikivoyage.org	wikivoyage	el	el.m.wikivoyage.org	Greek	open	public	public	Greek Wikivoyage
+elwiktionary	el.wiktionary.org	wiktionary	el	el.m.wiktionary.org	Greek	open	public	public	Greek Wiktionary
+emlwiki	eml.wikipedia.org	wikipedia	eml	eml.m.wikipedia.org	Emiliano-Romagnolo	open	public	public	Emiliano-Romagnolo Wikipedia
+enwiki	en.wikipedia.org	wikipedia	en	en.m.wikipedia.org	English	open	public	public	English Wikipedia
+enwikibooks	en.wikibooks.org	wikibooks	en	en.m.wikibooks.org	English	open	public	public	English Wikibooks
+enwikinews	en.wikinews.org	wikinews	en	en.m.wikinews.org	English	open	public	public	English Wikinews
+enwikiquote	en.wikiquote.org	wikiquote	en	en.m.wikiquote.org	English	open	public	public	English Wikiquote
+enwikisource	en.wikisource.org	wikisource	en	en.m.wikisource.org	English	open	public	public	English Wikisource
+enwikiversity	en.wikiversity.org	wikiversity	en	en.m.wikiversity.org	English	open	public	public	English Wikiversity
+enwikivoyage	en.wikivoyage.org	wikivoyage	en	en.m.wikivoyage.org	English	open	public	public	English Wikivoyage
+enwiktionary	en.wiktionary.org	wiktionary	en	en.m.wiktionary.org	English	open	public	public	English Wiktionary
+eowiki	eo.wikipedia.org	wikipedia	eo	eo.m.wikipedia.org	Esperanto	open	public	public	Esperanto Wikipedia
+eowikibooks	eo.wikibooks.org	wikibooks	eo	eo.m.wikibooks.org	Esperanto	open	public	public	Esperanto Wikibooks
+eowikinews	eo.wikinews.org	wikinews	eo	eo.m.wikinews.org	Esperanto	open	public	public	Esperanto Wikinews
+eowikiquote	eo.wikiquote.org	wikiquote	eo	eo.m.wikiquote.org	Esperanto	open	public	public	Esperanto Wikiquote
+eowikisource	eo.wikisource.org	wikisource	eo	eo.m.wikisource.org	Esperanto	open	public	public	Esperanto Wikisource
+eowikivoyage	eo.wikivoyage.org	wikivoyage	eo	eo.m.wikivoyage.org	Esperanto	open	public	public	Esperanto Wikivoyage
+eowiktionary	eo.wiktionary.org	wiktionary	eo	eo.m.wiktionary.org	Esperanto	open	public	public	Esperanto Wiktionary
+eswiki	es.wikipedia.org	wikipedia	es	es.m.wikipedia.org	Spanish	open	public	public	Spanish Wikipedia
+eswikibooks	es.wikibooks.org	wikibooks	es	es.m.wikibooks.org	Spanish	open	public	public	Spanish Wikibooks
+eswikinews	es.wikinews.org	wikinews	es	es.m.wikinews.org	Spanish	open	public	public	Spanish Wikinews
+eswikiquote	es.wikiquote.org	wikiquote	es	es.m.wikiquote.org	Spanish	open	public	public	Spanish Wikiquote
+eswikisource	es.wikisource.org	wikisource	es	es.m.wikisource.org	Spanish	open	public	public	Spanish Wikisource
+eswikiversity	es.wikiversity.org	wikiversity	es	es.m.wikiversity.org	Spanish	open	public	public	Spanish Wikiversity
+eswikivoyage	es.wikivoyage.org	wikivoyage	es	es.m.wikivoyage.org	Spanish	open	public	public	Spanish Wikivoyage
+eswiktionary	es.wiktionary.org	wiktionary	es	es.m.wiktionary.org	Spanish	open	public	public	Spanish Wiktionary
+etwiki	et.wikipedia.org	wikipedia	et	et.m.wikipedia.org	Estonian	open	public	public	Estonian Wikipedia
+etwikibooks	et.wikibooks.org	wikibooks	et	et.m.wikibooks.org	Estonian	open	public	public	Estonian Wikibooks
+etwikimedia	ee.wikimedia.org	etwikimedia	en	ee.m.wikimedia.org	English	open	public	public	Wikimedia Estonia
+etwikiquote	et.wikiquote.org	wikiquote	et	et.m.wikiquote.org	Estonian	open	public	public	Estonian Wikiquote
+etwikisource	et.wikisource.org	wikisource	et	et.m.wikisource.org	Estonian	open	public	public	Estonian Wikisource
+etwiktionary	et.wiktionary.org	wiktionary	et	et.m.wiktionary.org	Estonian	open	public	public	Estonian Wiktionary
+euwiki	eu.wikipedia.org	wikipedia	eu	eu.m.wikipedia.org	Basque	open	public	public	Basque Wikipedia
+euwikibooks	eu.wikibooks.org	wikibooks	eu	eu.m.wikibooks.org	Basque	open	public	public	Basque Wikibooks
+euwikiquote	eu.wikiquote.org	wikiquote	eu	eu.m.wikiquote.org	Basque	open	public	public	Basque Wikiquote
+euwikisource	eu.wikisource.org	wikisource	eu	eu.m.wikisource.org	Basque	open	public	public	Basque Wikisource
+euwiktionary	eu.wiktionary.org	wiktionary	eu	eu.m.wiktionary.org	Basque	open	public	public	Basque Wiktionary
+execwiki	exec.wikimedia.org	exec	en	exec.m.wikimedia.org	English	open	private	private	Wikimedia Executive
+extwiki	ext.wikipedia.org	wikipedia	ext	ext.m.wikipedia.org	Extremaduran	open	public	public	Extremaduran Wikipedia
+fatwiki	fat.wikipedia.org	wikipedia	fat	fat.m.wikipedia.org	Fanti	open	public	public	Fante Wikipedia
+fawiki	fa.wikipedia.org	wikipedia	fa	fa.m.wikipedia.org	Persian	open	public	public	Persian Wikipedia
+fawikibooks	fa.wikibooks.org	wikibooks	fa	fa.m.wikibooks.org	Persian	open	public	public	Persian Wikibooks
+fawikinews	fa.wikinews.org	wikinews	fa	fa.m.wikinews.org	Persian	open	public	public	Persian Wikinews
+fawikiquote	fa.wikiquote.org	wikiquote	fa	fa.m.wikiquote.org	Persian	open	public	public	Persian Wikiquote
+fawikisource	fa.wikisource.org	wikisource	fa	fa.m.wikisource.org	Persian	open	public	public	Persian Wikisource
+fawikivoyage	fa.wikivoyage.org	wikivoyage	fa	fa.m.wikivoyage.org	Persian	open	public	public	Persian Wikivoyage
+fawiktionary	fa.wiktionary.org	wiktionary	fa	fa.m.wiktionary.org	Persian	open	public	public	Persian Wiktionary
+fdcwiki	fdc.wikimedia.org	fdc	en	fdc.m.wikimedia.org	English	open	private	private	Wikimedia FDC
+ffwiki	ff.wikipedia.org	wikipedia	ff	ff.m.wikipedia.org	Fula	open	public	public	Fulah Wikipedia
+fiu_vrowiki	fiu-vro.wikipedia.org	wikipedia	vro	fiu-vro.m.wikipedia.org	Võro	open	public	public	Võro Wikipedia
+fiwiki	fi.wikipedia.org	wikipedia	fi	fi.m.wikipedia.org	Finnish	open	public	public	Finnish Wikipedia
+fiwikibooks	fi.wikibooks.org	wikibooks	fi	fi.m.wikibooks.org	Finnish	open	public	public	Finnish Wikibooks
+fiwikimedia	fi.wikimedia.org	fiwikimedia	en	fi.m.wikimedia.org	English	open	public	public	Wikimedia Finland
+fiwikinews	fi.wikinews.org	wikinews	fi	fi.m.wikinews.org	Finnish	open	public	public	Finnish Wikinews
+fiwikiquote	fi.wikiquote.org	wikiquote	fi	fi.m.wikiquote.org	Finnish	open	public	public	Finnish Wikiquote
+fiwikisource	fi.wikisource.org	wikisource	fi	fi.m.wikisource.org	Finnish	open	public	public	Finnish Wikisource
+fiwikiversity	fi.wikiversity.org	wikiversity	fi	fi.m.wikiversity.org	Finnish	open	public	public	Finnish Wikiversity
+fiwikivoyage	fi.wikivoyage.org	wikivoyage	fi	fi.m.wikivoyage.org	Finnish	open	public	public	Finnish Wikivoyage
+fiwiktionary	fi.wiktionary.org	wiktionary	fi	fi.m.wiktionary.org	Finnish	open	public	public	Finnish Wiktionary
+fjwiki	fj.wikipedia.org	wikipedia	fj	fj.m.wikipedia.org	Fijian	open	public	public	Fijian Wikipedia
+fjwiktionary	fj.wiktionary.org	wiktionary	fj	fj.m.wiktionary.org	Fijian	open	public	public	Fijian Wiktionary
+fonwiki	fon.wikipedia.org	wikipedia	fon	fon.m.wikipedia.org	Fon	open	public	public	Fon Wikipedia
+foundationwiki	foundation.wikimedia.org	foundation	en	foundation.m.wikimedia.org	English	open	public	public	Wikimedia Foundation Governance
+fowiki	fo.wikipedia.org	wikipedia	fo	fo.m.wikipedia.org	Faroese	open	public	public	Faroese Wikipedia
+fowikisource	fo.wikisource.org	wikisource	fo	fo.m.wikisource.org	Faroese	open	public	public	Faroese Wikisource
+fowiktionary	fo.wiktionary.org	wiktionary	fo	fo.m.wiktionary.org	Faroese	open	public	public	Faroese Wiktionary
+frpwiki	frp.wikipedia.org	wikipedia	frp	frp.m.wikipedia.org	Arpitan	open	public	public	Arpitan Wikipedia
+frrwiki	frr.wikipedia.org	wikipedia	frr	frr.m.wikipedia.org	Northern Frisian	open	public	public	Northern Frisian Wikipedia
+frwiki	fr.wikipedia.org	wikipedia	fr	fr.m.wikipedia.org	French	open	public	public	French Wikipedia
+frwikibooks	fr.wikibooks.org	wikibooks	fr	fr.m.wikibooks.org	French	open	public	public	French Wikibooks
+frwikinews	fr.wikinews.org	wikinews	fr	fr.m.wikinews.org	French	open	public	public	French Wikinews
+frwikiquote	fr.wikiquote.org	wikiquote	fr	fr.m.wikiquote.org	French	open	public	public	French Wikiquote
+frwikisource	fr.wikisource.org	wikisource	fr	fr.m.wikisource.org	French	open	public	public	French Wikisource
+frwikiversity	fr.wikiversity.org	wikiversity	fr	fr.m.wikiversity.org	French	open	public	public	French Wikiversity
+frwikivoyage	fr.wikivoyage.org	wikivoyage	fr	fr.m.wikivoyage.org	French	open	public	public	French Wikivoyage
+frwiktionary	fr.wiktionary.org	wiktionary	fr	fr.m.wiktionary.org	French	open	public	public	French Wiktionary
+furwiki	fur.wikipedia.org	wikipedia	fur	fur.m.wikipedia.org	Friulian	open	public	public	Friulian Wikipedia
+fywiki	fy.wikipedia.org	wikipedia	fy	fy.m.wikipedia.org	Western Frisian	open	public	public	Western Frisian Wikipedia
+fywikibooks	fy.wikibooks.org	wikibooks	fy	fy.m.wikibooks.org	Western Frisian	open	public	public	Western Frisian Wikibooks
+fywiktionary	fy.wiktionary.org	wiktionary	fy	fy.m.wiktionary.org	Western Frisian	open	public	public	Western Frisian Wiktionary
+gagwiki	gag.wikipedia.org	wikipedia	gag	gag.m.wikipedia.org	Gagauz	open	public	public	Gagauz Wikipedia
+ganwiki	gan.wikipedia.org	wikipedia	gan	gan.m.wikipedia.org	Gan	open	public	public	Gan Chinese Wikipedia
+gawiki	ga.wikipedia.org	wikipedia	ga	ga.m.wikipedia.org	Irish	open	public	public	Irish Wikipedia
+gawikibooks	ga.wikibooks.org	wikibooks	ga	ga.m.wikibooks.org	Irish	closed	public	public	Irish Wikibooks
+gawikiquote	ga.wikiquote.org	wikiquote	ga	ga.m.wikiquote.org	Irish	closed	public	public	Irish Wikiquote
+gawiktionary	ga.wiktionary.org	wiktionary	ga	ga.m.wiktionary.org	Irish	open	public	public	Irish Wiktionary
+gcrwiki	gcr.wikipedia.org	wikipedia	gcr	gcr.m.wikipedia.org	Guianan Creole	open	public	public	Guianan Creole Wikipedia
+gdwiki	gd.wikipedia.org	wikipedia	gd	gd.m.wikipedia.org	Scottish Gaelic	open	public	public	Scottish Gaelic Wikipedia
+gdwiktionary	gd.wiktionary.org	wiktionary	gd	gd.m.wiktionary.org	Scottish Gaelic	open	public	public	Scottish Gaelic Wiktionary
+gewikimedia	ge.wikimedia.org	gewikimedia	en	ge.m.wikimedia.org	English	open	public	private	Wikimedia Community User Group Georgia
+glkwiki	glk.wikipedia.org	wikipedia	glk	glk.m.wikipedia.org	Gilaki	open	public	public	Gilaki Wikipedia
+glwiki	gl.wikipedia.org	wikipedia	gl	gl.m.wikipedia.org	Galician	open	public	public	Galician Wikipedia
+glwikibooks	gl.wikibooks.org	wikibooks	gl	gl.m.wikibooks.org	Galician	open	public	public	Galician Wikibooks
+glwikiquote	gl.wikiquote.org	wikiquote	gl	gl.m.wikiquote.org	Galician	open	public	public	Galician Wikiquote
+glwikisource	gl.wikisource.org	wikisource	gl	gl.m.wikisource.org	Galician	open	public	public	Galician Wikisource
+glwiktionary	gl.wiktionary.org	wiktionary	gl	gl.m.wiktionary.org	Galician	open	public	public	Galician Wiktionary
+gnwiki	gn.wikipedia.org	wikipedia	gn	gn.m.wikipedia.org	Guarani	open	public	public	Guarani Wikipedia
+gnwikibooks	gn.wikibooks.org	wikibooks	gn	gn.m.wikibooks.org	Guarani	closed	public	public	Guarani Wikibooks
+gnwiktionary	gn.wiktionary.org	wiktionary	gn	gn.m.wiktionary.org	Guarani	open	public	public	Guarani Wiktionary
+gomwiki	gom.wikipedia.org	wikipedia	gom	gom.m.wikipedia.org	Goan Konkani	open	public	public	Goan Konkani Wikipedia
+gomwiktionary	gom.wiktionary.org	wiktionary	gom	gom.m.wiktionary.org	Goan Konkani	open	public	public	Goan Konkani Wiktionary
+gorwiki	gor.wikipedia.org	wikipedia	gor	gor.m.wikipedia.org	Gorontalo	open	public	public	Gorontalo Wikipedia
+gorwikiquote	gor.wikiquote.org	wikiquote	gor	gor.m.wikiquote.org	Gorontalo	open	public	public	Gorontalo Wikiquote
+gorwiktionary	gor.wiktionary.org	wiktionary	gor	gor.m.wiktionary.org	Gorontalo	open	public	public	Gorontalo Wiktionary
+gotwiki	got.wikipedia.org	wikipedia	got	got.m.wikipedia.org	Gothic	open	public	public	Gothic Wikipedia
+gotwikibooks	got.wikibooks.org	wikibooks	got	got.m.wikibooks.org	Gothic	closed	public	public	Gothic Wikibooks
+gpewiki	gpe.wikipedia.org	wikipedia	gpe	gpe.m.wikipedia.org	Ghanaian Pidgin	open	public	public	Ghanaian Pidgin Wikipedia
+grantswiki	grants.wikimedia.org	grants	en	grants.m.wikimedia.org	English	open	private	private	Wikimedia Foundation Grants Discussion
+grwikimedia	gr.wikimedia.org	grwikimedia	en	gr.m.wikimedia.org	English	open	public	private	Wikimedia Community User Group Greece
+gucwiki	guc.wikipedia.org	wikipedia	guc	guc.m.wikipedia.org	Wayuu	open	public	public	Wayuu Wikipedia
+gurwiki	gur.wikipedia.org	wikipedia	gur	gur.m.wikipedia.org	Frafra	open	public	public	Farefare Wikipedia
+guwiki	gu.wikipedia.org	wikipedia	gu	gu.m.wikipedia.org	Gujarati	open	public	public	Gujarati Wikipedia
+guwikibooks	gu.wikibooks.org	wikibooks	gu	gu.m.wikibooks.org	Gujarati	closed	public	public	Gujarati Wikibooks
+guwikiquote	gu.wikiquote.org	wikiquote	gu	gu.m.wikiquote.org	Gujarati	open	public	public	Gujarati Wikiquote
+guwikisource	gu.wikisource.org	wikisource	gu	gu.m.wikisource.org	Gujarati	open	public	public	Gujarati Wikisource
+guwiktionary	gu.wiktionary.org	wiktionary	gu	gu.m.wiktionary.org	Gujarati	open	public	public	Gujarati Wiktionary
+guwwiki	guw.wikipedia.org	wikipedia	guw	guw.m.wikipedia.org	Gun	open	public	public	Gun Wikipedia
+guwwikinews	guw.wikinews.org	wikinews	guw	guw.m.wikinews.org	Gun	open	public	public	Gun Wikinews
+guwwikiquote	guw.wikiquote.org	wikiquote	guw	guw.m.wikiquote.org	Gun	open	public	public	Gun Wikiquote
+guwwiktionary	guw.wiktionary.org	wiktionary	guw	guw.m.wiktionary.org	Gun	open	public	public	Gun Wiktionary
+gvwiki	gv.wikipedia.org	wikipedia	gv	gv.m.wikipedia.org	Manx	open	public	public	Manx Wikipedia
+gvwiktionary	gv.wiktionary.org	wiktionary	gv	gv.m.wiktionary.org	Manx	open	public	public	Manx Wiktionary
+hakwiki	hak.wikipedia.org	wikipedia	hak	hak.m.wikipedia.org	Hakka Chinese	open	public	public	Hakka Chinese Wikipedia
+hawiki	ha.wikipedia.org	wikipedia	ha	ha.m.wikipedia.org	Hausa	open	public	public	Hausa Wikipedia
+hawiktionary	ha.wiktionary.org	wiktionary	ha	ha.m.wiktionary.org	Hausa	open	public	public	Hausa Wiktionary
+hawwiki	haw.wikipedia.org	wikipedia	haw	haw.m.wikipedia.org	Hawaiian	open	public	public	Hawaiian Wikipedia
+hewiki	he.wikipedia.org	wikipedia	he	he.m.wikipedia.org	Hebrew	open	public	public	Hebrew Wikipedia
+hewikibooks	he.wikibooks.org	wikibooks	he	he.m.wikibooks.org	Hebrew	open	public	public	Hebrew Wikibooks
+hewikinews	he.wikinews.org	wikinews	he	he.m.wikinews.org	Hebrew	open	public	public	Hebrew Wikinews
+hewikiquote	he.wikiquote.org	wikiquote	he	he.m.wikiquote.org	Hebrew	open	public	public	Hebrew Wikiquote
+hewikisource	he.wikisource.org	wikisource	he	he.m.wikisource.org	Hebrew	open	public	public	Hebrew Wikisource
+hewikivoyage	he.wikivoyage.org	wikivoyage	he	he.m.wikivoyage.org	Hebrew	open	public	public	Hebrew Wikivoyage
+hewiktionary	he.wiktionary.org	wiktionary	he	he.m.wiktionary.org	Hebrew	open	public	public	Hebrew Wiktionary
+hifwiki	hif.wikipedia.org	wikipedia	hif	hif.m.wikipedia.org	Fiji Hindi	open	public	public	Fiji Hindi Wikipedia
+hifwiktionary	hif.wiktionary.org	wiktionary	hif	hif.m.wiktionary.org	Fiji Hindi	open	public	public	Fiji Hindi Wiktionary
+hiwiki	hi.wikipedia.org	wikipedia	hi	hi.m.wikipedia.org	Hindi	open	public	public	Hindi Wikipedia
+hiwikibooks	hi.wikibooks.org	wikibooks	hi	hi.m.wikibooks.org	Hindi	open	public	public	Hindi Wikibooks
+hiwikimedia	hi.wikimedia.org	hiwikimedia	en	hi.m.wikimedia.org	English	open	public	private	Hindi Wikimedians User Group
+hiwikiquote	hi.wikiquote.org	wikiquote	hi	hi.m.wikiquote.org	Hindi	open	public	public	Hindi Wikiquote
+hiwikisource	hi.wikisource.org	wikisource	hi	hi.m.wikisource.org	Hindi	open	public	public	Hindi Wikisource
+hiwikiversity	hi.wikiversity.org	wikiversity	hi	hi.m.wikiversity.org	Hindi	open	public	public	Hindi Wikiversity
+hiwikivoyage	hi.wikivoyage.org	wikivoyage	hi	hi.m.wikivoyage.org	Hindi	open	public	public	Hindi Wikivoyage
+hiwiktionary	hi.wiktionary.org	wiktionary	hi	hi.m.wiktionary.org	Hindi	open	public	public	Hindi Wiktionary
+howiki	ho.wikipedia.org	wikipedia	ho	ho.m.wikipedia.org	Hiri Motu	closed	public	public	Hiri Motu Wikipedia
+hrwiki	hr.wikipedia.org	wikipedia	hr	hr.m.wikipedia.org	Croatian	open	public	public	Croatian Wikipedia
+hrwikibooks	hr.wikibooks.org	wikibooks	hr	hr.m.wikibooks.org	Croatian	open	public	public	Croatian Wikibooks
+hrwikiquote	hr.wikiquote.org	wikiquote	hr	hr.m.wikiquote.org	Croatian	open	public	public	Croatian Wikiquote
+hrwikisource	hr.wikisource.org	wikisource	hr	hr.m.wikisource.org	Croatian	open	public	public	Croatian Wikisource
+hrwiktionary	hr.wiktionary.org	wiktionary	hr	hr.m.wiktionary.org	Croatian	open	public	public	Croatian Wiktionary
+hsbwiki	hsb.wikipedia.org	wikipedia	hsb	hsb.m.wikipedia.org	Upper Sorbian	open	public	public	Upper Sorbian Wikipedia
+hsbwiktionary	hsb.wiktionary.org	wiktionary	hsb	hsb.m.wiktionary.org	Upper Sorbian	open	public	public	Upper Sorbian Wiktionary
+htwiki	ht.wikipedia.org	wikipedia	ht	ht.m.wikipedia.org	Haitian Creole	open	public	public	Haitian Creole Wikipedia
+htwikisource	ht.wikisource.org	wikisource	ht	ht.m.wikisource.org	Haitian Creole	closed	public	public	Haitian Creole Wikisource
+huwiki	hu.wikipedia.org	wikipedia	hu	hu.m.wikipedia.org	Hungarian	open	public	public	Hungarian Wikipedia
+huwikibooks	hu.wikibooks.org	wikibooks	hu	hu.m.wikibooks.org	Hungarian	open	public	public	Hungarian Wikibooks
+huwikinews	hu.wikinews.org	wikinews	hu	hu.m.wikinews.org	Hungarian	closed	public	public	Hungarian Wikinews
+huwikiquote	hu.wikiquote.org	wikiquote	hu	hu.m.wikiquote.org	Hungarian	open	public	public	Hungarian Wikiquote
+huwikisource	hu.wikisource.org	wikisource	hu	hu.m.wikisource.org	Hungarian	open	public	public	Hungarian Wikisource
+huwiktionary	hu.wiktionary.org	wiktionary	hu	hu.m.wiktionary.org	Hungarian	open	public	public	Hungarian Wiktionary
+hywiki	hy.wikipedia.org	wikipedia	hy	hy.m.wikipedia.org	Armenian	open	public	public	Armenian Wikipedia
+hywikibooks	hy.wikibooks.org	wikibooks	hy	hy.m.wikibooks.org	Armenian	open	public	public	Armenian Wikibooks
+hywikiquote	hy.wikiquote.org	wikiquote	hy	hy.m.wikiquote.org	Armenian	open	public	public	Armenian Wikiquote
+hywikisource	hy.wikisource.org	wikisource	hy	hy.m.wikisource.org	Armenian	open	public	public	Armenian Wikisource
+hywiktionary	hy.wiktionary.org	wiktionary	hy	hy.m.wiktionary.org	Armenian	open	public	public	Armenian Wiktionary
+hywwiki	hyw.wikipedia.org	wikipedia	hyw	hyw.m.wikipedia.org	Western Armenian	open	public	public	Western Armenian Wikipedia
+hzwiki	hz.wikipedia.org	wikipedia	hz	hz.m.wikipedia.org	Herero	closed	public	public	Herero Wikipedia
+iawiki	ia.wikipedia.org	wikipedia	ia	ia.m.wikipedia.org	Interlingua	open	public	public	Interlingua Wikipedia
+iawikibooks	ia.wikibooks.org	wikibooks	ia	ia.m.wikibooks.org	Interlingua	open	public	public	Interlingua Wikibooks
+iawiktionary	ia.wiktionary.org	wiktionary	ia	ia.m.wiktionary.org	Interlingua	open	public	public	Interlingua Wiktionary
+ibawiki	iba.wikipedia.org	wikipedia	iba	iba.m.wikipedia.org	Iban	open	public	public	Iban Wikipedia
+id_internalwikimedia	id-internal.wikimedia.org	id-internalwikimedia	en	id-internal.m.wikimedia.org	English	open	private	private	Wikimedia Indonesia (internal)
+idwiki	id.wikipedia.org	wikipedia	id	id.m.wikipedia.org	Indonesian	open	public	public	Indonesian Wikipedia
+idwikibooks	id.wikibooks.org	wikibooks	id	id.m.wikibooks.org	Indonesian	open	public	public	Indonesian Wikibooks
+idwikimedia	id.wikimedia.org	idwikimedia	en	id.m.wikimedia.org	English	open	public	private	Wikimedia Indonesia
+idwikiquote	id.wikiquote.org	wikiquote	id	id.m.wikiquote.org	Indonesian	open	public	public	Indonesian Wikiquote
+idwikisource	id.wikisource.org	wikisource	id	id.m.wikisource.org	Indonesian	open	public	public	Indonesian Wikisource
+idwikivoyage	id.wikivoyage.org	wikivoyage	id	id.m.wikivoyage.org	Indonesian	open	public	public	Indonesian Wikivoyage
+idwiktionary	id.wiktionary.org	wiktionary	id	id.m.wiktionary.org	Indonesian	open	public	public	Indonesian Wiktionary
+iegcomwiki	iegcom.wikimedia.org	iegcom	en	iegcom.m.wikimedia.org	English	open	private	private	Individual Engagement Grants Committee
+iewiki	ie.wikipedia.org	wikipedia	ie	ie.m.wikipedia.org	Interlingue	open	public	public	Interlingue Wikipedia
+iewikibooks	ie.wikibooks.org	wikibooks	ie	ie.m.wikibooks.org	Interlingue	closed	public	public	Interlingue Wikibooks
+iewiktionary	ie.wiktionary.org	wiktionary	ie	ie.m.wiktionary.org	Interlingue	open	public	public	Interlingue Wiktionary
+iglwiki	igl.wikipedia.org	wikipedia	igl	igl.m.wikipedia.org	Igala	open	public	public	Igala Wikipedia
+igwiki	ig.wikipedia.org	wikipedia	ig	ig.m.wikipedia.org	Igbo	open	public	public	Igbo Wikipedia
+igwikiquote	ig.wikiquote.org	wikiquote	ig	ig.m.wikiquote.org	Igbo	open	public	public	Igbo Wikiquote
+igwiktionary	ig.wiktionary.org	wiktionary	ig	ig.m.wiktionary.org	Igbo	open	public	public	Igbo Wiktionary
+iiwiki	ii.wikipedia.org	wikipedia	ii	ii.m.wikipedia.org	Sichuan Yi	closed	public	public	Sichuan Yi Wikipedia
+ikwiki	ik.wikipedia.org	wikipedia	ik	ik.m.wikipedia.org	Inupiaq	open	public	public	Inupiaq Wikipedia
+ikwiktionary	ik.wiktionary.org	wiktionary	ik	ik.m.wiktionary.org	Inupiaq	closed	public	public	Inupiaq Wiktionary
+ilowiki	ilo.wikipedia.org	wikipedia	ilo	ilo.m.wikipedia.org	Iloko	open	public	public	Iloko Wikipedia
+ilwikimedia	il.wikimedia.org	ilwikimedia	en	il.m.wikimedia.org	English	open	private	private	Wikimedia Israel
+incubatorwiki	incubator.wikimedia.org	incubator	en	incubator.m.wikimedia.org	English	open	public	public	Wikimedia Incubator
+inhwiki	inh.wikipedia.org	wikipedia	inh	inh.m.wikipedia.org	Ingush	open	public	public	Ingush Wikipedia
+internalwiki	internal.wikimedia.org	internal	en	internal.m.wikimedia.org	English	closed	private	private	Internal
+iowiki	io.wikipedia.org	wikipedia	io	io.m.wikipedia.org	Ido	open	public	public	Ido Wikipedia
+iowiktionary	io.wiktionary.org	wiktionary	io	io.m.wiktionary.org	Ido	open	public	public	Ido Wiktionary
+iswiki	is.wikipedia.org	wikipedia	is	is.m.wikipedia.org	Icelandic	open	public	public	Icelandic Wikipedia
+iswikibooks	is.wikibooks.org	wikibooks	is	is.m.wikibooks.org	Icelandic	open	public	public	Icelandic Wikibooks
+iswikiquote	is.wikiquote.org	wikiquote	is	is.m.wikiquote.org	Icelandic	open	public	public	Icelandic Wikiquote
+iswikisource	is.wikisource.org	wikisource	is	is.m.wikisource.org	Icelandic	open	public	public	Icelandic Wikisource
+iswiktionary	is.wiktionary.org	wiktionary	is	is.m.wiktionary.org	Icelandic	open	public	public	Icelandic Wiktionary
+itwiki	it.wikipedia.org	wikipedia	it	it.m.wikipedia.org	Italian	open	public	public	Italian Wikipedia
+itwikibooks	it.wikibooks.org	wikibooks	it	it.m.wikibooks.org	Italian	open	public	public	Italian Wikibooks
+itwikinews	it.wikinews.org	wikinews	it	it.m.wikinews.org	Italian	open	public	public	Italian Wikinews
+itwikiquote	it.wikiquote.org	wikiquote	it	it.m.wikiquote.org	Italian	open	public	public	Italian Wikiquote
+itwikisource	it.wikisource.org	wikisource	it	it.m.wikisource.org	Italian	open	public	public	Italian Wikisource
+itwikiversity	it.wikiversity.org	wikiversity	it	it.m.wikiversity.org	Italian	open	public	public	Italian Wikiversity
+itwikivoyage	it.wikivoyage.org	wikivoyage	it	it.m.wikivoyage.org	Italian	open	public	public	Italian Wikivoyage
+itwiktionary	it.wiktionary.org	wiktionary	it	it.m.wiktionary.org	Italian	open	public	public	Italian Wiktionary
+iuwiki	iu.wikipedia.org	wikipedia	iu	iu.m.wikipedia.org	Inuktitut	open	public	public	Inuktitut Wikipedia
+iuwiktionary	iu.wiktionary.org	wiktionary	iu	iu.m.wiktionary.org	Inuktitut	open	public	public	Inuktitut Wiktionary
+jamwiki	jam.wikipedia.org	wikipedia	jam	jam.m.wikipedia.org	Jamaican Creole English	open	public	public	Jamaican Patois Wikipedia
+jawiki	ja.wikipedia.org	wikipedia	ja	ja.m.wikipedia.org	Japanese	open	public	public	Japanese Wikipedia
+jawikibooks	ja.wikibooks.org	wikibooks	ja	ja.m.wikibooks.org	Japanese	open	public	public	Japanese Wikibooks
+jawikinews	ja.wikinews.org	wikinews	ja	ja.m.wikinews.org	Japanese	open	public	public	Japanese Wikinews
+jawikiquote	ja.wikiquote.org	wikiquote	ja	ja.m.wikiquote.org	Japanese	open	public	public	Japanese Wikiquote
+jawikisource	ja.wikisource.org	wikisource	ja	ja.m.wikisource.org	Japanese	open	public	public	Japanese Wikisource
+jawikiversity	ja.wikiversity.org	wikiversity	ja	ja.m.wikiversity.org	Japanese	open	public	public	Japanese Wikiversity
+jawikivoyage	ja.wikivoyage.org	wikivoyage	ja	ja.m.wikivoyage.org	Japanese	open	public	public	Japanese Wikivoyage
+jawiktionary	ja.wiktionary.org	wiktionary	ja	ja.m.wiktionary.org	Japanese	open	public	public	Japanese Wiktionary
+jbowiki	jbo.wikipedia.org	wikipedia	jbo	jbo.m.wikipedia.org	Lojban	open	public	public	Lojban Wikipedia
+jbowiktionary	jbo.wiktionary.org	wiktionary	jbo	jbo.m.wiktionary.org	Lojban	open	public	public	Lojban Wiktionary
+jvwiki	jv.wikipedia.org	wikipedia	jv	jv.m.wikipedia.org	Javanese	open	public	public	Javanese Wikipedia
+jvwikisource	jv.wikisource.org	wikisource	jv	jv.m.wikisource.org	Javanese	open	public	public	Javanese Wikisource
+jvwiktionary	jv.wiktionary.org	wiktionary	jv	jv.m.wiktionary.org	Javanese	open	public	public	Javanese Wiktionary
+kaawiki	kaa.wikipedia.org	wikipedia	kaa	kaa.m.wikipedia.org	Kara-Kalpak	open	public	public	Kara-Kalpak Wikipedia
+kaawiktionary	kaa.wiktionary.org	wiktionary	kaa	kaa.m.wiktionary.org	Kara-Kalpak	open	public	public	Karakalpak Wiktionary
+kabwiki	kab.wikipedia.org	wikipedia	kab	kab.m.wikipedia.org	Kabyle	open	public	public	Kabyle Wikipedia
+kawiki	ka.wikipedia.org	wikipedia	ka	ka.m.wikipedia.org	Georgian	open	public	public	Georgian Wikipedia
+kawikibooks	ka.wikibooks.org	wikibooks	ka	ka.m.wikibooks.org	Georgian	open	public	public	Georgian Wikibooks
+kawikiquote	ka.wikiquote.org	wikiquote	ka	ka.m.wikiquote.org	Georgian	open	public	public	Georgian Wikiquote
+kawikisource	ka.wikisource.org	wikisource	ka	ka.m.wikisource.org	Georgian	open	public	public	Georgian Wikisource
+kawiktionary	ka.wiktionary.org	wiktionary	ka	ka.m.wiktionary.org	Georgian	open	public	public	Georgian Wiktionary
+kbdwiki	kbd.wikipedia.org	wikipedia	kbd	kbd.m.wikipedia.org	Kabardian	open	public	public	Kabardian Wikipedia
+kbdwiktionary	kbd.wiktionary.org	wiktionary	kbd	kbd.m.wiktionary.org	Kabardian	open	public	public	Kabardian Wiktionary
+kbpwiki	kbp.wikipedia.org	wikipedia	kbp	kbp.m.wikipedia.org	Kabiye	open	public	public	Kabiyè Wikipedia
+kcgwiki	kcg.wikipedia.org	wikipedia	kcg	kcg.m.wikipedia.org	Tyap	open	public	public	Tyap Wikipedia
+kcgwiktionary	kcg.wiktionary.org	wiktionary	kcg	kcg.m.wiktionary.org	Tyap	open	public	public	Tyap Wiktionary
+kgewiki	kge.wikipedia.org	wikipedia	kge	kge.m.wikipedia.org	Komering	open	public	public	Komering Wikipedia
+kgwiki	kg.wikipedia.org	wikipedia	kg	kg.m.wikipedia.org	Kongo	open	public	public	Kongo Wikipedia
+kiwiki	ki.wikipedia.org	wikipedia	ki	ki.m.wikipedia.org	Kikuyu	open	public	public	Kikuyu Wikipedia
+kjwiki	kj.wikipedia.org	wikipedia	kj	kj.m.wikipedia.org	Kuanyama	closed	public	public	Kuanyama Wikipedia
+kkwiki	kk.wikipedia.org	wikipedia	kk	kk.m.wikipedia.org	Kazakh	open	public	public	Kazakh Wikipedia
+kkwikibooks	kk.wikibooks.org	wikibooks	kk	kk.m.wikibooks.org	Kazakh	open	public	public	Kazakh Wikibooks
+kkwikiquote	kk.wikiquote.org	wikiquote	kk	kk.m.wikiquote.org	Kazakh	closed	public	public	Kazakh Wikiquote
+kkwiktionary	kk.wiktionary.org	wiktionary	kk	kk.m.wiktionary.org	Kazakh	open	public	public	Kazakh Wiktionary
+klwiki	kl.wikipedia.org	wikipedia	kl	kl.m.wikipedia.org	Kalaallisut	open	public	public	Kalaallisut Wikipedia
+klwiktionary	kl.wiktionary.org	wiktionary	kl	kl.m.wiktionary.org	Kalaallisut	open	public	public	Kalaallisut Wiktionary
+kmwiki	km.wikipedia.org	wikipedia	km	km.m.wikipedia.org	Khmer	open	public	public	Khmer Wikipedia
+kmwikibooks	km.wikibooks.org	wikibooks	km	km.m.wikibooks.org	Khmer	open	public	public	Khmer Wikibooks
+kmwiktionary	km.wiktionary.org	wiktionary	km	km.m.wiktionary.org	Khmer	open	public	public	Khmer Wiktionary
+kncwiki	knc.wikipedia.org	wikipedia	knc	knc.m.wikipedia.org	Central Kanuri	open	public	public	Central Kanuri Wikipedia
+knwiki	kn.wikipedia.org	wikipedia	kn	kn.m.wikipedia.org	Kannada	open	public	public	Kannada Wikipedia
+knwikibooks	kn.wikibooks.org	wikibooks	kn	kn.m.wikibooks.org	Kannada	closed	public	public	Kannada Wikibooks
+knwikiquote	kn.wikiquote.org	wikiquote	kn	kn.m.wikiquote.org	Kannada	open	public	public	Kannada Wikiquote
+knwikisource	kn.wikisource.org	wikisource	kn	kn.m.wikisource.org	Kannada	open	public	public	Kannada Wikisource
+knwiktionary	kn.wiktionary.org	wiktionary	kn	kn.m.wiktionary.org	Kannada	open	public	public	Kannada Wiktionary
+koiwiki	koi.wikipedia.org	wikipedia	koi	koi.m.wikipedia.org	Komi-Permyak	open	public	public	Komi-Permyak Wikipedia
+kowiki	ko.wikipedia.org	wikipedia	ko	ko.m.wikipedia.org	Korean	open	public	public	Korean Wikipedia
+kowikibooks	ko.wikibooks.org	wikibooks	ko	ko.m.wikibooks.org	Korean	open	public	public	Korean Wikibooks
+kowikinews	ko.wikinews.org	wikinews	ko	ko.m.wikinews.org	Korean	open	public	public	Korean Wikinews
+kowikiquote	ko.wikiquote.org	wikiquote	ko	ko.m.wikiquote.org	Korean	open	public	public	Korean Wikiquote
+kowikisource	ko.wikisource.org	wikisource	ko	ko.m.wikisource.org	Korean	open	public	public	Korean Wikisource
+kowikiversity	ko.wikiversity.org	wikiversity	ko	ko.m.wikiversity.org	Korean	open	public	public	Korean Wikiversity
+kowiktionary	ko.wiktionary.org	wiktionary	ko	ko.m.wiktionary.org	Korean	open	public	public	Korean Wiktionary
+krcwiki	krc.wikipedia.org	wikipedia	krc	krc.m.wikipedia.org	Karachay-Balkar	open	public	public	Karachay-Balkar Wikipedia
+krwiki	kr.wikipedia.org	wikipedia	kr	kr.m.wikipedia.org	Kanuri	closed	public	public	Kanuri Wikipedia
+krwikiquote	kr.wikiquote.org	wikiquote	kr	kr.m.wikiquote.org	Kanuri	closed	public	public	Kanuri Wikiquote
+kshwiki	ksh.wikipedia.org	wikipedia	ksh	ksh.m.wikipedia.org	Colognian	open	public	public	Colognian Wikipedia
+kswiki	ks.wikipedia.org	wikipedia	ks	ks.m.wikipedia.org	Kashmiri	open	public	public	Kashmiri Wikipedia
+kswikibooks	ks.wikibooks.org	wikibooks	ks	ks.m.wikibooks.org	Kashmiri	closed	public	public	Kashmiri Wikibooks
+kswikiquote	ks.wikiquote.org	wikiquote	ks	ks.m.wikiquote.org	Kashmiri	closed	public	public	Kashmiri Wikiquote
+kswiktionary	ks.wiktionary.org	wiktionary	ks	ks.m.wiktionary.org	Kashmiri	open	public	public	Kashmiri Wiktionary
+kuswiki	kus.wikipedia.org	wikipedia	kus	kus.m.wikipedia.org	Kusaal	open	public	public	Kusaal Wikipedia
+kuwiki	ku.wikipedia.org	wikipedia	ku	ku.m.wikipedia.org	Kurdish	open	public	public	Kurdish Wikipedia
+kuwikibooks	ku.wikibooks.org	wikibooks	ku	ku.m.wikibooks.org	Kurdish	open	public	public	Kurdish Wikibooks
+kuwikiquote	ku.wikiquote.org	wikiquote	ku	ku.m.wikiquote.org	Kurdish	open	public	public	Kurdish Wikiquote
+kuwiktionary	ku.wiktionary.org	wiktionary	ku	ku.m.wiktionary.org	Kurdish	open	public	public	Kurdish Wiktionary
+kvwiki	kv.wikipedia.org	wikipedia	kv	kv.m.wikipedia.org	Komi	open	public	public	Komi Wikipedia
+kwwiki	kw.wikipedia.org	wikipedia	kw	kw.m.wikipedia.org	Cornish	open	public	public	Cornish Wikipedia
+kwwikiquote	kw.wikiquote.org	wikiquote	kw	kw.m.wikiquote.org	Cornish	closed	public	public	Cornish Wikiquote
+kwwiktionary	kw.wiktionary.org	wiktionary	kw	kw.m.wiktionary.org	Cornish	open	public	public	Cornish Wiktionary
+kywiki	ky.wikipedia.org	wikipedia	ky	ky.m.wikipedia.org	Kyrgyz	open	public	public	Kyrgyz Wikipedia
+kywikibooks	ky.wikibooks.org	wikibooks	ky	ky.m.wikibooks.org	Kyrgyz	open	public	public	Kyrgyz Wikibooks
+kywikiquote	ky.wikiquote.org	wikiquote	ky	ky.m.wikiquote.org	Kyrgyz	open	public	public	Kyrgyz Wikiquote
+kywiktionary	ky.wiktionary.org	wiktionary	ky	ky.m.wiktionary.org	Kyrgyz	open	public	public	Kyrgyz Wiktionary
+labswiki	wikitech.wikimedia.org	labs	en	wikitech.wikimedia.org	English	open	public	public	Wikitech
+ladwiki	lad.wikipedia.org	wikipedia	lad	lad.m.wikipedia.org	Ladino	open	public	public	Ladino Wikipedia
+lawiki	la.wikipedia.org	wikipedia	la	la.m.wikipedia.org	Latin	open	public	public	Latin Wikipedia
+lawikibooks	la.wikibooks.org	wikibooks	la	la.m.wikibooks.org	Latin	open	public	public	Latin Wikibooks
+lawikiquote	la.wikiquote.org	wikiquote	la	la.m.wikiquote.org	Latin	open	public	public	Latin Wikiquote
+lawikisource	la.wikisource.org	wikisource	la	la.m.wikisource.org	Latin	open	public	public	Latin Wikisource
+lawiktionary	la.wiktionary.org	wiktionary	la	la.m.wiktionary.org	Latin	open	public	public	Latin Wiktionary
+lbewiki	lbe.wikipedia.org	wikipedia	lbe	lbe.m.wikipedia.org	Lak	open	public	public	Lak Wikipedia
+lbwiki	lb.wikipedia.org	wikipedia	lb	lb.m.wikipedia.org	Luxembourgish	open	public	public	Luxembourgish Wikipedia
+lbwikibooks	lb.wikibooks.org	wikibooks	lb	lb.m.wikibooks.org	Luxembourgish	closed	public	public	Luxembourgish Wikibooks
+lbwikiquote	lb.wikiquote.org	wikiquote	lb	lb.m.wikiquote.org	Luxembourgish	closed	public	public	Luxembourgish Wikiquote
+lbwiktionary	lb.wiktionary.org	wiktionary	lb	lb.m.wiktionary.org	Luxembourgish	open	public	public	Luxembourgish Wiktionary
+legalteamwiki	legalteam.wikimedia.org	legalteam	en	legalteam.m.wikimedia.org	English	open	private	private	Legal Team
+lezwiki	lez.wikipedia.org	wikipedia	lez	lez.m.wikipedia.org	Lezghian	open	public	public	Lezghian Wikipedia
+lfnwiki	lfn.wikipedia.org	wikipedia	lfn	lfn.m.wikipedia.org	Lingua Franca Nova	open	public	public	Lingua Franca Nova Wikipedia
+lgwiki	lg.wikipedia.org	wikipedia	lg	lg.m.wikipedia.org	Ganda	open	public	public	Ganda Wikipedia
+lijwiki	lij.wikipedia.org	wikipedia	lij	lij.m.wikipedia.org	Ligurian	open	public	public	Ligurian Wikipedia
+lijwikisource	lij.wikisource.org	wikisource	lij	lij.m.wikisource.org	Ligurian	open	public	public	Ligurian Wikisource
+liwiki	li.wikipedia.org	wikipedia	li	li.m.wikipedia.org	Limburgish	open	public	public	Limburgish Wikipedia
+liwikibooks	li.wikibooks.org	wikibooks	li	li.m.wikibooks.org	Limburgish	open	public	public	Limburgish Wikibooks
+liwikinews	li.wikinews.org	wikinews	li	li.m.wikinews.org	Limburgish	open	public	public	Limburgish Wikinews
+liwikiquote	li.wikiquote.org	wikiquote	li	li.m.wikiquote.org	Limburgish	open	public	public	Limburgish Wikiquote
+liwikisource	li.wikisource.org	wikisource	li	li.m.wikisource.org	Limburgish	open	public	public	Limburgish Wikisource
+liwiktionary	li.wiktionary.org	wiktionary	li	li.m.wiktionary.org	Limburgish	open	public	public	Limburgish Wiktionary
+lldwiki	lld.wikipedia.org	wikipedia	lld	lld.m.wikipedia.org	Ladin	open	public	public	Ladin Wikipedia
+lmowiki	lmo.wikipedia.org	wikipedia	lmo	lmo.m.wikipedia.org	Lombard	open	public	public	Lombard Wikipedia
+lmowiktionary	lmo.wiktionary.org	wiktionary	lmo	lmo.m.wiktionary.org	Lombard	open	public	public	Lombard Wiktionary
+lnwiki	ln.wikipedia.org	wikipedia	ln	ln.m.wikipedia.org	Lingala	open	public	public	Lingala Wikipedia
+lnwikibooks	ln.wikibooks.org	wikibooks	ln	ln.m.wikibooks.org	Lingala	closed	public	public	Lingala Wikibooks
+lnwiktionary	ln.wiktionary.org	wiktionary	ln	ln.m.wiktionary.org	Lingala	open	public	public	Lingala Wiktionary
+loginwiki	login.wikimedia.org	login	en	login.wikimedia.org	English	open	public	public	Wikimedia Login
+lowiki	lo.wikipedia.org	wikipedia	lo	lo.m.wikipedia.org	Lao	open	public	public	Lao Wikipedia
+lowiktionary	lo.wiktionary.org	wiktionary	lo	lo.m.wiktionary.org	Lao	open	public	public	Lao Wiktionary
+lrcwiki	lrc.wikipedia.org	wikipedia	lrc	lrc.m.wikipedia.org	Northern Luri	closed	public	public	Northern Luri Wikipedia
+ltgwiki	ltg.wikipedia.org	wikipedia	ltg	ltg.m.wikipedia.org	Latgalian	open	public	public	Latgalian Wikipedia
+ltwiki	lt.wikipedia.org	wikipedia	lt	lt.m.wikipedia.org	Lithuanian	open	public	public	Lithuanian Wikipedia
+ltwikibooks	lt.wikibooks.org	wikibooks	lt	lt.m.wikibooks.org	Lithuanian	open	public	public	Lithuanian Wikibooks
+ltwikiquote	lt.wikiquote.org	wikiquote	lt	lt.m.wikiquote.org	Lithuanian	open	public	public	Lithuanian Wikiquote
+ltwikisource	lt.wikisource.org	wikisource	lt	lt.m.wikisource.org	Lithuanian	open	public	public	Lithuanian Wikisource
+ltwiktionary	lt.wiktionary.org	wiktionary	lt	lt.m.wiktionary.org	Lithuanian	open	public	public	Lithuanian Wiktionary
+lvwiki	lv.wikipedia.org	wikipedia	lv	lv.m.wikipedia.org	Latvian	open	public	public	Latvian Wikipedia
+lvwikibooks	lv.wikibooks.org	wikibooks	lv	lv.m.wikibooks.org	Latvian	closed	public	public	Latvian Wikibooks
+lvwiktionary	lv.wiktionary.org	wiktionary	lv	lv.m.wiktionary.org	Latvian	open	public	public	Latvian Wiktionary
+madwiki	mad.wikipedia.org	wikipedia	mad	mad.m.wikipedia.org	Madurese	open	public	public	Madurese Wikipedia
+madwiktionary	mad.wiktionary.org	wiktionary	mad	mad.m.wiktionary.org	Madurese	open	public	public	Madurese Wiktionary
+maiwiki	mai.wikipedia.org	wikipedia	mai	mai.m.wikipedia.org	Maithili	open	public	public	Maithili Wikipedia
+maiwikimedia	mai.wikimedia.org	maiwikimedia	en	mai.m.wikimedia.org	English	open	public	private	Maithili Wikimedians User Group
+map_bmswiki	map-bms.wikipedia.org	wikipedia	map-bms	map-bms.m.wikipedia.org	Banyumasan	open	public	public	Basa Banyumasan Wikipedia
+mdfwiki	mdf.wikipedia.org	wikipedia	mdf	mdf.m.wikipedia.org	Moksha	open	public	public	Moksha Wikipedia
+mediawikiwiki	www.mediawiki.org	mediawiki	en	m.mediawiki.org	English	open	public	public	MediaWiki
+metawiki	meta.wikimedia.org	meta	en	meta.m.wikimedia.org	English	open	public	public	Meta-Wiki
+mgwiki	mg.wikipedia.org	wikipedia	mg	mg.m.wikipedia.org	Malagasy	open	public	public	Malagasy Wikipedia
+mgwikibooks	mg.wikibooks.org	wikibooks	mg	mg.m.wikibooks.org	Malagasy	open	public	public	Malagasy Wikibooks
+mgwiktionary	mg.wiktionary.org	wiktionary	mg	mg.m.wiktionary.org	Malagasy	open	public	public	Malagasy Wiktionary
+mhrwiki	mhr.wikipedia.org	wikipedia	mhr	mhr.m.wikipedia.org	Eastern Mari	open	public	public	Eastern Mari Wikipedia
+mhwiki	mh.wikipedia.org	wikipedia	mh	mh.m.wikipedia.org	Marshallese	closed	public	public	Marshallese Wikipedia
+mhwiktionary	mh.wiktionary.org	wiktionary	mh	mh.m.wiktionary.org	Marshallese	closed	public	public	Marshallese Wiktionary
+minwiki	min.wikipedia.org	wikipedia	min	min.m.wikipedia.org	Minangkabau	open	public	public	Minangkabau Wikipedia
+minwiktionary	min.wiktionary.org	wiktionary	min	min.m.wiktionary.org	Minangkabau	open	public	public	Minangkabau Wiktionary
+miwiki	mi.wikipedia.org	wikipedia	mi	mi.m.wikipedia.org	Māori	open	public	public	Maori Wikipedia
+miwikibooks	mi.wikibooks.org	wikibooks	mi	mi.m.wikibooks.org	Māori	closed	public	public	Maori Wikibooks
+miwiktionary	mi.wiktionary.org	wiktionary	mi	mi.m.wiktionary.org	Māori	open	public	public	Maori Wiktionary
+mkwiki	mk.wikipedia.org	wikipedia	mk	mk.m.wikipedia.org	Macedonian	open	public	public	Macedonian Wikipedia
+mkwikibooks	mk.wikibooks.org	wikibooks	mk	mk.m.wikibooks.org	Macedonian	open	public	public	Macedonian Wikibooks
+mkwikimedia	mk.wikimedia.org	mkwikimedia	en	mk.m.wikimedia.org	English	open	public	public	Wikimedia Macedonia
+mkwikisource	mk.wikisource.org	wikisource	mk	mk.m.wikisource.org	Macedonian	open	public	public	Macedonian Wikisource
+mkwiktionary	mk.wiktionary.org	wiktionary	mk	mk.m.wiktionary.org	Macedonian	open	public	public	Macedonian Wiktionary
+mlwiki	ml.wikipedia.org	wikipedia	ml	ml.m.wikipedia.org	Malayalam	open	public	public	Malayalam Wikipedia
+mlwikibooks	ml.wikibooks.org	wikibooks	ml	ml.m.wikibooks.org	Malayalam	open	public	public	Malayalam Wikibooks
+mlwikiquote	ml.wikiquote.org	wikiquote	ml	ml.m.wikiquote.org	Malayalam	open	public	public	Malayalam Wikiquote
+mlwikisource	ml.wikisource.org	wikisource	ml	ml.m.wikisource.org	Malayalam	open	public	public	Malayalam Wikisource
+mlwiktionary	ml.wiktionary.org	wiktionary	ml	ml.m.wiktionary.org	Malayalam	open	public	public	Malayalam Wiktionary
+mniwiki	mni.wikipedia.org	wikipedia	mni	mni.m.wikipedia.org	Manipuri	open	public	public	Manipuri Wikipedia
+mniwiktionary	mni.wiktionary.org	wiktionary	mni	mni.m.wiktionary.org	Manipuri	open	public	public	Manipuri Wiktionary
+mnwiki	mn.wikipedia.org	wikipedia	mn	mn.m.wikipedia.org	Mongolian	open	public	public	Mongolian Wikipedia
+mnwikibooks	mn.wikibooks.org	wikibooks	mn	mn.m.wikibooks.org	Mongolian	closed	public	public	Mongolian Wikibooks
+mnwiktionary	mn.wiktionary.org	wiktionary	mn	mn.m.wiktionary.org	Mongolian	open	public	public	Mongolian Wiktionary
+mnwwiki	mnw.wikipedia.org	wikipedia	mnw	mnw.m.wikipedia.org	Mon	open	public	public	Mon Wikipedia
+mnwwiktionary	mnw.wiktionary.org	wiktionary	mnw	mnw.m.wiktionary.org	Mon	open	public	public	Mon Wiktionary
+moswiki	mos.wikipedia.org	wikipedia	mos	mos.m.wikipedia.org	Mossi	open	public	public	Mooré Wikipedia
+movementroleswiki	movementroles.wikimedia.org	movementroles	en	movementroles.m.wikimedia.org	English	open	private	private	Movement Roles
+mrjwiki	mrj.wikipedia.org	wikipedia	mrj	mrj.m.wikipedia.org	Western Mari	open	public	public	Western Mari Wikipedia
+mrwiki	mr.wikipedia.org	wikipedia	mr	mr.m.wikipedia.org	Marathi	open	public	public	Marathi Wikipedia
+mrwikibooks	mr.wikibooks.org	wikibooks	mr	mr.m.wikibooks.org	Marathi	open	public	public	Marathi Wikibooks
+mrwikiquote	mr.wikiquote.org	wikiquote	mr	mr.m.wikiquote.org	Marathi	open	public	public	Marathi Wikiquote
+mrwikisource	mr.wikisource.org	wikisource	mr	mr.m.wikisource.org	Marathi	open	public	public	Marathi Wikisource
+mrwiktionary	mr.wiktionary.org	wiktionary	mr	mr.m.wiktionary.org	Marathi	open	public	public	Marathi Wiktionary
+mswiki	ms.wikipedia.org	wikipedia	ms	ms.m.wikipedia.org	Malay	open	public	public	Malay Wikipedia
+mswikibooks	ms.wikibooks.org	wikibooks	ms	ms.m.wikibooks.org	Malay	open	public	public	Malay Wikibooks
+mswikisource	ms.wikisource.org	wikisource	ms	ms.m.wikisource.org	Malay	open	public	public	Malay Wikisource
+mswiktionary	ms.wiktionary.org	wiktionary	ms	ms.m.wiktionary.org	Malay	open	public	public	Malay Wiktionary
+mtwiki	mt.wikipedia.org	wikipedia	mt	mt.m.wikipedia.org	Maltese	open	public	public	Maltese Wikipedia
+mtwiktionary	mt.wiktionary.org	wiktionary	mt	mt.m.wiktionary.org	Maltese	open	public	public	Maltese Wiktionary
+muswiki	mus.wikipedia.org	wikipedia	mus	mus.m.wikipedia.org	Muscogee	closed	public	public	Creek Wikipedia
+mwlwiki	mwl.wikipedia.org	wikipedia	mwl	mwl.m.wikipedia.org	Mirandese	open	public	public	Mirandese Wikipedia
+mxwikimedia	mx.wikimedia.org	mxwikimedia	en	mx.m.wikimedia.org	English	open	public	public	Wikimedia Mexico
+myvwiki	myv.wikipedia.org	wikipedia	myv	myv.m.wikipedia.org	Erzya	open	public	public	Erzya Wikipedia
+mywiki	my.wikipedia.org	wikipedia	my	my.m.wikipedia.org	Burmese	open	public	public	Burmese Wikipedia
+mywikibooks	my.wikibooks.org	wikibooks	my	my.m.wikibooks.org	Burmese	closed	public	public	Burmese Wikibooks
+mywikisource	my.wikisource.org	wikisource	my	my.m.wikisource.org	Burmese	open	public	public	Burmese Wikisource
+mywiktionary	my.wiktionary.org	wiktionary	my	my.m.wiktionary.org	Burmese	open	public	public	Burmese Wiktionary
+mznwiki	mzn.wikipedia.org	wikipedia	mzn	mzn.m.wikipedia.org	Mazanderani	open	public	public	Mazanderani Wikipedia
+nahwiki	nah.wikipedia.org	wikipedia	nah	nah.m.wikipedia.org	Nahuatl	open	public	public	Nāhuatl Wikipedia
+nahwikibooks	nah.wikibooks.org	wikibooks	nah	nah.m.wikibooks.org	Nahuatl	closed	public	public	Nāhuatl Wikibooks
+nahwiktionary	nah.wiktionary.org	wiktionary	nah	nah.m.wiktionary.org	Nahuatl	open	public	public	Nāhuatl Wiktionary
+napwiki	nap.wikipedia.org	wikipedia	nap	nap.m.wikipedia.org	Neapolitan	open	public	public	Neapolitan Wikipedia
+napwikisource	nap.wikisource.org	wikisource	nap	nap.m.wikisource.org	Neapolitan	open	public	public	Neapolitan Wikisource
+nawiki	na.wikipedia.org	wikipedia	na	na.m.wikipedia.org	Nauru	closed	public	public	Nauru Wikipedia
+nawikibooks	na.wikibooks.org	wikibooks	na	na.m.wikibooks.org	Nauru	closed	public	public	Nauru Wikibooks
+nawikiquote	na.wikiquote.org	wikiquote	na	na.m.wikiquote.org	Nauru	closed	public	public	Nauru Wikiquote
+nawiktionary	na.wiktionary.org	wiktionary	na	na.m.wiktionary.org	Nauru	open	public	public	Nauru Wiktionary
+nds_nlwiki	nds-nl.wikipedia.org	wikipedia	nds-nl	nds-nl.m.wikipedia.org	Low Saxon	open	public	public	Low Saxon Wikipedia
+ndswiki	nds.wikipedia.org	wikipedia	nds	nds.m.wikipedia.org	Low German	open	public	public	Low German Wikipedia
+ndswikibooks	nds.wikibooks.org	wikibooks	nds	nds.m.wikibooks.org	Low German	closed	public	public	Low German Wikibooks
+ndswikiquote	nds.wikiquote.org	wikiquote	nds	nds.m.wikiquote.org	Low German	closed	public	public	Low German Wikiquote
+ndswiktionary	nds.wiktionary.org	wiktionary	nds	nds.m.wiktionary.org	Low German	open	public	public	Low German Wiktionary
+newiki	ne.wikipedia.org	wikipedia	ne	ne.m.wikipedia.org	Nepali	open	public	public	Nepali Wikipedia
+newikibooks	ne.wikibooks.org	wikibooks	ne	ne.m.wikibooks.org	Nepali	open	public	public	Nepali Wikibooks
+newiktionary	ne.wiktionary.org	wiktionary	ne	ne.m.wiktionary.org	Nepali	open	public	public	Nepali Wiktionary
+newwiki	new.wikipedia.org	wikipedia	new	new.m.wikipedia.org	Newari	open	public	public	Newari Wikipedia
+ngwiki	ng.wikipedia.org	wikipedia	ng	ng.m.wikipedia.org	Ndonga	closed	public	public	Ndonga Wikipedia
+ngwikimedia	ng.wikimedia.org	ngwikimedia	en	ng.m.wikimedia.org	English	open	public	private	Wikimedia Nigeria
+niawiki	nia.wikipedia.org	wikipedia	nia	nia.m.wikipedia.org	Nias	open	public	public	Nias Wikipedia
+niawiktionary	nia.wiktionary.org	wiktionary	nia	nia.m.wiktionary.org	Nias	open	public	public	Nias Wiktionary
+nlwiki	nl.wikipedia.org	wikipedia	nl	nl.m.wikipedia.org	Dutch	open	public	public	Dutch Wikipedia
+nlwikibooks	nl.wikibooks.org	wikibooks	nl	nl.m.wikibooks.org	Dutch	open	public	public	Dutch Wikibooks
+nlwikimedia	nl.wikimedia.org	nlwikimedia	en	nl.m.wikimedia.org	English	open	public	public	Wikimedia Netherlands
+nlwikinews	nl.wikinews.org	wikinews	nl	nl.m.wikinews.org	Dutch	open	public	public	Dutch Wikinews
+nlwikiquote	nl.wikiquote.org	wikiquote	nl	nl.m.wikiquote.org	Dutch	open	public	public	Dutch Wikiquote
+nlwikisource	nl.wikisource.org	wikisource	nl	nl.m.wikisource.org	Dutch	open	public	public	Dutch Wikisource
+nlwikivoyage	nl.wikivoyage.org	wikivoyage	nl	nl.m.wikivoyage.org	Dutch	open	public	public	Dutch Wikivoyage
+nlwiktionary	nl.wiktionary.org	wiktionary	nl	nl.m.wiktionary.org	Dutch	open	public	public	Dutch Wiktionary
+nnwiki	nn.wikipedia.org	wikipedia	nn	nn.m.wikipedia.org	Norwegian Nynorsk	open	public	public	Norwegian Nynorsk Wikipedia
+nnwikiquote	nn.wikiquote.org	wikiquote	nn	nn.m.wikiquote.org	Norwegian Nynorsk	open	public	public	Norwegian Nynorsk Wikiquote
+nnwiktionary	nn.wiktionary.org	wiktionary	nn	nn.m.wiktionary.org	Norwegian Nynorsk	open	public	public	Norwegian Nynorsk Wiktionary
+noboard_chapterswikimedia	noboard-chapters.wikimedia.org	noboard-chapterswikimedia	en	noboard-chapters.m.wikimedia.org	English	open	private	private	Wikimedia Norway Internal Board
+nostalgiawiki	nostalgia.wikipedia.org	nostalgia	en	nostalgia.m.wikipedia.org	English	open	public	private	Nostalgia Wikipedia
+novwiki	nov.wikipedia.org	wikipedia	nov	nov.m.wikipedia.org	Novial	open	public	public	Novial Wikipedia
+nowiki	no.wikipedia.org	wikipedia	no	no.m.wikipedia.org	Norwegian	open	public	public	Norwegian Bokmål Wikipedia
+nowikibooks	no.wikibooks.org	wikibooks	no	no.m.wikibooks.org	Norwegian	open	public	public	Norwegian Wikibooks
+nowikimedia	no.wikimedia.org	nowikimedia	en	no.m.wikimedia.org	English	open	public	public	Wikimedia Norway
+nowikinews	no.wikinews.org	wikinews	no	no.m.wikinews.org	Norwegian	open	public	public	Norwegian Wikinews
+nowikiquote	no.wikiquote.org	wikiquote	no	no.m.wikiquote.org	Norwegian	open	public	public	Norwegian Bokmål Wikiquote
+nowikisource	no.wikisource.org	wikisource	no	no.m.wikisource.org	Norwegian	open	public	public	Norwegian Wikisource
+nowiktionary	no.wiktionary.org	wiktionary	no	no.m.wiktionary.org	Norwegian	open	public	public	Norwegian Bokmål Wiktionary
+nqowiki	nqo.wikipedia.org	wikipedia	nqo	nqo.m.wikipedia.org	N’Ko	open	public	public	N'Ko Wikipedia
+nrmwiki	nrm.wikipedia.org	wikipedia	nrm	nrm.m.wikipedia.org	Norman	open	public	public	Nouormand Wikipedia
+nrwiki	nr.wikipedia.org	wikipedia	nr	nr.m.wikipedia.org	South Ndebele	open	public	public	Southern Ndebele Wikipedia
+nsowiki	nso.wikipedia.org	wikipedia	nso	nso.m.wikipedia.org	Northern Sotho	open	public	public	Northern Sotho Wikipedia
+nvwiki	nv.wikipedia.org	wikipedia	nv	nv.m.wikipedia.org	Navajo	open	public	public	Navajo Wikipedia
+nycwikimedia	nyc.wikimedia.org	nycwikimedia	en	nyc.m.wikimedia.org	English	open	public	public	Wikimedia New York City
+nywiki	ny.wikipedia.org	wikipedia	ny	ny.m.wikipedia.org	Nyanja	open	public	public	Nyanja Wikipedia
+nzwikimedia	nz.wikimedia.org	nzwikimedia	en	nz.m.wikimedia.org	English	closed	public	public	Wikimedia New Zealand
+ocwiki	oc.wikipedia.org	wikipedia	oc	oc.m.wikipedia.org	Occitan	open	public	public	Occitan Wikipedia
+ocwikibooks	oc.wikibooks.org	wikibooks	oc	oc.m.wikibooks.org	Occitan	open	public	public	Occitan Wikibooks
+ocwiktionary	oc.wiktionary.org	wiktionary	oc	oc.m.wiktionary.org	Occitan	open	public	public	Occitan Wiktionary
+officewiki	office.wikimedia.org	office	en	office.m.wikimedia.org	English	open	private	private	Wikimedia Office
+olowiki	olo.wikipedia.org	wikipedia	olo	olo.m.wikipedia.org	Livvi-Karelian	open	public	public	Livvi-Karelian Wikipedia
+ombudsmenwiki	ombuds.wikimedia.org	ombudsmen	en	ombuds.m.wikimedia.org	English	open	private	private	Ombuds Committee
+omwiki	om.wikipedia.org	wikipedia	om	om.m.wikipedia.org	Oromo	open	public	public	Oromo Wikipedia
+omwiktionary	om.wiktionary.org	wiktionary	om	om.m.wiktionary.org	Oromo	open	public	public	Oromo Wiktionary
+orwiki	or.wikipedia.org	wikipedia	or	or.m.wikipedia.org	Odia	open	public	public	Oriya Wikipedia
+orwikisource	or.wikisource.org	wikisource	or	or.m.wikisource.org	Odia	open	public	public	Oriya Wikisource
+orwiktionary	or.wiktionary.org	wiktionary	or	or.m.wiktionary.org	Odia	open	public	public	Oriya Wiktionary
+oswiki	os.wikipedia.org	wikipedia	os	os.m.wikipedia.org	Ossetic	open	public	public	Ossetic Wikipedia
+otrs_wikiwiki	vrt-wiki.wikimedia.org	otrs-wiki	en	vrt-wiki.m.wikimedia.org	English	open	private	private	Volunteer Response Team
+outreachwiki	outreach.wikimedia.org	outreach	en	outreach.m.wikimedia.org	English	open	public	public	Wikimedia Outreach
+pa_uswikimedia	pa-us.wikimedia.org	pa-uswikimedia	en	pa-us.m.wikimedia.org	English	closed	public	public	Wikimedia Pennsylvania
+pagwiki	pag.wikipedia.org	wikipedia	pag	pag.m.wikipedia.org	Pangasinan	open	public	public	Pangasinan Wikipedia
+pamwiki	pam.wikipedia.org	wikipedia	pam	pam.m.wikipedia.org	Pampanga	open	public	public	Pampanga Wikipedia
+papwiki	pap.wikipedia.org	wikipedia	pap	pap.m.wikipedia.org	Papiamento	open	public	public	Papiamento Wikipedia
+pawiki	pa.wikipedia.org	wikipedia	pa	pa.m.wikipedia.org	Punjabi	open	public	public	Punjabi Wikipedia
+pawikibooks	pa.wikibooks.org	wikibooks	pa	pa.m.wikibooks.org	Punjabi	open	public	public	Punjabi Wikibooks
+pawikisource	pa.wikisource.org	wikisource	pa	pa.m.wikisource.org	Punjabi	open	public	public	Punjabi Wikisource
+pawiktionary	pa.wiktionary.org	wiktionary	pa	pa.m.wiktionary.org	Punjabi	open	public	public	Punjabi Wiktionary
+pcdwiki	pcd.wikipedia.org	wikipedia	pcd	pcd.m.wikipedia.org	Picard	open	public	public	Picard Wikipedia
+pcmwiki	pcm.wikipedia.org	wikipedia	pcm	pcm.m.wikipedia.org	Nigerian Pidgin	open	public	public	Nigerian Pidgin Wikipedia
+pdcwiki	pdc.wikipedia.org	wikipedia	pdc	pdc.m.wikipedia.org	Pennsylvania German	open	public	public	Pennsylvania German Wikipedia
+pflwiki	pfl.wikipedia.org	wikipedia	pfl	pfl.m.wikipedia.org	Palatine German	open	public	public	Palatine German Wikipedia
+pihwiki	pih.wikipedia.org	wikipedia	pih	pih.m.wikipedia.org	Pitcairn-Norfolk	open	public	public	Norfuk / Pitkern Wikipedia
+piwiki	pi.wikipedia.org	wikipedia	pi	pi.m.wikipedia.org	Pali	open	public	public	Pali Wikipedia
+piwiktionary	pi.wiktionary.org	wiktionary	pi	pi.m.wiktionary.org	Pali	closed	public	public	Pali Wiktionary
+plwiki	pl.wikipedia.org	wikipedia	pl	pl.m.wikipedia.org	Polish	open	public	public	Polish Wikipedia
+plwikibooks	pl.wikibooks.org	wikibooks	pl	pl.m.wikibooks.org	Polish	open	public	public	Polish Wikibooks
+plwikimedia	pl.wikimedia.org	plwikimedia	en	pl.m.wikimedia.org	English	open	public	public	Wikimedia Poland
+plwikinews	pl.wikinews.org	wikinews	pl	pl.m.wikinews.org	Polish	open	public	public	Polish Wikinews
+plwikiquote	pl.wikiquote.org	wikiquote	pl	pl.m.wikiquote.org	Polish	open	public	public	Polish Wikiquote
+plwikisource	pl.wikisource.org	wikisource	pl	pl.m.wikisource.org	Polish	open	public	public	Polish Wikisource
+plwikivoyage	pl.wikivoyage.org	wikivoyage	pl	pl.m.wikivoyage.org	Polish	open	public	public	Polish Wikivoyage
+plwiktionary	pl.wiktionary.org	wiktionary	pl	pl.m.wiktionary.org	Polish	open	public	public	Polish Wiktionary
+pmswiki	pms.wikipedia.org	wikipedia	pms	pms.m.wikipedia.org	Piedmontese	open	public	public	Piedmontese Wikipedia
+pmswikisource	pms.wikisource.org	wikisource	pms	pms.m.wikisource.org	Piedmontese	open	public	public	Piedmontese Wikisource
+pnbwiki	pnb.wikipedia.org	wikipedia	pnb	pnb.m.wikipedia.org	Western Punjabi	open	public	public	Western Punjabi Wikipedia
+pnbwiktionary	pnb.wiktionary.org	wiktionary	pnb	pnb.m.wiktionary.org	Western Punjabi	open	public	public	Western Punjabi Wiktionary
+pntwiki	pnt.wikipedia.org	wikipedia	pnt	pnt.m.wikipedia.org	Pontic	open	public	public	Pontic Wikipedia
+projectcomwiki	projectcom.wikimedia.org	projectcom	en	projectcom.m.wikimedia.org	English	open	private	private	Project Grants Committee
+pswiki	ps.wikipedia.org	wikipedia	ps	ps.m.wikipedia.org	Pashto	open	public	public	Pashto Wikipedia
+pswikibooks	ps.wikibooks.org	wikibooks	ps	ps.m.wikibooks.org	Pashto	closed	public	public	Pashto Wikibooks
+pswikivoyage	ps.wikivoyage.org	wikivoyage	ps	ps.m.wikivoyage.org	Pashto	open	public	public	Pashto Wikivoyage
+pswiktionary	ps.wiktionary.org	wiktionary	ps	ps.m.wiktionary.org	Pashto	open	public	public	Pashto Wiktionary
+ptwiki	pt.wikipedia.org	wikipedia	pt	pt.m.wikipedia.org	Portuguese	open	public	public	Portuguese Wikipedia
+ptwikibooks	pt.wikibooks.org	wikibooks	pt	pt.m.wikibooks.org	Portuguese	open	public	public	Portuguese Wikibooks
+ptwikimedia	pt.wikimedia.org	ptwikimedia	en	pt.m.wikimedia.org	English	open	public	public	Wikimedia Portugal
+ptwikinews	pt.wikinews.org	wikinews	pt	pt.m.wikinews.org	Portuguese	open	public	public	Portuguese Wikinews
+ptwikiquote	pt.wikiquote.org	wikiquote	pt	pt.m.wikiquote.org	Portuguese	open	public	public	Portuguese Wikiquote
+ptwikisource	pt.wikisource.org	wikisource	pt	pt.m.wikisource.org	Portuguese	open	public	public	Portuguese Wikisource
+ptwikiversity	pt.wikiversity.org	wikiversity	pt	pt.m.wikiversity.org	Portuguese	open	public	public	Portuguese Wikiversity
+ptwikivoyage	pt.wikivoyage.org	wikivoyage	pt	pt.m.wikivoyage.org	Portuguese	open	public	public	Portuguese Wikivoyage
+ptwiktionary	pt.wiktionary.org	wiktionary	pt	pt.m.wiktionary.org	Portuguese	open	public	public	Portuguese Wiktionary
+punjabiwikimedia	punjabi.wikimedia.org	punjabiwikimedia	en	punjabi.m.wikimedia.org	English	open	public	private	Punjabi Wikimedians
+pwnwiki	pwn.wikipedia.org	wikipedia	pwn	pwn.m.wikipedia.org	Paiwan	open	public	public	Paiwan Wikipedia
+qualitywiki	quality.wikimedia.org	quality	en	quality.m.wikimedia.org	English	closed	public	public	Wikimedia Quality
+quwiki	qu.wikipedia.org	wikipedia	qu	qu.m.wikipedia.org	Quechua	open	public	public	Quechua Wikipedia
+quwikibooks	qu.wikibooks.org	wikibooks	qu	qu.m.wikibooks.org	Quechua	closed	public	public	Quechua Wikibooks
+quwikiquote	qu.wikiquote.org	wikiquote	qu	qu.m.wikiquote.org	Quechua	closed	public	public	Quechua Wikiquote
+quwiktionary	qu.wiktionary.org	wiktionary	qu	qu.m.wiktionary.org	Quechua	open	public	public	Quechua Wiktionary
+rmwiki	rm.wikipedia.org	wikipedia	rm	rm.m.wikipedia.org	Romansh	open	public	public	Romansh Wikipedia
+rmwikibooks	rm.wikibooks.org	wikibooks	rm	rm.m.wikibooks.org	Romansh	closed	public	public	Romansh Wikibooks
+rmwiktionary	rm.wiktionary.org	wiktionary	rm	rm.m.wiktionary.org	Romansh	closed	public	public	Romansh Wiktionary
+rmywiki	rmy.wikipedia.org	wikipedia	rmy	rmy.m.wikipedia.org	Vlax Romani	open	public	public	Romani Wikipedia
+rnwiki	rn.wikipedia.org	wikipedia	rn	rn.m.wikipedia.org	Rundi	open	public	public	Rundi Wikipedia
+rnwiktionary	rn.wiktionary.org	wiktionary	rn	rn.m.wiktionary.org	Rundi	closed	public	public	Rundi Wiktionary
+roa_rupwiki	roa-rup.wikipedia.org	wikipedia	rup	roa-rup.m.wikipedia.org	Aromanian	open	public	public	Aromanian Wikipedia
+roa_rupwiktionary	roa-rup.wiktionary.org	wiktionary	rup	roa-rup.m.wiktionary.org	Aromanian	open	public	public	Aromanian Wiktionary
+roa_tarawiki	roa-tara.wikipedia.org	wikipedia	roa-tara	roa-tara.m.wikipedia.org	Tarantino	open	public	public	Tarandíne Wikipedia
+romdwikimedia	romd.wikimedia.org	romdwikimedia	en	romd.m.wikimedia.org	English	open	public	private	Wikimedians of Romania and Moldova User Group
+rowiki	ro.wikipedia.org	wikipedia	ro	ro.m.wikipedia.org	Romanian	open	public	public	Romanian Wikipedia
+rowikibooks	ro.wikibooks.org	wikibooks	ro	ro.m.wikibooks.org	Romanian	open	public	public	Romanian Wikibooks
+rowikinews	ro.wikinews.org	wikinews	ro	ro.m.wikinews.org	Romanian	open	public	public	Romanian Wikinews
+rowikiquote	ro.wikiquote.org	wikiquote	ro	ro.m.wikiquote.org	Romanian	open	public	public	Romanian Wikiquote
+rowikisource	ro.wikisource.org	wikisource	ro	ro.m.wikisource.org	Romanian	open	public	public	Romanian Wikisource
+rowikivoyage	ro.wikivoyage.org	wikivoyage	ro	ro.m.wikivoyage.org	Romanian	open	public	public	Romanian Wikivoyage
+rowiktionary	ro.wiktionary.org	wiktionary	ro	ro.m.wiktionary.org	Romanian	open	public	public	Romanian Wiktionary
+rskwiki	rsk.wikipedia.org	wikipedia	rsk	rsk.m.wikipedia.org	Pannonian Rusyn	open	public	public	Pannonian Rusyn Wikipedia
+rswikimedia	rs.wikimedia.org	rswikimedia	en	rs.m.wikimedia.org	English	open	public	private	Wikimedia Serbia
+ruewiki	rue.wikipedia.org	wikipedia	rue	rue.m.wikipedia.org	Rusyn	open	public	public	Rusyn Wikipedia
+ruwiki	ru.wikipedia.org	wikipedia	ru	ru.m.wikipedia.org	Russian	open	public	public	Russian Wikipedia
+ruwikibooks	ru.wikibooks.org	wikibooks	ru	ru.m.wikibooks.org	Russian	open	public	public	Russian Wikibooks
+ruwikimedia	ru.wikimedia.org	ruwikimedia	en	ru.m.wikimedia.org	English	open	public	public	Wikimedia Russia
+ruwikinews	ru.wikinews.org	wikinews	ru	ru.m.wikinews.org	Russian	open	public	public	Russian Wikinews
+ruwikiquote	ru.wikiquote.org	wikiquote	ru	ru.m.wikiquote.org	Russian	open	public	public	Russian Wikiquote
+ruwikisource	ru.wikisource.org	wikisource	ru	ru.m.wikisource.org	Russian	open	public	public	Russian Wikisource
+ruwikiversity	ru.wikiversity.org	wikiversity	ru	ru.m.wikiversity.org	Russian	open	public	public	Russian Wikiversity
+ruwikivoyage	ru.wikivoyage.org	wikivoyage	ru	ru.m.wikivoyage.org	Russian	open	public	public	Russian Wikivoyage
+ruwiktionary	ru.wiktionary.org	wiktionary	ru	ru.m.wiktionary.org	Russian	open	public	public	Russian Wiktionary
+rwwiki	rw.wikipedia.org	wikipedia	rw	rw.m.wikipedia.org	Kinyarwanda	open	public	public	Kinyarwanda Wikipedia
+rwwiktionary	rw.wiktionary.org	wiktionary	rw	rw.m.wiktionary.org	Kinyarwanda	open	public	public	Kinyarwanda Wiktionary
+sahwiki	sah.wikipedia.org	wikipedia	sah	sah.m.wikipedia.org	Yakut	open	public	public	Sakha Wikipedia
+sahwikiquote	sah.wikiquote.org	wikiquote	sah	sah.m.wikiquote.org	Yakut	open	public	public	Sakha Wikiquote
+sahwikisource	sah.wikisource.org	wikisource	sah	sah.m.wikisource.org	Yakut	open	public	public	Sakha Wikisource
+satwiki	sat.wikipedia.org	wikipedia	sat	sat.m.wikipedia.org	Santali	open	public	public	Santali Wikipedia
+satwiktionary	sat.wiktionary.org	wiktionary	sat	sat.m.wiktionary.org	Santali	open	public	public	Santali Wiktionary
+sawiki	sa.wikipedia.org	wikipedia	sa	sa.m.wikipedia.org	Sanskrit	open	public	public	Sanskrit Wikipedia
+sawikibooks	sa.wikibooks.org	wikibooks	sa	sa.m.wikibooks.org	Sanskrit	open	public	public	Sanskrit Wikibooks
+sawikiquote	sa.wikiquote.org	wikiquote	sa	sa.m.wikiquote.org	Sanskrit	open	public	public	Sanskrit Wikiquote
+sawikisource	sa.wikisource.org	wikisource	sa	sa.m.wikisource.org	Sanskrit	open	public	public	Sanskrit Wikisource
+sawiktionary	sa.wiktionary.org	wiktionary	sa	sa.m.wiktionary.org	Sanskrit	open	public	public	Sanskrit Wiktionary
+scnwiki	scn.wikipedia.org	wikipedia	scn	scn.m.wikipedia.org	Sicilian	open	public	public	Sicilian Wikipedia
+scnwiktionary	scn.wiktionary.org	wiktionary	scn	scn.m.wiktionary.org	Sicilian	open	public	public	Sicilian Wiktionary
+scowiki	sco.wikipedia.org	wikipedia	sco	sco.m.wikipedia.org	Scots	open	public	public	Scots Wikipedia
+scwiki	sc.wikipedia.org	wikipedia	sc	sc.m.wikipedia.org	Sardinian	open	public	public	Sardinian Wikipedia
+scwiktionary	sc.wiktionary.org	wiktionary	sc	sc.m.wiktionary.org	Sardinian	closed	public	public	Sardinian Wiktionary
+sdwiki	sd.wikipedia.org	wikipedia	sd	sd.m.wikipedia.org	Sindhi	open	public	public	Sindhi Wikipedia
+sdwikinews	sd.wikinews.org	wikinews	sd	sd.m.wikinews.org	Sindhi	closed	public	public	Sindhi Wikinews
+sdwiktionary	sd.wiktionary.org	wiktionary	sd	sd.m.wiktionary.org	Sindhi	open	public	public	Sindhi Wiktionary
+searchcomwiki	searchcom.wikimedia.org	searchcom	en	searchcom.m.wikimedia.org	English	closed	private	private	Search Committee
+sewiki	se.wikipedia.org	wikipedia	se	se.m.wikipedia.org	Northern Sami	open	public	public	Northern Sami Wikipedia
+sewikibooks	se.wikibooks.org	wikibooks	se	se.m.wikibooks.org	Northern Sami	closed	public	public	Northern Sami Wikibooks
+sewikimedia	se.wikimedia.org	sewikimedia	en	se.m.wikimedia.org	English	open	public	public	Wikimedia Sweden
+sgwiki	sg.wikipedia.org	wikipedia	sg	sg.m.wikipedia.org	Sango	open	public	public	Sango Wikipedia
+sgwiktionary	sg.wiktionary.org	wiktionary	sg	sg.m.wiktionary.org	Sango	open	public	public	Sango Wiktionary
+shiwiki	shi.wikipedia.org	wikipedia	shi	shi.m.wikipedia.org	Tachelhit	open	public	public	Tachelhit Wikipedia
+shnwiki	shn.wikipedia.org	wikipedia	shn	shn.m.wikipedia.org	Shan	open	public	public	Shan Wikipedia
+shnwikibooks	shn.wikibooks.org	wikibooks	shn	shn.m.wikibooks.org	Shan	open	public	public	Shan Wikibooks
+shnwikinews	shn.wikinews.org	wikinews	shn	shn.m.wikinews.org	Shan	open	public	public	Shan Wikinews
+shnwikivoyage	shn.wikivoyage.org	wikivoyage	shn	shn.m.wikivoyage.org	Shan	open	public	public	Shan Wikivoyage
+shnwiktionary	shn.wiktionary.org	wiktionary	shn	shn.m.wiktionary.org	Shan	open	public	public	Shan Wiktionary
+shwiki	sh.wikipedia.org	wikipedia	sh	sh.m.wikipedia.org	Serbo-Croatian	open	public	public	Serbo-Croatian Wikipedia
+shwiktionary	sh.wiktionary.org	wiktionary	sh	sh.m.wiktionary.org	Serbo-Croatian	open	public	public	Serbo-Croatian Wiktionary
+shywiktionary	shy.wiktionary.org	wiktionary	shy	shy.m.wiktionary.org	Shawiya	open	public	public	Shawiya Wiktionary
+simplewiki	simple.wikipedia.org	wikipedia	simple	simple.m.wikipedia.org	Simple English	open	public	public	Simple English Wikipedia
+simplewikibooks	simple.wikibooks.org	wikibooks	simple	simple.m.wikibooks.org	Simple English	closed	public	public	Simple English Wikibooks
+simplewikiquote	simple.wikiquote.org	wikiquote	simple	simple.m.wikiquote.org	Simple English	closed	public	public	Simple English Wikiquote
+simplewiktionary	simple.wiktionary.org	wiktionary	simple	simple.m.wiktionary.org	Simple English	open	public	public	Simple English Wiktionary
+siwiki	si.wikipedia.org	wikipedia	si	si.m.wikipedia.org	Sinhala	open	public	public	Sinhala Wikipedia
+siwikibooks	si.wikibooks.org	wikibooks	si	si.m.wikibooks.org	Sinhala	open	public	public	Sinhala Wikibooks
+siwiktionary	si.wiktionary.org	wiktionary	si	si.m.wiktionary.org	Sinhala	open	public	public	Sinhala Wiktionary
+skrwiki	skr.wikipedia.org	wikipedia	skr	skr.m.wikipedia.org	Saraiki	open	public	public	Saraiki Wikipedia
+skrwiktionary	skr.wiktionary.org	wiktionary	skr	skr.m.wiktionary.org	Saraiki	open	public	public	Saraiki Wiktionary
+skwiki	sk.wikipedia.org	wikipedia	sk	sk.m.wikipedia.org	Slovak	open	public	public	Slovak Wikipedia
+skwikibooks	sk.wikibooks.org	wikibooks	sk	sk.m.wikibooks.org	Slovak	open	public	public	Slovak Wikibooks
+skwikiquote	sk.wikiquote.org	wikiquote	sk	sk.m.wikiquote.org	Slovak	open	public	public	Slovak Wikiquote
+skwikisource	sk.wikisource.org	wikisource	sk	sk.m.wikisource.org	Slovak	open	public	public	Slovak Wikisource
+skwiktionary	sk.wiktionary.org	wiktionary	sk	sk.m.wiktionary.org	Slovak	open	public	public	Slovak Wiktionary
+slwiki	sl.wikipedia.org	wikipedia	sl	sl.m.wikipedia.org	Slovenian	open	public	public	Slovenian Wikipedia
+slwikibooks	sl.wikibooks.org	wikibooks	sl	sl.m.wikibooks.org	Slovenian	open	public	public	Slovenian Wikibooks
+slwikiquote	sl.wikiquote.org	wikiquote	sl	sl.m.wikiquote.org	Slovenian	open	public	public	Slovenian Wikiquote
+slwikisource	sl.wikisource.org	wikisource	sl	sl.m.wikisource.org	Slovenian	open	public	public	Slovenian Wikisource
+slwikiversity	sl.wikiversity.org	wikiversity	sl	sl.m.wikiversity.org	Slovenian	open	public	public	Slovenian Wikiversity
+slwiktionary	sl.wiktionary.org	wiktionary	sl	sl.m.wiktionary.org	Slovenian	open	public	public	Slovenian Wiktionary
+smnwiki	smn.wikipedia.org	wikipedia	smn	smn.m.wikipedia.org	Inari Sami	open	public	public	Inari Sami Wikipedia
+smwiki	sm.wikipedia.org	wikipedia	sm	sm.m.wikipedia.org	Samoan	open	public	public	Samoan Wikipedia
+smwiktionary	sm.wiktionary.org	wiktionary	sm	sm.m.wiktionary.org	Samoan	open	public	public	Samoan Wiktionary
+snwiki	sn.wikipedia.org	wikipedia	sn	sn.m.wikipedia.org	Shona	open	public	public	Shona Wikipedia
+snwiktionary	sn.wiktionary.org	wiktionary	sn	sn.m.wiktionary.org	Shona	closed	public	public	Shona Wiktionary
+sourceswiki	wikisource.org	sources	en	m.wikisource.org	English	open	public	public	Multilingual Wikisource
+sowiki	so.wikipedia.org	wikipedia	so	so.m.wikipedia.org	Somali	open	public	public	Somali Wikipedia
+sowiktionary	so.wiktionary.org	wiktionary	so	so.m.wiktionary.org	Somali	open	public	public	Somali Wiktionary
+spcomwiki	spcom.wikimedia.org	spcom	en	spcom.m.wikimedia.org	English	closed	private	private	Spcom
+specieswiki	species.wikimedia.org	species	en	species.m.wikimedia.org	English	open	public	public	Wikispecies
+sqwiki	sq.wikipedia.org	wikipedia	sq	sq.m.wikipedia.org	Albanian	open	public	public	Albanian Wikipedia
+sqwikibooks	sq.wikibooks.org	wikibooks	sq	sq.m.wikibooks.org	Albanian	open	public	public	Albanian Wikibooks
+sqwikinews	sq.wikinews.org	wikinews	sq	sq.m.wikinews.org	Albanian	open	public	public	Albanian Wikinews
+sqwikiquote	sq.wikiquote.org	wikiquote	sq	sq.m.wikiquote.org	Albanian	open	public	public	Albanian Wikiquote
+sqwiktionary	sq.wiktionary.org	wiktionary	sq	sq.m.wiktionary.org	Albanian	open	public	public	Albanian Wiktionary
+srnwiki	srn.wikipedia.org	wikipedia	srn	srn.m.wikipedia.org	Sranan Tongo	open	public	public	Sranan Tongo Wikipedia
+srwiki	sr.wikipedia.org	wikipedia	sr	sr.m.wikipedia.org	Serbian	open	public	public	Serbian Wikipedia
+srwikibooks	sr.wikibooks.org	wikibooks	sr	sr.m.wikibooks.org	Serbian	open	public	public	Serbian Wikibooks
+srwikinews	sr.wikinews.org	wikinews	sr	sr.m.wikinews.org	Serbian	open	public	public	Serbian Wikinews
+srwikiquote	sr.wikiquote.org	wikiquote	sr	sr.m.wikiquote.org	Serbian	open	public	public	Serbian Wikiquote
+srwikisource	sr.wikisource.org	wikisource	sr	sr.m.wikisource.org	Serbian	open	public	public	Serbian Wikisource
+srwiktionary	sr.wiktionary.org	wiktionary	sr	sr.m.wiktionary.org	Serbian	open	public	public	Serbian Wiktionary
+sswiki	ss.wikipedia.org	wikipedia	ss	ss.m.wikipedia.org	Swati	open	public	public	Swati Wikipedia
+sswiktionary	ss.wiktionary.org	wiktionary	ss	ss.m.wiktionary.org	Swati	open	public	public	Swati Wiktionary
+stewardwiki	steward.wikimedia.org	steward	en	steward.m.wikimedia.org	English	open	private	private	Steward community
+stqwiki	stq.wikipedia.org	wikipedia	stq	stq.m.wikipedia.org	Saterland Frisian	open	public	public	Saterland Frisian Wikipedia
+strategywiki	strategy.wikimedia.org	strategy	en	strategy.m.wikimedia.org	English	closed	public	public	Strategic Planning
+stwiki	st.wikipedia.org	wikipedia	st	st.m.wikipedia.org	Southern Sotho	open	public	public	Southern Sotho Wikipedia
+stwiktionary	st.wiktionary.org	wiktionary	st	st.m.wiktionary.org	Southern Sotho	open	public	public	Southern Sotho Wiktionary
+suwiki	su.wikipedia.org	wikipedia	su	su.m.wikipedia.org	Sundanese	open	public	public	Sundanese Wikipedia
+suwikibooks	su.wikibooks.org	wikibooks	su	su.m.wikibooks.org	Sundanese	closed	public	public	Sundanese Wikibooks
+suwikiquote	su.wikiquote.org	wikiquote	su	su.m.wikiquote.org	Sundanese	open	public	public	Sundanese Wikiquote
+suwikisource	su.wikisource.org	wikisource	su	su.m.wikisource.org	Sundanese	open	public	public	Sundanese Wikisource
+suwiktionary	su.wiktionary.org	wiktionary	su	su.m.wiktionary.org	Sundanese	open	public	public	Sundanese Wiktionary
+svwiki	sv.wikipedia.org	wikipedia	sv	sv.m.wikipedia.org	Swedish	open	public	public	Swedish Wikipedia
+svwikibooks	sv.wikibooks.org	wikibooks	sv	sv.m.wikibooks.org	Swedish	open	public	public	Swedish Wikibooks
+svwikinews	sv.wikinews.org	wikinews	sv	sv.m.wikinews.org	Swedish	open	public	public	Swedish Wikinews
+svwikiquote	sv.wikiquote.org	wikiquote	sv	sv.m.wikiquote.org	Swedish	open	public	public	Swedish Wikiquote
+svwikisource	sv.wikisource.org	wikisource	sv	sv.m.wikisource.org	Swedish	open	public	public	Swedish Wikisource
+svwikiversity	sv.wikiversity.org	wikiversity	sv	sv.m.wikiversity.org	Swedish	open	public	public	Swedish Wikiversity
+svwikivoyage	sv.wikivoyage.org	wikivoyage	sv	sv.m.wikivoyage.org	Swedish	open	public	public	Swedish Wikivoyage
+svwiktionary	sv.wiktionary.org	wiktionary	sv	sv.m.wiktionary.org	Swedish	open	public	public	Swedish Wiktionary
+swwiki	sw.wikipedia.org	wikipedia	sw	sw.m.wikipedia.org	Swahili	open	public	public	Swahili Wikipedia
+swwikibooks	sw.wikibooks.org	wikibooks	sw	sw.m.wikibooks.org	Swahili	closed	public	public	Swahili Wikibooks
+swwiktionary	sw.wiktionary.org	wiktionary	sw	sw.m.wiktionary.org	Swahili	open	public	public	Swahili Wiktionary
+sylwiki	syl.wikipedia.org	wikipedia	syl	syl.m.wikipedia.org	Sylheti	open	public	public	Sylheti Wikipedia
+sysop_itwiki	sysop-it.wikipedia.org	sysop-it	en	sysop-it.m.wikipedia.org	English	open	private	private	Italian Wikipedia sysops
+sysop_plwiki	wikipedia-pl-sysop.wikimedia.org	sysop-pl	en	wikipedia-pl-sysop.m.wikimedia.org	English	open	private	private	Polish Wikipedia sysops
+szlwiki	szl.wikipedia.org	wikipedia	szl	szl.m.wikipedia.org	Silesian	open	public	public	Silesian Wikipedia
+szywiki	szy.wikipedia.org	wikipedia	szy	szy.m.wikipedia.org	Sakizaya	open	public	public	Sakizaya Wikipedia
+tawiki	ta.wikipedia.org	wikipedia	ta	ta.m.wikipedia.org	Tamil	open	public	public	Tamil Wikipedia
+tawikibooks	ta.wikibooks.org	wikibooks	ta	ta.m.wikibooks.org	Tamil	open	public	public	Tamil Wikibooks
+tawikinews	ta.wikinews.org	wikinews	ta	ta.m.wikinews.org	Tamil	open	public	public	Tamil Wikinews
+tawikiquote	ta.wikiquote.org	wikiquote	ta	ta.m.wikiquote.org	Tamil	open	public	public	Tamil Wikiquote
+tawikisource	ta.wikisource.org	wikisource	ta	ta.m.wikisource.org	Tamil	open	public	public	Tamil Wikisource
+tawiktionary	ta.wiktionary.org	wiktionary	ta	ta.m.wiktionary.org	Tamil	open	public	public	Tamil Wiktionary
+taywiki	tay.wikipedia.org	wikipedia	tay	tay.m.wikipedia.org	Atayal	open	public	public	Atayal Wikipedia
+tcywiki	tcy.wikipedia.org	wikipedia	tcy	tcy.m.wikipedia.org	Tulu	open	public	public	Tulu Wikipedia
+tcywikisource	tcy.wikisource.org	wikisource	tcy	tcy.m.wikisource.org	Tulu	open	public	public	Tulu Wikisource
+tcywiktionary	tcy.wiktionary.org	wiktionary	tcy	tcy.m.wiktionary.org	Tulu	open	public	public	Tulu Wiktionary
+tddwiki	tdd.wikipedia.org	wikipedia	tdd	tdd.m.wikipedia.org	Tai Nuea	open	public	public	Tai Nüa Wikipedia
+techconductwiki	techconduct.wikimedia.org	techconduct	en	techconduct.m.wikimedia.org	English	open	private	private	Code of Conduct Committee for Technical Spaces
+tenwiki	ten.wikipedia.org	ten	en	ten.m.wikipedia.org	English	closed	public	public	Wikipedia 10
+test2wiki	test2.wikipedia.org	test2	en	test2.m.wikipedia.org	English	open	public	public	Test2 Wikipedia
+testcommonswiki	test-commons.wikimedia.org	testcommons	en	test-commons.m.wikimedia.org	English	open	public	public	Commons Test Wiki
+testwiki	test.wikipedia.org	test	en	test.m.wikipedia.org	English	open	public	public	Test Wikipedia
+testwikidatawiki	test.wikidata.org	testwikidata	en	test.m.wikidata.org	English	open	public	public	Test Wikidata
+tetwiki	tet.wikipedia.org	wikipedia	tet	tet.m.wikipedia.org	Tetum	open	public	public	Tetum Wikipedia
+tewiki	te.wikipedia.org	wikipedia	te	te.m.wikipedia.org	Telugu	open	public	public	Telugu Wikipedia
+tewikibooks	te.wikibooks.org	wikibooks	te	te.m.wikibooks.org	Telugu	open	public	public	Telugu Wikibooks
+tewikiquote	te.wikiquote.org	wikiquote	te	te.m.wikiquote.org	Telugu	open	public	public	Telugu Wikiquote
+tewikisource	te.wikisource.org	wikisource	te	te.m.wikisource.org	Telugu	open	public	public	Telugu Wikisource
+tewiktionary	te.wiktionary.org	wiktionary	te	te.m.wiktionary.org	Telugu	open	public	public	Telugu Wiktionary
+tgwiki	tg.wikipedia.org	wikipedia	tg	tg.m.wikipedia.org	Tajik	open	public	public	Tajik Wikipedia
+tgwikibooks	tg.wikibooks.org	wikibooks	tg	tg.m.wikibooks.org	Tajik	open	public	public	Tajik Wikibooks
+tgwiktionary	tg.wiktionary.org	wiktionary	tg	tg.m.wiktionary.org	Tajik	open	public	public	Tajik Wiktionary
+thankyouwiki	thankyou.wikipedia.org	thankyou	en	thankyou.m.wikipedia.org	English	open	public	private	Thank you
+thwiki	th.wikipedia.org	wikipedia	th	th.m.wikipedia.org	Thai	open	public	public	Thai Wikipedia
+thwikibooks	th.wikibooks.org	wikibooks	th	th.m.wikibooks.org	Thai	open	public	public	Thai Wikibooks
+thwikinews	th.wikinews.org	wikinews	th	th.m.wikinews.org	Thai	closed	public	public	Thai Wikinews
+thwikiquote	th.wikiquote.org	wikiquote	th	th.m.wikiquote.org	Thai	open	public	public	Thai Wikiquote
+thwikisource	th.wikisource.org	wikisource	th	th.m.wikisource.org	Thai	open	public	public	Thai Wikisource
+thwiktionary	th.wiktionary.org	wiktionary	th	th.m.wiktionary.org	Thai	open	public	public	Thai Wiktionary
+tigwiki	tig.wikipedia.org	wikipedia	tig	tig.m.wikipedia.org	Tigre	open	public	public	Tigre Wikipedia
+tiwiki	ti.wikipedia.org	wikipedia	ti	ti.m.wikipedia.org	Tigrinya	open	public	public	Tigrinya Wikipedia
+tiwiktionary	ti.wiktionary.org	wiktionary	ti	ti.m.wiktionary.org	Tigrinya	open	public	public	Tigrinya Wiktionary
+tkwiki	tk.wikipedia.org	wikipedia	tk	tk.m.wikipedia.org	Turkmen	open	public	public	Turkmen Wikipedia
+tkwikibooks	tk.wikibooks.org	wikibooks	tk	tk.m.wikibooks.org	Turkmen	closed	public	public	Turkmen Wikibooks
+tkwikiquote	tk.wikiquote.org	wikiquote	tk	tk.m.wikiquote.org	Turkmen	closed	public	public	Turkmen Wikiquote
+tkwiktionary	tk.wiktionary.org	wiktionary	tk	tk.m.wiktionary.org	Turkmen	open	public	public	Turkmen Wiktionary
+tlwiki	tl.wikipedia.org	wikipedia	tl	tl.m.wikipedia.org	Tagalog	open	public	public	Tagalog Wikipedia
+tlwikibooks	tl.wikibooks.org	wikibooks	tl	tl.m.wikibooks.org	Tagalog	open	public	public	Tagalog Wikibooks
+tlwikiquote	tl.wikiquote.org	wikiquote	tl	tl.m.wikiquote.org	Tagalog	open	public	public	Tagalog Wikiquote
+tlwiktionary	tl.wiktionary.org	wiktionary	tl	tl.m.wiktionary.org	Tagalog	open	public	public	Tagalog Wiktionary
+tlywiki	tly.wikipedia.org	wikipedia	tly	tly.m.wikipedia.org	Talysh	open	public	public	Talysh Wikipedia
+tnwiki	tn.wikipedia.org	wikipedia	tn	tn.m.wikipedia.org	Tswana	open	public	public	Tswana Wikipedia
+tnwiktionary	tn.wiktionary.org	wiktionary	tn	tn.m.wiktionary.org	Tswana	open	public	public	Tswana Wiktionary
+towiki	to.wikipedia.org	wikipedia	to	to.m.wikipedia.org	Tongan	open	public	public	Tongan Wikipedia
+towiktionary	to.wiktionary.org	wiktionary	to	to.m.wiktionary.org	Tongan	closed	public	public	Tongan Wiktionary
+tpiwiki	tpi.wikipedia.org	wikipedia	tpi	tpi.m.wikipedia.org	Tok Pisin	open	public	public	Tok Pisin Wikipedia
+tpiwiktionary	tpi.wiktionary.org	wiktionary	tpi	tpi.m.wiktionary.org	Tok Pisin	open	public	public	Tok Pisin Wiktionary
+transitionteamwiki	transitionteam.wikimedia.org	transitionteam	en	transitionteam.m.wikimedia.org	English	closed	private	private	ED Transition Team
+trvwiki	trv.wikipedia.org	wikipedia	trv	trv.m.wikipedia.org	Taroko	open	public	public	Seediq Wikipedia
+trwiki	tr.wikipedia.org	wikipedia	tr	tr.m.wikipedia.org	Turkish	open	public	public	Turkish Wikipedia
+trwikibooks	tr.wikibooks.org	wikibooks	tr	tr.m.wikibooks.org	Turkish	open	public	public	Turkish Wikibooks
+trwikimedia	tr.wikimedia.org	trwikimedia	en	tr.m.wikimedia.org	English	open	public	public	Wikimedia Turkey
+trwikinews	tr.wikinews.org	wikinews	tr	tr.m.wikinews.org	Turkish	closed	public	public	Turkish Wikinews
+trwikiquote	tr.wikiquote.org	wikiquote	tr	tr.m.wikiquote.org	Turkish	open	public	public	Turkish Wikiquote
+trwikisource	tr.wikisource.org	wikisource	tr	tr.m.wikisource.org	Turkish	open	public	public	Turkish Wikisource
+trwikivoyage	tr.wikivoyage.org	wikivoyage	tr	tr.m.wikivoyage.org	Turkish	open	public	public	Turkish Wikivoyage
+trwiktionary	tr.wiktionary.org	wiktionary	tr	tr.m.wiktionary.org	Turkish	open	public	public	Turkish Wiktionary
+tswiki	ts.wikipedia.org	wikipedia	ts	ts.m.wikipedia.org	Tsonga	open	public	public	Tsonga Wikipedia
+tswiktionary	ts.wiktionary.org	wiktionary	ts	ts.m.wiktionary.org	Tsonga	open	public	public	Tsonga Wiktionary
+ttwiki	tt.wikipedia.org	wikipedia	tt	tt.m.wikipedia.org	Tatar	open	public	public	Tatar Wikipedia
+ttwikibooks	tt.wikibooks.org	wikibooks	tt	tt.m.wikibooks.org	Tatar	open	public	public	Tatar Wikibooks
+ttwikiquote	tt.wikiquote.org	wikiquote	tt	tt.m.wikiquote.org	Tatar	closed	public	public	Tatar Wikiquote
+ttwiktionary	tt.wiktionary.org	wiktionary	tt	tt.m.wiktionary.org	Tatar	open	public	public	Tatar Wiktionary
+tumwiki	tum.wikipedia.org	wikipedia	tum	tum.m.wikipedia.org	Tumbuka	open	public	public	Tumbuka Wikipedia
+twwiki	tw.wikipedia.org	wikipedia	tw	tw.m.wikipedia.org	Twi	open	public	public	Twi Wikipedia
+twwiktionary	tw.wiktionary.org	wiktionary	tw	tw.m.wiktionary.org	Twi	closed	public	public	Twi Wiktionary
+tyvwiki	tyv.wikipedia.org	wikipedia	tyv	tyv.m.wikipedia.org	Tuvinian	open	public	public	Tuvinian Wikipedia
+tywiki	ty.wikipedia.org	wikipedia	ty	ty.m.wikipedia.org	Tahitian	open	public	public	Tahitian Wikipedia
+u4cwiki	u4c.wikimedia.org	u4c	en	u4c.m.wikimedia.org	English	open	private	private	Universal Code of Conduct Coordinating Committee
+uawikimedia	ua.wikimedia.org	uawikimedia	en	ua.m.wikimedia.org	English	open	public	public	Wikimedia Ukraine
+udmwiki	udm.wikipedia.org	wikipedia	udm	udm.m.wikipedia.org	Udmurt	open	public	public	Udmurt Wikipedia
+ugwiki	ug.wikipedia.org	wikipedia	ug	ug.m.wikipedia.org	Uyghur	open	public	public	Uyghur Wikipedia
+ugwikibooks	ug.wikibooks.org	wikibooks	ug	ug.m.wikibooks.org	Uyghur	closed	public	public	Uyghur Wikibooks
+ugwikiquote	ug.wikiquote.org	wikiquote	ug	ug.m.wikiquote.org	Uyghur	closed	public	public	Uyghur Wikiquote
+ugwiktionary	ug.wiktionary.org	wiktionary	ug	ug.m.wiktionary.org	Uyghur	open	public	public	Uyghur Wiktionary
+ukwiki	uk.wikipedia.org	wikipedia	uk	uk.m.wikipedia.org	Ukrainian	open	public	public	Ukrainian Wikipedia
+ukwikibooks	uk.wikibooks.org	wikibooks	uk	uk.m.wikibooks.org	Ukrainian	open	public	public	Ukrainian Wikibooks
+ukwikinews	uk.wikinews.org	wikinews	uk	uk.m.wikinews.org	Ukrainian	open	public	public	Ukrainian Wikinews
+ukwikiquote	uk.wikiquote.org	wikiquote	uk	uk.m.wikiquote.org	Ukrainian	open	public	public	Ukrainian Wikiquote
+ukwikisource	uk.wikisource.org	wikisource	uk	uk.m.wikisource.org	Ukrainian	open	public	public	Ukrainian Wikisource
+ukwikivoyage	uk.wikivoyage.org	wikivoyage	uk	uk.m.wikivoyage.org	Ukrainian	open	public	public	Ukrainian Wikivoyage
+ukwiktionary	uk.wiktionary.org	wiktionary	uk	uk.m.wiktionary.org	Ukrainian	open	public	public	Ukrainian Wiktionary
+urwiki	ur.wikipedia.org	wikipedia	ur	ur.m.wikipedia.org	Urdu	open	public	public	Urdu Wikipedia
+urwikibooks	ur.wikibooks.org	wikibooks	ur	ur.m.wikibooks.org	Urdu	open	public	public	Urdu Wikibooks
+urwikiquote	ur.wikiquote.org	wikiquote	ur	ur.m.wikiquote.org	Urdu	open	public	public	Urdu Wikiquote
+urwiktionary	ur.wiktionary.org	wiktionary	ur	ur.m.wiktionary.org	Urdu	open	public	public	Urdu Wiktionary
+usabilitywiki	usability.wikimedia.org	usability	en	usability.m.wikimedia.org	English	closed	public	public	Wikimedia Usability Initiative
+uzwiki	uz.wikipedia.org	wikipedia	uz	uz.m.wikipedia.org	Uzbek	open	public	public	Uzbek Wikipedia
+uzwikibooks	uz.wikibooks.org	wikibooks	uz	uz.m.wikibooks.org	Uzbek	closed	public	public	Uzbek Wikibooks
+uzwikiquote	uz.wikiquote.org	wikiquote	uz	uz.m.wikiquote.org	Uzbek	open	public	public	Uzbek Wikiquote
+uzwiktionary	uz.wiktionary.org	wiktionary	uz	uz.m.wiktionary.org	Uzbek	open	public	public	Uzbek Wiktionary
+vecwiki	vec.wikipedia.org	wikipedia	vec	vec.m.wikipedia.org	Venetian	open	public	public	Venetian Wikipedia
+vecwikisource	vec.wikisource.org	wikisource	vec	vec.m.wikisource.org	Venetian	open	public	public	Venetian Wikisource
+vecwiktionary	vec.wiktionary.org	wiktionary	vec	vec.m.wiktionary.org	Venetian	open	public	public	Venetian Wiktionary
+vepwiki	vep.wikipedia.org	wikipedia	vep	vep.m.wikipedia.org	Veps	open	public	public	Veps Wikipedia
+vewiki	ve.wikipedia.org	wikipedia	ve	ve.m.wikipedia.org	Venda	open	public	public	Venda Wikipedia
+vewikimedia	ve.wikimedia.org	vewikimedia	en	ve.m.wikimedia.org	English	open	public	private	Wikimedia Venezuela
+viwiki	vi.wikipedia.org	wikipedia	vi	vi.m.wikipedia.org	Vietnamese	open	public	public	Vietnamese Wikipedia
+viwikibooks	vi.wikibooks.org	wikibooks	vi	vi.m.wikibooks.org	Vietnamese	open	public	public	Vietnamese Wikibooks
+viwikiquote	vi.wikiquote.org	wikiquote	vi	vi.m.wikiquote.org	Vietnamese	open	public	public	Vietnamese Wikiquote
+viwikisource	vi.wikisource.org	wikisource	vi	vi.m.wikisource.org	Vietnamese	open	public	public	Vietnamese Wikisource
+viwikivoyage	vi.wikivoyage.org	wikivoyage	vi	vi.m.wikivoyage.org	Vietnamese	open	public	public	Vietnamese Wikivoyage
+viwiktionary	vi.wiktionary.org	wiktionary	vi	vi.m.wiktionary.org	Vietnamese	open	public	public	Vietnamese Wiktionary
+vlswiki	vls.wikipedia.org	wikipedia	vls	vls.m.wikipedia.org	West Flemish	open	public	public	West Flemish Wikipedia
+votewiki	vote.wikimedia.org	vote	en	vote.m.wikimedia.org	English	open	public	private	Wikimedia Vote
+vowiki	vo.wikipedia.org	wikipedia	vo	vo.m.wikipedia.org	Volapük	open	public	public	Volapük Wikipedia
+vowikibooks	vo.wikibooks.org	wikibooks	vo	vo.m.wikibooks.org	Volapük	closed	public	public	Volapük Wikibooks
+vowikiquote	vo.wikiquote.org	wikiquote	vo	vo.m.wikiquote.org	Volapük	closed	public	public	Volapük Wikiquote
+vowiktionary	vo.wiktionary.org	wiktionary	vo	vo.m.wiktionary.org	Volapük	open	public	public	Volapük Wiktionary
+warwiki	war.wikipedia.org	wikipedia	war	war.m.wikipedia.org	Waray	open	public	public	Waray Wikipedia
+wawiki	wa.wikipedia.org	wikipedia	wa	wa.m.wikipedia.org	Walloon	open	public	public	Walloon Wikipedia
+wawikibooks	wa.wikibooks.org	wikibooks	wa	wa.m.wikibooks.org	Walloon	closed	public	public	Walloon Wikibooks
+wawikisource	wa.wikisource.org	wikisource	wa	wa.m.wikisource.org	Walloon	open	public	public	Walloon Wikisource
+wawiktionary	wa.wiktionary.org	wiktionary	wa	wa.m.wiktionary.org	Walloon	open	public	public	Walloon Wiktionary
+wbwikimedia	wb.wikimedia.org	wbwikimedia	en	wb.m.wikimedia.org	English	open	public	private	West Bengal Wikimedians User Group
+wg_enwiki	wg-en.wikipedia.org	wg-en	en	wg-en.m.wikipedia.org	English	open	private	private	English Wikipedia Working Group
+wikidatawiki	www.wikidata.org	wikidata	en	m.wikidata.org	English	open	public	public	Wikidata
+wikifunctionswiki	www.wikifunctions.org	wikifunctions	en	m.wikifunctions.org	English	open	public	public	Wikifunctions
+wikimania2005wiki	wikimania2005.wikimedia.org	wikimania2005	en	wikimania2005.m.wikimedia.org	English	closed	public	public	Wikimania 2005
+wikimania2006wiki	wikimania2006.wikimedia.org	wikimania2006	en	wikimania2006.m.wikimedia.org	English	closed	public	public	Wikimania 2006
+wikimania2007wiki	wikimania2007.wikimedia.org	wikimania2007	en	wikimania2007.m.wikimedia.org	English	closed	public	public	Wikimania 2007
+wikimania2008wiki	wikimania2008.wikimedia.org	wikimania2008	en	wikimania2008.m.wikimedia.org	English	closed	public	public	Wikimania 2008
+wikimania2009wiki	wikimania2009.wikimedia.org	wikimania2009	en	wikimania2009.m.wikimedia.org	English	closed	public	public	Wikimania 2009
+wikimania2010wiki	wikimania2010.wikimedia.org	wikimania2010	en	wikimania2010.m.wikimedia.org	English	closed	public	public	Wikimania 2010
+wikimania2011wiki	wikimania2011.wikimedia.org	wikimania2011	en	wikimania2011.m.wikimedia.org	English	closed	public	public	Wikimania 2011
+wikimania2012wiki	wikimania2012.wikimedia.org	wikimania2012	en	wikimania2012.m.wikimedia.org	English	closed	public	public	Wikimania 2012
+wikimania2013wiki	wikimania2013.wikimedia.org	wikimania2013	en	wikimania2013.m.wikimedia.org	English	closed	public	public	Wikimania 2013
+wikimania2014wiki	wikimania2014.wikimedia.org	wikimania2014	en	wikimania2014.m.wikimedia.org	English	closed	public	public	Wikimania 2014
+wikimania2015wiki	wikimania2015.wikimedia.org	wikimania2015	en	wikimania2015.m.wikimedia.org	English	closed	public	public	Wikimania 2015
+wikimania2016wiki	wikimania2016.wikimedia.org	wikimania2016	en	wikimania2016.m.wikimedia.org	English	closed	public	public	Wikimania 2016
+wikimania2017wiki	wikimania2017.wikimedia.org	wikimania2017	en	wikimania2017.m.wikimedia.org	English	closed	public	public	Wikimania 2017
+wikimania2018wiki	wikimania2018.wikimedia.org	wikimania2018	en	wikimania2018.m.wikimedia.org	English	closed	public	public	Wikimania 2018
+wikimaniateamwiki	wikimaniateam.wikimedia.org	wikimaniateam	en	wikimaniateam.m.wikimedia.org	English	open	private	private	WikimaniaTeam
+wikimaniawiki	wikimania.wikimedia.org	wikimania	en	wikimania.m.wikimedia.org	English	open	public	public	Wikimania
+wowiki	wo.wikipedia.org	wikipedia	wo	wo.m.wikipedia.org	Wolof	open	public	public	Wolof Wikipedia
+wowikiquote	wo.wikiquote.org	wikiquote	wo	wo.m.wikiquote.org	Wolof	closed	public	public	Wolof Wikiquote
+wowiktionary	wo.wiktionary.org	wiktionary	wo	wo.m.wiktionary.org	Wolof	open	public	public	Wolof Wiktionary
+wuuwiki	wuu.wikipedia.org	wikipedia	wuu	wuu.m.wikipedia.org	Wu	open	public	public	Wu Chinese Wikipedia
+xalwiki	xal.wikipedia.org	wikipedia	xal	xal.m.wikipedia.org	Kalmyk	open	public	public	Kalmyk Wikipedia
+xhwiki	xh.wikipedia.org	wikipedia	xh	xh.m.wikipedia.org	Xhosa	open	public	public	Xhosa Wikipedia
+xhwikibooks	xh.wikibooks.org	wikibooks	xh	xh.m.wikibooks.org	Xhosa	closed	public	public	Xhosa Wikibooks
+xhwiktionary	xh.wiktionary.org	wiktionary	xh	xh.m.wiktionary.org	Xhosa	closed	public	public	Xhosa Wiktionary
+xmfwiki	xmf.wikipedia.org	wikipedia	xmf	xmf.m.wikipedia.org	Mingrelian	open	public	public	Mingrelian Wikipedia
+yiwiki	yi.wikipedia.org	wikipedia	yi	yi.m.wikipedia.org	Yiddish	open	public	public	Yiddish Wikipedia
+yiwikisource	yi.wikisource.org	wikisource	yi	yi.m.wikisource.org	Yiddish	open	public	public	Yiddish Wikisource
+yiwiktionary	yi.wiktionary.org	wiktionary	yi	yi.m.wiktionary.org	Yiddish	open	public	public	Yiddish Wiktionary
+yowiki	yo.wikipedia.org	wikipedia	yo	yo.m.wikipedia.org	Yoruba	open	public	public	Yoruba Wikipedia
+yowikibooks	yo.wikibooks.org	wikibooks	yo	yo.m.wikibooks.org	Yoruba	closed	public	public	Yoruba Wikibooks
+yowiktionary	yo.wiktionary.org	wiktionary	yo	yo.m.wiktionary.org	Yoruba	closed	public	public	Yoruba Wiktionary
+yuewiktionary	yue.wiktionary.org	wiktionary	yue	yue.m.wiktionary.org	Cantonese	open	public	public	Cantonese Wiktionary
+zawiki	za.wikipedia.org	wikipedia	za	za.m.wikipedia.org	Zhuang	open	public	public	Zhuang Wikipedia
+zawikibooks	za.wikibooks.org	wikibooks	za	za.m.wikibooks.org	Zhuang	closed	public	public	Zhuang Wikibooks
+zawikiquote	za.wikiquote.org	wikiquote	za	za.m.wikiquote.org	Zhuang	closed	public	public	Zhuang Wikiquote
+zawiktionary	za.wiktionary.org	wiktionary	za	za.m.wiktionary.org	Zhuang	closed	public	public	Zhuang Wiktionary
+zeawiki	zea.wikipedia.org	wikipedia	zea	zea.m.wikipedia.org	Zeelandic	open	public	public	Zeelandic Wikipedia
+zghwiki	zgh.wikipedia.org	wikipedia	zgh	zgh.m.wikipedia.org	Standard Moroccan Tamazight	open	public	public	Moroccan Amazigh Wikipedia
+zh_classicalwiki	zh-classical.wikipedia.org	wikipedia	lzh	zh-classical.m.wikipedia.org	Literary Chinese	open	public	public	Classical Chinese Wikipedia
+zh_min_nanwiki	zh-min-nan.wikipedia.org	wikipedia	nan	zh-min-nan.m.wikipedia.org	Minnan	open	public	public	Min Nan Wikipedia
+zh_min_nanwikibooks	zh-min-nan.wikibooks.org	wikibooks	nan	zh-min-nan.m.wikibooks.org	Minnan	closed	public	public	Min Nan Wikibooks
+zh_min_nanwikiquote	zh-min-nan.wikiquote.org	wikiquote	nan	zh-min-nan.m.wikiquote.org	Minnan	closed	public	public	Min Nan Wikiquote
+zh_min_nanwikisource	zh-min-nan.wikisource.org	wikisource	nan	zh-min-nan.m.wikisource.org	Minnan	open	public	public	Min Nan Wikisource
+zh_min_nanwiktionary	zh-min-nan.wiktionary.org	wiktionary	nan	zh-min-nan.m.wiktionary.org	Minnan	open	public	public	Min Nan Wiktionary
+zh_yuewiki	zh-yue.wikipedia.org	wikipedia	yue	zh-yue.m.wikipedia.org	Cantonese	open	public	public	Cantonese Wikipedia
+zhwiki	zh.wikipedia.org	wikipedia	zh	zh.m.wikipedia.org	Chinese	open	public	public	Chinese Wikipedia
+zhwikibooks	zh.wikibooks.org	wikibooks	zh	zh.m.wikibooks.org	Chinese	open	public	public	Chinese Wikibooks
+zhwikinews	zh.wikinews.org	wikinews	zh	zh.m.wikinews.org	Chinese	open	public	public	Chinese Wikinews
+zhwikiquote	zh.wikiquote.org	wikiquote	zh	zh.m.wikiquote.org	Chinese	open	public	public	Chinese Wikiquote
+zhwikisource	zh.wikisource.org	wikisource	zh	zh.m.wikisource.org	Chinese	open	public	public	Chinese Wikisource
+zhwikiversity	zh.wikiversity.org	wikiversity	zh	zh.m.wikiversity.org	Chinese	open	public	public	Chinese Wikiversity
+zhwikivoyage	zh.wikivoyage.org	wikivoyage	zh	zh.m.wikivoyage.org	Chinese	open	public	public	Chinese Wikivoyage
+zhwiktionary	zh.wiktionary.org	wiktionary	zh	zh.m.wiktionary.org	Chinese	open	public	public	Chinese Wiktionary
+zuwiki	zu.wikipedia.org	wikipedia	zu	zu.m.wikipedia.org	Zulu	open	public	public	Zulu Wikipedia
+zuwikibooks	zu.wikibooks.org	wikibooks	zu	zu.m.wikibooks.org	Zulu	closed	public	public	Zulu Wikibooks
+zuwiktionary	zu.wiktionary.org	wiktionary	zu	zu.m.wiktionary.org	Zulu	open	public	public	Zulu Wiktionary

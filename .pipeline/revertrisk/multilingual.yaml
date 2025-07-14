@@ -25,6 +25,9 @@ variants:
   production:
     copies:
       - from: local
+        source: src/models/revert_risk_model/data
+        destination: data
+      - from: local
         source: src/models/revert_risk_model/model_server
         destination: model_server
       - from: local
