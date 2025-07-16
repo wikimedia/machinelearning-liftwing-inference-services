@@ -41,6 +41,32 @@ services:
       NUM_OF_WORKERS: 1
     volumes:
       - ${PATH_TO_REFERENCE_RISK_MODEL:-/dummy/path}:/mnt/models/
+  revertrisk-language-agnostic:
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: .pipeline/revertrisk/revertrisk.yaml
+      target: production
+    image: rrla:prod
+    ports:
+      - "8080:8080"
+    environment:
+      MODEL_NAME: "revertrisk-language-agnostic"
+    volumes:
+      - ${PATH_TO_REVERTRISK_LANGUAGE_AGNOSTIC_MODEL:-/dummy/path}:/mnt/models/
+  revertrisk-multilingual:
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: .pipeline/revertrisk/multilingual.yaml
+      target: production
+    image: rrml:prod
+    ports:
+      - "8080:8080"
+    environment:
+      MODEL_NAME: "revertrisk-multilingual"
+    volumes:
+      - ${PATH_TO_REVERTRISK_MULTILINGUAL_MODEL:-/dummy/path}:/mnt/models/
   edit-check:
     platform: linux/amd64
     build:
