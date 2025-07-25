@@ -3,3 +3,4 @@ knowledge_integrity[revertrisk-multilingual] @ git+https://gitlab.wikimedia.org/
 kserve==0.15.2
 PyYAML==6.0.1
 catboost==1.2.8
+numpy<2.0
