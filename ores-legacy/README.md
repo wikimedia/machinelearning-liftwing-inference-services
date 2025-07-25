@@ -6,9 +6,9 @@ Build the production image:
 docker build --target production -f .pipeline/ores-legacy/blubber.yaml -t ores:prod .
 ```
 
-Run the container binding the port 8000 to the container port 80
+Run the container binding the port 8000 to the container port 8080
 ```bash
-docker run -d --name mycontainer -p 8000:80 ores:prod
+docker run -d --name mycontainer -p 8000:8080 ores:prod
 ```
 
 The FastAPI app is now running on http://localhost:8000,

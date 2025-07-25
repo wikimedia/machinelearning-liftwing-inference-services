@@ -1,6 +1,6 @@
-# syntax=docker-registry.wikimedia.org/repos/releng/blubber/buildkit:v0.15.0
+# syntax=docker-registry.wikimedia.org/repos/releng/blubber/buildkit:v0.21.0
 version: v4
-base: docker-registry.wikimedia.org/bullseye:20231015
+base: docker-registry.wikimedia.org/bookworm:20250720
 runs:
   insecurely: true
 
@@ -14,11 +14,13 @@ variants:
         - python3-pip
         - python3-dev
         - build-essential
+        - python3-setuptools
+        - python3-venv
         - git
         - wget
     builders:
       - python:
-          version: python3.9
+          version: python3
           requirements: [ ores-legacy/requirements.txt]
 
   production:
@@ -30,7 +32,7 @@ variants:
         source: /opt/lib/python/site-packages
         destination: /opt/lib/python/site-packages
     python:
-      version: python3.9
+      version: python3
       use-system-flag: false
     apt:
       packages:
