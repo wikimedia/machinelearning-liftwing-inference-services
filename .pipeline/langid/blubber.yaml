@@ -1,6 +1,6 @@
 # syntax=docker-registry.wikimedia.org/repos/releng/blubber/buildkit:v0.21.1
 version: v4
-base: docker-registry.wikimedia.org/bullseye:20231015
+base: docker-registry.wikimedia.org/bookworm:20250720
 runs:
   insecurely: true
   environment:
@@ -21,7 +21,7 @@ variants:
         - wget
     builders:
       - python:
-          version: python3.9
+          version: python3
           requirements: [src/models/langid/requirements.txt, python/requirements.txt]
 
   production:
@@ -42,7 +42,7 @@ variants:
         source: common_settings.sh
         destination: common_settings.sh
     python:
-      version: python3.9
+      version: python3
       use-system-flag: false
     apt:
       packages:
