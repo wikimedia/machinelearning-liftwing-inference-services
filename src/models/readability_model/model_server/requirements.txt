@@ -1,4 +1,4 @@
 --extra-index-url https://download.pytorch.org/whl/cpu
 torch==1.13.1
-readability @ git+https://gitlab.wikimedia.org/trokhymovych/readability-liftwing.git
+readability @ git+https://gitlab.wikimedia.org/repos/machine-learning/readability-liftwing.git
 kserve==0.13.1

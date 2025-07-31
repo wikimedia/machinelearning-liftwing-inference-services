@@ -124,3 +124,16 @@ services:
       dockerfile: .pipeline/pre-commit-check/blubber.yaml
       target: test
     image: pre-commit-check:test
+  readability:
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: .pipeline/readability/blubber.yaml
+      target: production
+    image: readability:prod
+    ports:
+      - "8080:8080"
+    environment:
+      MODEL_NAME: "readability"
+    volumes:
+      - ${PATH_TO_READABILITY_MODEL:-/dummy/path}:/mnt/models/
