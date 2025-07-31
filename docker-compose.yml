@@ -12,6 +12,19 @@ services:
       MODEL_NAME: "articlequality"
     volumes:
       - ${PATH_TO_ARTICLE_QUALITY_MODEL:-/dummy/path}:/mnt/models/
+  article-descriptions:
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: .pipeline/article_descriptions/blubber.yaml
+      target: production
+    image: article-descriptions:prod
+    ports:
+      - "8080:8080"
+    environment:
+      MODEL_NAME: "article-descriptions"
+    volumes:
+      - ${PATH_TO_ARTICLE_DESCRIPTIONS_MODEL:-/dummy/path}:/mnt/models/
   reference-need:
     platform: linux/amd64
     build:
