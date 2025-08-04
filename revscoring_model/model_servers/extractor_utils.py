@@ -14,8 +14,30 @@ from mwapi.errors import (
 )
 from revscoring.errors import MissingResource, UnexpectedContentType
 from revscoring.extractors.api import Extractor, MWAPICache
+from tenacity import (
+    before_sleep_log,
+    retry,
+    retry_if_exception_type,
+    stop_after_attempt,
+    wait_exponential,
+)
 
 from python.decorators import elapsed_time, elapsed_time_async
+
+
+def _is_503_error(exception):
+    """Check if the exception is a RequestError with 503 status code."""
+    return isinstance(exception, RequestError) and exception.code == 503
+
+
+# Retry decorator for 503 errors with exponential backoff
+retry_on_503 = retry(
+    stop=stop_after_attempt(4),  # 3 retries + 1 initial attempt
+    wait=wait_exponential(multiplier=1, min=1, max=60),
+    retry=retry_if_exception_type(RequestError),
+    before_sleep=before_sleep_log(logging.getLogger(__name__), logging.WARNING),
+    retry_error_callback=lambda retry_state: retry_state.outcome.exception(),
+)
 
 
 @elapsed_time_async
@@ -87,9 +109,17 @@ async def get_revscoring_extractor_cache(
     try:
         # This API call is needed by all model implementations so it is
         # done by default.
-        rev_id_doc = await session.get(
-            action="query", prop="revisions", revids=[rev_id], rvslots="main", **params
-        )
+        @retry_on_503
+        async def get_rev_id_doc():
+            return await session.get(
+                action="query",
+                prop="revisions",
+                revids=[rev_id],
+                rvslots="main",
+                **params,
+            )
+
+        rev_id_doc = await get_rev_id_doc()
 
         # If 'badrevids' is returned by the MW API then there is something wrong
         # with the revision id provided. If the error message is changed in the InvalidInput exception
@@ -137,17 +167,25 @@ async def get_revscoring_extractor_cache(
             user = revision_info.get("user")
             user_params = {"usprop": {"groups", "registration", "editcount", "gender"}}
 
-            parent_rev_id_doc, user_doc = await asyncio.gather(
-                session.get(
+            @retry_on_503
+            async def get_parent_rev_id_doc():
+                return await session.get(
                     action="query",
                     prop="revisions",
                     revids=[parent_rev_id],
                     rvslots="main",
                     **params,
-                ),
-                session.get(
+                )
+
+            @retry_on_503
+            async def get_user_doc():
+                return await session.get(
                     action="query", list="users", ususers=[user], **user_params
-                ),
+                )
+
+            parent_rev_id_doc, user_doc = await asyncio.gather(
+                get_parent_rev_id_doc(),
+                get_user_doc(),
             )
     except (
         APIError,
