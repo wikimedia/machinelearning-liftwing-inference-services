@@ -1,4 +1,21 @@
 services:
+  damaging:
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: .pipeline/revscoring/blubber.yaml
+      target: production
+    image: damaging:prod
+    ports:
+      - "8080:8080"
+    environment:
+      MODEL_NAME: "damaging"
+      DYLD_FALLBACK_LIBRARY_PATH: "/opt/homebrew/opt/enchant/lib:$DYLD_FALLBACK_LIBRARY_PATH"
+      INFERENCE_NAME: "enwiki-damaging"
+      WIKI_URL: "https://en.wikipedia.org"
+    volumes:
+      - ${PATH_TO_DAMAGING_MODEL:-/dummy/path}:/mnt/models/
+
   articlequality:
     platform: linux/amd64
     build:
