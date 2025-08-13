@@ -10,7 +10,7 @@ If environment variables do not exist, it uses the default values.
 class Settings(BaseSettings):
     max_batch_size: int = 100
     model_name: str = "edit-check"
-    max_char_length: int = 1000
+    max_char_length: int = 2000
     environment: str = "production"
 
 
