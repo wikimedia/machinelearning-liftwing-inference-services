@@ -1,69 +1,67 @@
-# syntax=docker-registry.wikimedia.org/repos/releng/blubber/buildkit:v0.21.1
+# syntax=docker-registry.wikimedia.org/repos/releng/blubber/buildkit:v0.24.0
 version: v4
-base: docker-registry.wikimedia.org/bullseye:20231015
+base: docker-registry.wikimedia.org/bookworm:20250824
 runs:
   insecurely: true
   environment:
-    PYTHONPATH: /srv/rev
+    PYTHONPATH: /srv/revscoring:/srv/revscoring/python3.10
 
 lives:
-  in: /srv/rev
+  in: /srv/revscoring
 
 variants:
   build:
     apt:
       packages:
-        - python3-pip
-        - python3-dev
         - build-essential
-        - python3-enchant
-        - g++
-        - gfortran
-        - git
-        - liblapack-dev
-        - libopenblas-dev
-        - libenchant-2-2
+        - zlib1g-dev
+        - libncurses5-dev
+        - libgdbm-dev
+        - libnss3-dev
+        - libssl-dev
+        - libreadline-dev
+        - libffi-dev
+        - libsqlite3-dev
         - wget
+        - curl
+        - libbz2-dev
+        - pkg-config
+        - python3-dev
+        - libxml2-dev
+        - libxslt-dev
+        - wmf-certificates
     builders:
-      - python:
-          version: python3.9
-          requirements: [ revscoring_model/requirements.txt ]
+    builders:
       - custom:
-          command: ["python3", "-m", "nltk.downloader", "omw", "sentiwordnet", "stopwords", "wordnet", "omw-1.4"]
+          # install python3.10 as revscoring does not support python3.11 which is the default in bookworm
+          command: [ "./revscoring_model/install_python310.sh" ]
+          requirements: [ "revscoring_model/requirements.txt", "revscoring_model/install_python310.sh" ]
       - custom:
-          command: [ ./get_embeddings.sh ]
-          requirements:
-            - from: local
-              source: revscoring_model/get_embeddings.sh
-              destination: get_embeddings.sh
+          # download word embedding vectors
+          command: [ "./revscoring_model/get_embeddings.sh" ]
+          requirements: [ "revscoring_model/get_embeddings.sh" ]
 
   production:
     copies:
-      - from: local
-        source: revscoring_model/
-        destination: revscoring_model/
-      - from: local
-        source: python
-        destination: python/
+      - from: build
+        source: /srv/revscoring
+        destination: /srv/revscoring
       - from: build
         source: /home/somebody/nltk_data
         destination: /home/somebody/nltk_data
-      - from: build
-        source: /opt/lib/python/site-packages
-        destination: /opt/lib/python/site-packages
-      - from: build
-        source: /srv/rev/word2vec/*
-        destination: word2vec/
-    python:
-      version: python3.9
-      use-system-flag: false
+      - from: local
+        source: revscoring_model
+        destination: revscoring_model
+      - from: local
+        source: python
+        destination: python
     apt:
       packages:
         - python3
         - python3-distutils
         - build-essential
         - liblapack3
-        - libopenblas-base
+        - libopenblas0-pthread
         - libenchant-2-2
         - hunspell-ar
         - aspell-bn
@@ -107,4 +105,4 @@ variants:
         - hunspell-vi
         - voikko-fi
         - wmf-certificates
-    entrypoint: ["python3",  "revscoring_model/model.py"]
+    entrypoint: [ "/srv/revscoring/python3.10/bin/python3.10", "revscoring_model/model.py" ]
