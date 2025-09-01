@@ -19,6 +19,7 @@ def get_random_batch(n_instances: int = 1):
         dd = {
             "lang": "en",
             "check_type": "tone",
+            "page_title": "Page Title",
             "original_text": original,
             "modified_text": modified,
         }
@@ -33,8 +34,8 @@ class EditCheckPeacock(FastHttpUser):
     def get_prediction(self):
         json_body = get_random_batch(n_instances=1)
         hostname = os.environ.get("HOST", "edit-check")
-        namespace = os.environ.get("NS", "experimental")
-        endpoint_url = "/v1/models/edit-check-staging:predict"
+        namespace = os.environ.get("NS", "edit-check")
+        endpoint_url = "/v1/models/edit-check:predict"
         headers = {
             "Content-Type": "application/json",
             "Host": f"{hostname}.{namespace}.wikimedia.org",
