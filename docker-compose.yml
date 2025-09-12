@@ -137,3 +137,16 @@ services:
       MODEL_NAME: "readability"
     volumes:
       - ${PATH_TO_READABILITY_MODEL:-/dummy/path}:/mnt/models/
+  outlink-topic-model:
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: .pipeline/outlink/blubber.yaml
+      target: production
+    image: outlink-topic-model:prod
+    ports:
+      - "8080:8080"
+    environment:
+      MODEL_NAME: "outlink-topic-model"
+    volumes:
+      - ${PATH_TO_OUTLINK_TOPIC_MODEL:-/dummy/path}:/mnt/models/

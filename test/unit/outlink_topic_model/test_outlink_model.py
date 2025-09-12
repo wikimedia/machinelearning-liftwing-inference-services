@@ -1,6 +1,8 @@
+from unittest.mock import patch
+
 import pytest
 
-from src.models.outlink_topic_model.transformer.transformer import OutlinkTransformer
+from src.models.outlink_topic_model.model_server.model import OutlinksTopicModel
 
 
 @pytest.mark.parametrize(
@@ -221,6 +223,7 @@ from src.models.outlink_topic_model.transformer.transformer import OutlinkTransf
 )
 @pytest.mark.asyncio
 async def test_get_outlinks(title, lang, expected):
-    t = OutlinkTransformer("model", "predictor_host")
-    qids = await t.get_outlinks(title, lang)
-    assert qids == expected
+    with patch.object(OutlinksTopicModel, "load", return_value=True):
+        t = OutlinksTopicModel("model")
+        qids = await t.get_outlinks(title, lang)
+        assert qids == expected

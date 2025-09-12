@@ -1,11 +1,22 @@
 import logging
 import os
+from http import HTTPStatus
 
 import aiohttp
 import fasttext
 import kserve
+import mwapi
+from fastapi import HTTPException
+from kserve.errors import InferenceError, InvalidInput
 
 from python import events
+from python.logging_utils import set_log_level
+from python.preprocess_utils import (
+    get_lang,
+    get_page_title,
+    is_domain_wikipedia,
+    validate_json_input,
+)
 
 logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
 
@@ -15,17 +26,26 @@ class OutlinksTopicModel(kserve.Model):
         super().__init__(name)
         self.name = name
         self.ready = False
+
         self.EVENT_KEY = "event"
         self.EVENTGATE_URL = os.environ.get("EVENTGATE_URL")
         self.EVENTGATE_STREAM = os.environ.get("EVENTGATE_STREAM")
+        self.WIKI_URL = os.environ.get("WIKI_URL")
+
         # Deployed via the wmf-certificates package
         self.TLS_CERT_BUNDLE_PATH = "/etc/ssl/certs/wmf-ca-certificates.crt"
         self.CUSTOM_UA = "WMF ML Team outlink-topic-model svc"
         self.AIOHTTP_CLIENT_TIMEOUT = os.environ.get("AIOHTTP_CLIENT_TIMEOUT", 5)
+        self._http_client_session = {}
+
+        set_log_level()
         self.MODEL_VERSION = os.environ.get("MODEL_VERSION")
         self.model_path = os.environ.get("MODEL_PATH", "/mnt/models/model.bin")
-        self._http_client_session = {}
         self.load()
+        self.ready = True
+
+    def load(self):
+        self.model = fasttext.load_model(self.model_path)
 
     def get_http_client_session(self, endpoint):
         """Returns a aiohttp session for the specific endpoint passed as input.
@@ -41,10 +61,6 @@ class OutlinksTopicModel(kserve.Model):
                 timeout=timeout, raise_for_status=True
             )
         return self._http_client_session[endpoint]
-
-    def load(self):
-        self.model = fasttext.load_model(self.model_path)
-        self.ready = True
 
     async def send_event(self) -> None:
         # Send a topic_prediction event to EventGate, generated from
@@ -63,6 +79,112 @@ class OutlinksTopicModel(kserve.Model):
             self.CUSTOM_UA,
             self.get_http_client_session("eventgate"),
         )
+
+    async def get_outlinks(self, title: str, lang: str, limit=1000) -> set:
+        """Gather set of up to `limit` outlinks for an article."""
+        session = mwapi.AsyncSession(
+            host=self.WIKI_URL or f"https://{lang}.wikipedia.org",
+            user_agent="WMF ML Team outlink-topic-model svc",
+            session=self.get_http_client_session("mwapi"),
+        )
+        session.headers["Host"] = f"{lang}.wikipedia.org"
+        # generate list of all outlinks (to namespace 0) from
+        # the article and their associated Wikidata IDs
+        result = await session.get(
+            action="query",
+            generator="links",
+            titles=title,
+            redirects="",
+            prop="pageprops",
+            ppprop="wikibase_item",
+            gplnamespace=0,
+            gpllimit=500,
+            format="json",
+            formatversion=2,
+            continuation=True,
+        )
+        outlink_qids = set()
+        try:
+            async for r in result:
+                for outlink in r["query"]["pages"]:
+                    # namespace 0 and not a red link
+                    if outlink["ns"] == 0 and "missing" not in outlink:
+                        qid = outlink.get("pageprops", {}).get("wikibase_item", None)
+                        if qid is not None:
+                            outlink_qids.add(qid)
+                if len(outlink_qids) > limit:
+                    break
+        except KeyError as e:
+            logging.warning("%r Title: %s Lang: %s", e, title, lang)
+            logging.warning("MW API returned: %r", r)
+            if hasattr(self, "source_event"):
+                logging.warning("Logging source event: %s", self.source_event)
+        logging.debug("%s (%s) fetched %d outlinks", title, lang, len(outlink_qids))
+        return outlink_qids
+
+    async def preprocess(self, inputs: dict, headers: dict[str, str] = None) -> dict:
+        inputs = validate_json_input(inputs)
+        lang = get_lang(inputs, self.EVENT_KEY)
+        page_title = get_page_title(inputs, self.EVENT_KEY)
+        threshold = inputs.get("threshold", 0.5)
+        if not isinstance(threshold, float):
+            logging.error("Expected threshold to be a float")
+            raise InvalidInput('Expected "threshold" to be a float')
+        debug = inputs.get("debug", False)
+        if debug:
+            # when debug is enabled, we want to return all the
+            # predicted topics, so it sets the threshold to 0
+            debug = True
+            threshold = 0.0
+        if self.EVENT_KEY in inputs:
+            self.source_event = inputs[self.EVENT_KEY]
+            if not is_domain_wikipedia(self.source_event):
+                raise HTTPException(
+                    status_code=HTTPStatus.BAD_REQUEST,
+                    detail=(
+                        "This model is not recommended for use in projects outside of Wikipedia"
+                        " — e.g. Wiktionary, Wikinews, etc."
+                    ),
+                )
+        if "features_str" in inputs:
+            # If the features are already provided in the input,
+            # we don't need to call the MW API to get features
+            features_str = inputs["features_str"]
+        else:
+            try:
+                outlinks = await self.get_outlinks(page_title, lang)
+            except Exception:
+                if self.EVENT_KEY in inputs:
+                    logging.info("Logging source event: %s", inputs[self.EVENT_KEY])
+                logging.exception(
+                    "Unexpected error while trying to get outlinks from MW API"
+                )
+                raise InferenceError(
+                    "An unexpected error has occurred while trying "
+                    "to get outlinks from MW API. "
+                    "Please contact the ML team for more info."
+                )
+            features_str = " ".join(outlinks)
+        request = {
+            "features_str": features_str,
+            "page_title": page_title,
+            "lang": lang,
+            "threshold": threshold,
+            "debug": debug,
+        }
+        if self.EVENT_KEY in inputs:
+            request[self.EVENT_KEY] = inputs[self.EVENT_KEY]
+        return request
+
+    def postprocess(self, outputs: dict, headers: dict[str, str] = None) -> dict:
+        topics = outputs["topics"]
+        lang = outputs["lang"]
+        page_title = outputs["page_title"]
+        result = {
+            "article": f"https://{lang}.wikipedia.org/wiki/{page_title}",
+            "results": [{"topic": t[0], "score": t[1]} for t in topics],
+        }
+        return {"prediction": result}
 
     async def predict(self, request: dict, headers: dict[str, str] = None) -> dict:
         features_str = request["features_str"]

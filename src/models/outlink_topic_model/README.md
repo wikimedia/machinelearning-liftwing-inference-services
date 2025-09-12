@@ -16,17 +16,11 @@ In order to run the articletopic-outlink model server locally, please choose one
 ### 1.1. Build
 In the first terminal run:
 ```console
-make articletopic-outlink-predictor
-```
-This build process will set up: a Python venv, install dependencies, download the model(s), and run the predictor on port `8181`.
-
-On the second terminal start the transformer:
-```console
-make articletopic-outlink-transformer
+make articletopic-outlink
 ```
 
 ### 1.2. Query
-On the third terminal query the isvc using:
+In the second terminal query the isvc using:
 ```console
 curl localhost:8080/v1/models/outlink-topic-model:predict -i -X POST -d '{"page_title": "Douglas_Adams", "lang": "en"}'
 ```
@@ -52,7 +46,6 @@ Create a virtual environment and install the dependencies using:
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r src/models/outlink_topic_model/model_server/requirements.txt
-pip install -r src/models/outlink_topic_model/transformer/requirements.txt
 pip install -r python/requirements.txt
 ```
 
@@ -61,19 +54,12 @@ Download the `model.bin` from the link below and place it in the same directory 
 https://analytics.wikimedia.org/published/wmf-ml-models/articletopic/outlink/20221111111111/
 
 ### 2.3. Run the server
-Unlike other model servers, this one uses both a transformer and a predictor. In order to run the transformer and predictor in the same container, we have to change the predictor's port to `8181` so that the transformer can use port `8080`. To achieve this, we added a `--http_port=8181` flag on the command that runs the predictor.
-
-On the first terminal start the transformer:
+Start the predictor:
 ```console
-python3 src/models/outlink_topic_model/transformer/transformer.py --predictor_host="localhost:8181" --model_name="outlink-topic-model"
+MODEL_PATH=PATH_TO_MODEL_DIR MODEL_NAME="outlink-topic-model" python3 src/models/outlink_topic_model/model_server/model.py
 ```
 
-On the second terminal start the predictor:
-```console
-MODEL_PATH=PATH_TO_MODEL_DIR MODEL_NAME="outlink-topic-model" python3 src/models/outlink_topic_model/model_server/model.py --http_port=8181
-```
-
-On the third terminal make a request to the server:
+In the second terminal make a request to the server:
 ```console
 curl localhost:8080/v1/models/outlink-topic-model:predict -i -X POST -d '{"page_title": "Douglas_Adams", "lang": "en"}'
 ```

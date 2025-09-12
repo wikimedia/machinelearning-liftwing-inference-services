@@ -109,7 +109,7 @@ clone-wmf-kserve-numpy-200:
 	fi
 
 # Command for articletopic-outlink predictor
-articletopic-outlink-predictor:
+articletopic-outlink:
 	@$(MAKE) run-server MODEL_NAME="outlink-topic-model" \
 	MODEL_URL="articletopic/outlink/20221111111111/model.bin" \
 	MODEL_SERVER_PARENT_DIR="src/models/outlink_topic_model" \
@@ -117,14 +117,7 @@ articletopic-outlink-predictor:
 	MODEL_SERVER_DIR="model_server" \
 	DEP_DIR="." \
 	CUT_DIRS=2 \
-	ACCEPT_REGEX="." \
-	PREDICTOR_PORT=8181
-
-# Command for articletopic-outlink transformer
-articletopic-outlink-transformer:
-	. $(VENV)/bin/activate && \
-	$(PYTHON) src/models/outlink_topic_model/transformer/transformer.py \
-	--predictor_host="localhost:8181" --model_name="outlink-topic-model"
+	ACCEPT_REGEX="."
 
 # Command for edit-check model-server
 edit-check:

@@ -55,8 +55,8 @@ variants:
         - git
     copies:
       - from: local
-        source: src/models/outlink_topic_model/transformer
-        destination: src/models/outlink_topic_model/transformer
+        source: src/models/outlink_topic_model/model_server
+        destination: src/models/outlink_topic_model/model_server
       - from: local
         source: tox.ini
         destination: .
@@ -87,6 +87,6 @@ variants:
     builders:
       - python:
           version: python3
-          requirements: [src/models/outlink_topic_model/transformer/requirements.txt, python/requirements.txt, requirements-test.txt]
+          requirements: [src/models/outlink_topic_model/model_server/requirements.txt, python/requirements.txt, requirements-test.txt]
           use-system-flag: false
     entrypoint: ["./entrypoint.sh", "ci-lint", "ci-unit"]

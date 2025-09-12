@@ -51,3 +51,47 @@ variants:
       version: python3
       use-system-flag: false
     entrypoint: ["./entrypoint.sh"]
+
+  test:
+    apt:
+      packages:
+        - python3-pip
+        - python3-setuptools
+        - git
+    copies:
+      - from: local
+        source: src/models/outlink_topic_model/model_server
+        destination: src/models/outlink_topic_model/model_server
+      - from: local
+        source: tox.ini
+        destination: .
+      - from: local
+        source: .pre-commit-config.yaml
+        destination: .
+      - from: local
+        source: ci_entrypoint.sh
+        destination: entrypoint.sh
+      - from: local
+        source: ruff.toml
+        destination: .
+      - from: local
+        source: requirements-test.txt
+        destination: .
+      - from: local
+        source: python
+        destination: python/
+      - from: local
+        source: test/unit/__init__.py
+        destination: test/unit/__init__.py
+      - from: local
+        source: test/unit/outlink_topic_model
+        destination: test/unit/outlink_topic_model
+      - from: local
+        source: test/unit/python
+        destination: test/unit/python
+    builders:
+      - python:
+          version: python3
+          requirements: [src/models/outlink_topic_model/model_server/requirements.txt, python/requirements.txt, requirements-test.txt]
+          use-system-flag: false
+    entrypoint: ["./entrypoint.sh", "ci-lint", "ci-unit"]

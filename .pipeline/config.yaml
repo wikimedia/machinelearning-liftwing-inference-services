@@ -1,4 +1,13 @@
 pipelines:
+  outlink:
+    blubberfile: outlink/blubber.yaml
+    stages:
+      - name: run-test
+        build: test
+        run: true
+      - name: production
+        build: production
+
   outlink-publish:
     blubberfile: outlink/blubber.yaml
     stages:
