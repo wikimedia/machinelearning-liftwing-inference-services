@@ -165,7 +165,7 @@ def generate_prediction_classification_event(
             and "content_slots" in event["prior_state"]["revision"]
         ):
             del event["prior_state"]["revision"]["content_slots"]
-        event["$schema"] = "mediawiki/page/prediction_classification_change/1.1.0"
+        event["$schema"] = "mediawiki/page/prediction_classification_change/1.2.0"
         event["meta"] = _meta(source_event, eventgate_stream)
         event["predicted_classification"] = {
             "model_name": model_name,
