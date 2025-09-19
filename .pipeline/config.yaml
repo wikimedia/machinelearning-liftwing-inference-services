@@ -37,16 +37,6 @@ pipelines:
             name: '${setup.project}-outlink-transformer'
             tags: [stable]
 
-  nsfw-publish:
-    blubberfile: nsfw/blubber.yaml
-    stages:
-      - name: publish
-        build: production
-        publish:
-          image:
-            name: '${setup.project}-nsfw'
-            tags: [stable]
-
   revertrisk:
     blubberfile: revertrisk/revertrisk.yaml
     stages:
