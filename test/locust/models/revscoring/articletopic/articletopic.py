@@ -10,20 +10,18 @@ def get_random_sample_from_df_input(df):
     return rev_id
 
 
-class EnwikiGoodfaith(FastHttpUser):
+class EnwikiArticletopic(FastHttpUser):
     wait_time = between(1, 5)
-
-    def on_start(self):
-        self.client.headers = {
-            "Content-Type": "application/json",
-            "Host": "enwiki-goodfaith.revscoring-editquality-goodfaith.wikimedia.org",
-        }
 
     @task
     def get_prediction(self):
+        headers = {
+            "Content-Type": "application/json",
+            "Host": "enwiki-articletopic.revscoring-articletopic.wikimedia.org",
+        }
         rev_id = get_random_sample_from_df_input(rev_ids)
         self.client.post(
-            "/v1/models/enwiki-goodfaith:predict",
+            "/v1/models/enwiki-articletopic:predict",
             json={"rev_id": int(rev_id)},
-            headers=self.client.headers,
+            headers=headers,
         )
