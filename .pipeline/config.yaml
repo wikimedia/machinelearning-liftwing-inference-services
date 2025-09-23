@@ -18,25 +18,6 @@ pipelines:
             name: '${setup.project}-outlink'
             tags: [stable]
 
-  outlink-transformer:
-    blubberfile: outlink/transformer.yaml
-    stages:
-      - name: run-test
-        build: test
-        run: true
-      - name: production
-        build: production
-
-  outlink-transformer-publish:
-    blubberfile: outlink/transformer.yaml
-    stages:
-      - name: publish
-        build: production
-        publish:
-          image:
-            name: '${setup.project}-outlink-transformer'
-            tags: [stable]
-
   revertrisk:
     blubberfile: revertrisk/revertrisk.yaml
     stages:

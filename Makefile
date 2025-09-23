@@ -12,8 +12,7 @@ export PYTHONPATH := $(PYTHON_PATH):$(PYTHONPATH)
 article-country \
 article-descriptions \
 articlequality \
-articletopic-outlink-predictor \
-articletopic-outlink-transformer \
+articletopic-outlink \
 clean \
 clone-descartes \
 clone-wmf-kserve-numpy-200 \
@@ -36,13 +35,10 @@ run: revertrisk-language-agnostic
 # Generic command to run any model server.
 # Adds isvc-specific arguments if defined:
 # - articlequality uses the MAX_FEATURE_VALS to load the features data file.
-# - articletopic-outlink uses PREDICTOR_PORT because it runs both a predictor
-#   and transformer.
 run-server: $(VENV)/bin/activate $(MODEL_PATH)
 	MODEL_PATH=$(MODEL_PATH) MODEL_NAME=$(MODEL_NAME) \
 	$(if $(MAX_FEATURE_VALS), MAX_FEATURE_VALS=$(MAX_FEATURE_VALS)) \
 	$(PYTHON) $(MODEL_SERVER_PARENT_DIR)/$(MODEL_SERVER_DIR)/model.py \
-	$(if $(PREDICTOR_PORT), --http_port=$(PREDICTOR_PORT)) \
 	$(if $(MODEL_NAME_V2), MODEL_NAME_V2=$(MODEL_NAME_V2))
 
 # Clean the environment
