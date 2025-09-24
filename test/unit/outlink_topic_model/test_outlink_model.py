@@ -6,10 +6,10 @@ from src.models.outlink_topic_model.model_server.model import OutlinksTopicModel
 
 
 @pytest.mark.parametrize(
-    "title, lang, expected",
+    "page_id, lang, expected",
     [
         (
-            "Muumi",
+            "9457",
             "fi",
             {
                 "Q131921571",
@@ -222,8 +222,8 @@ from src.models.outlink_topic_model.model_server.model import OutlinksTopicModel
     ],
 )
 @pytest.mark.asyncio
-async def test_get_outlinks(title, lang, expected):
+async def test_get_outlinks(page_id, lang, expected):
     with patch.object(OutlinksTopicModel, "load", return_value=True):
         t = OutlinksTopicModel("model")
-        qids = await t.get_outlinks(title, lang)
+        qids = await t.get_outlinks(page_id, lang)
         assert qids == expected

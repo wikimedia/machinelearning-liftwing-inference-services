@@ -80,6 +80,35 @@ def get_page_title(inputs: dict, event_input_key) -> str:
     return page_title
 
 
+def get_page_id(inputs: dict, event_input_key) -> int:
+    try:
+        if event_input_key in inputs:
+            if inputs[event_input_key]["$schema"].startswith(
+                "/mediawiki/revision/create/1"
+            ) or inputs[event_input_key]["$schema"].startswith(
+                "/mediawiki/revision/create/2"
+            ):
+                page_id = inputs[event_input_key]["page_id"]
+            elif inputs[event_input_key]["$schema"].startswith(
+                "/mediawiki/page/change/1"
+            ):
+                page_id = inputs[event_input_key]["page"]["page_id"]
+            else:
+                raise InvalidInput(
+                    f"Unsupported event of schema {inputs[event_input_key]['$schema']}, "
+                    "the page_id value cannot be determined."
+                )
+        else:
+            page_id = inputs["page_id"]
+            if not isinstance(page_id, int):
+                logging.error("Expected page_id to be a integer.")
+                raise InvalidInput('Expected "page_id" to be a integer.')
+    except KeyError:
+        logging.error("Missing page_id in input data.")
+        raise InvalidInput('Missing "page_id" in input data.')
+    return page_id
+
+
 def get_rev_id(inputs: dict, event_input_key) -> int:
     """
     Extracts the revision ID i.e rev_id from an event dictionary.
