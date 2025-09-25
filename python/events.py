@@ -144,6 +144,75 @@ def generate_revision_score_event(
     return revision_score_event
 
 
+def _build_user_entity(user: dict[str, Any]) -> dict[str, Any]:
+    """Builds a user entity with only the fields defined in
+    fragment/mediawiki/state/entity/user/1.1.0, preventing extra fields
+    from upstream schema changes leaking into outbound events."""
+    fields = (
+        "edit_count",
+        "groups",
+        "is_bot",
+        "is_system",
+        "is_temp",
+        "registration_dt",
+        "user_central_id",
+        "user_id",
+        "user_text",
+    )
+    return {f: user[f] for f in fields if f in user}
+
+
+def _build_page_entity(
+    page: dict[str, Any], include_redirect_link: bool = True
+) -> dict[str, Any]:
+    """Builds a page entity with only the fields defined in
+    fragment/mediawiki/state/entity/page/2.0.0.
+    Set include_redirect_link=False for prior_state.page and
+    created_redirect_page, which omit that sub-object in the schema."""
+    result: dict[str, Any] = {
+        "page_id": page["page_id"],
+        "page_title": page["page_title"],
+    }
+    for f in ("is_redirect", "namespace_id", "revision_count"):
+        if f in page:
+            result[f] = page[f]
+    if include_redirect_link and "redirect_page_link" in page:
+        link = page["redirect_page_link"]
+        link_fields = (
+            "interwiki_prefix",
+            "is_redirect",
+            "namespace_id",
+            "page_id",
+            "page_title",
+        )
+        result["redirect_page_link"] = {f: link[f] for f in link_fields if f in link}
+    return result
+
+
+def _build_revision_entity(revision: dict[str, Any]) -> dict[str, Any]:
+    """Builds a revision entity with only the fields defined in
+    fragment/mediawiki/state/entity/revision/1.1.0."""
+    result: dict[str, Any] = {
+        "rev_id": revision["rev_id"],
+        "rev_dt": revision["rev_dt"],
+    }
+    for f in (
+        "comment",
+        "is_comment_visible",
+        "is_content_visible",
+        "is_editor_visible",
+        "is_minor_edit",
+        "rev_parent_id",
+        "rev_sha1",
+        "rev_size",
+    ):
+        if f in revision:
+            result[f] = revision[f]
+    if "editor" in revision:
+        result["editor"] = _build_user_entity(revision["editor"])
+    return result
+
+
 def generate_prediction_classification_event(
     source_event: dict[str, Any],
     eventgate_stream: str,
@@ -154,29 +223,45 @@ def generate_prediction_classification_event(
     """Generates a prediction_classification event, tailored for a given model,
     from a page_change event.
     """
-    if source_event["$schema"].startswith("/mediawiki/page/change/1"):
-        event = {k: v for k, v in source_event.items()}
-        # remove content_slots field in .prior_state.revision and .revision
-        if "revision" in event and "content_slots" in event["revision"]:
-            del event["revision"]["content_slots"]
-        if (
-            "prior_state" in event
-            and "revision" in event["prior_state"]
-            and "content_slots" in event["prior_state"]["revision"]
-        ):
-            del event["prior_state"]["revision"]["content_slots"]
-        event["$schema"] = "mediawiki/page/prediction_classification_change/1.2.0"
-        event["meta"] = _meta(source_event, eventgate_stream)
-        event["predicted_classification"] = {
+    if not source_event["$schema"].startswith("/mediawiki/page/change/1"):
+        raise RuntimeError(
+            f"Unsupported event of schema {source_event['$schema']}, please contact "
+            "the ML team."
+        )
+
+    event: dict[str, Any] = {
+        "$schema": "/mediawiki/page/prediction_classification_change/1.2.0",
+        "changelog_kind": source_event["changelog_kind"],
+        "page_change_kind": source_event["page_change_kind"],
+        "dt": source_event["dt"],
+        "meta": _meta(source_event, eventgate_stream),
+        "page": _build_page_entity(source_event["page"]),
+        "revision": _build_revision_entity(source_event["revision"]),
+        "wiki_id": source_event["wiki_id"],
+        "predicted_classification": {
             "model_name": model_name,
             "model_version": model_version,
             "predictions": prediction_results["predictions"],
             "probabilities": prediction_results["probabilities"],
-        }
-    else:
-        raise RuntimeError(
-            f"Unsupported event of schema {source_event['$schema']}, please contact "
-            "the ML team."
+        },
+    }
+    if "comment" in source_event:
+        event["comment"] = source_event["comment"]
+    if "performer" in source_event:
+        event["performer"] = _build_user_entity(source_event["performer"])
+    if "prior_state" in source_event:
+        prior = source_event["prior_state"]
+        prior_state: dict[str, Any] = {}
+        if "page" in prior:
+            prior_state["page"] = _build_page_entity(
+                prior["page"], include_redirect_link=False
+            )
+        if "revision" in prior:
+            prior_state["revision"] = _build_revision_entity(prior["revision"])
+        event["prior_state"] = prior_state
+    if "created_redirect_page" in source_event:
+        event["created_redirect_page"] = _build_page_entity(
+            source_event["created_redirect_page"], include_redirect_link=False
         )
     return event
 
