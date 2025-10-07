@@ -4,3 +4,4 @@ from .draftquality.draftquality import EnwikiDraftquality  # noqa
 from .drafttopic.drafttopic import EnwikiDrafttopic  # noqa
 from .articlequality.articlequality import EnwikiArticlequality  # noqa
 from .articletopic.articletopic import EnwikiArticletopic  # noqa
+from .reverted.reverted import ViwikiReverted  # noqa
