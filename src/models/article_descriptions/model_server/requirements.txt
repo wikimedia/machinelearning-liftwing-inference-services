@@ -6,4 +6,4 @@ wheel==0.41.2
 kserve==0.13.1
 mwapi==0.6.1
 transformers==4.35.0
-sentencepiece==0.1.95
+sentencepiece==0.2.1

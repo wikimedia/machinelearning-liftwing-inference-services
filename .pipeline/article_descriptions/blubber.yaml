@@ -1,4 +1,4 @@
-# syntax=docker-registry.wikimedia.org/repos/releng/blubber/buildkit:v0.21.0
+# syntax=docker-registry.wikimedia.org/repos/releng/blubber/buildkit:v1.5.0
 version: v4
 base: docker-registry.wikimedia.org/bookworm:20250720
 runs:
@@ -17,6 +17,7 @@ variants:
         - python3-pip
         - python3-dev
         - python3-setuptools
+        - python3-venv
         - git
         - pkg-config
         - cmake
@@ -25,6 +26,7 @@ variants:
           command: ["git", "clone", "--branch", "1.0.1", "--depth", "1", "https://github.com/wikimedia/descartes.git", "model_server/descartes"]
       - python:
           version: python3
+          use-system-site-packages: true
           requirements: [src/models/article_descriptions/model_server/requirements.txt, python/requirements.txt]
 
   production:
@@ -39,8 +41,8 @@ variants:
         source: python
         destination: python/
       - from: build
-        source: /opt/lib/python/site-packages
-        destination: /opt/lib/python/site-packages
+        source: /opt/lib/venv/lib/python3.11/site-packages
+        destination: /home/somebody/.local/lib/python3.11/site-packages
       - from: local
         source: model_server_entrypoint.sh
         destination: entrypoint.sh
@@ -51,9 +53,10 @@ variants:
       packages:
         - python3
         - python3-distutils
+        - python3-venv
         - python3-setuptools
         - wmf-certificates
     python:
       version: python3
-      use-system-flag: false
+      use-system-site-packages: true
     entrypoint: ["./entrypoint.sh"]
