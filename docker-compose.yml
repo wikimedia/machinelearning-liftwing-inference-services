@@ -150,3 +150,36 @@ services:
       MODEL_NAME: "outlink-topic-model"
     volumes:
       - ${PATH_TO_OUTLINK_TOPIC_MODEL:-/dummy/path}:/mnt/models/
+  revise-tone-task-generator:
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: .pipeline/revise_tone_task_generator/blubber.yaml
+      target: production
+    image: revise-tone-task-generator:prod
+    ports:
+      - "8080:8080"
+    environment:
+      MODEL_NAME: "revise-tone-task-generator"
+    volumes:
+      - ${PATH_TO_REVISE_TONE_TASK_GENERATOR_MODEL:-/dummy/path}:/mnt/models/
+  revise-tone-task-generator-cpu:
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: .pipeline/revise_tone_task_generator/blubber_cpu.yaml
+      target: production
+    image: revise-tone-task-generator:cpu
+    ports:
+      - "8080:8080"
+    environment:
+      MODEL_NAME: "revise-tone-task-generator"
+    volumes:
+      - ${PATH_TO_REVISE_TONE_TASK_GENERATOR_MODEL:-/dummy/path}:/mnt/models/
+  revise-tone-task-generator-test:
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: .pipeline/revise_tone_task_generator/blubber_cpu.yaml
+      target: test
+    image: revise-tone-task-generator:test
