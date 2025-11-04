@@ -25,6 +25,7 @@ readability \
 reference-quality \
 revertrisk-language-agnostic \
 revertrisk-multilingual \
+revertrisk-wikidata \
 run \
 run-server
 
@@ -198,6 +199,17 @@ revertrisk-multilingual:
 	MODEL_PATH="models/revertrisk/multilingual/20230810110019/model.pkl" \
 	MODEL_SERVER_DIR="model_server" \
 	DEP_DIR="multilingual" \
+	CUT_DIRS=2 \
+	ACCEPT_REGEX="."
+
+# Command for revertrisk-wikidata model-server
+revertrisk-wikidata:
+	@$(MAKE) run-server MODEL_NAME="revertrisk-wikidata" \
+	MODEL_URL="revertrisk/wikidata/20251104121312/wikidata_revertrisk_graph2text_v2.pkl" \
+	MODEL_SERVER_PARENT_DIR="src/models/revertrisk_wikidata" \
+	MODEL_PATH="models/revertrisk/wikidata/20251104121312/wikidata_revertrisk_graph2text_v2.pkl" \
+	MODEL_SERVER_DIR="model_server" \
+	DEP_DIR=".." \
 	CUT_DIRS=2 \
 	ACCEPT_REGEX="."
 
