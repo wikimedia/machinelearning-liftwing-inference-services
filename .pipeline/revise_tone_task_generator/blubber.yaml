@@ -4,7 +4,7 @@ base: docker-registry.wikimedia.org/amd-pytorch23:2.3.0rocm6.0-3-20250511
 runs:
   insecurely: true
   environment:
-    PYTHONPATH: /opt/lib/python/site-packages:/srv/revise_tone_task_generator:/opt/lib/venv/lib/python3.11/site-packages
+    PYTHONPATH: /opt/lib/venv/lib/python3.11/site-packages:/srv/revise_tone_task_generator:/opt/lib/python/site-packages
 
 lives:
   in: /srv/revise_tone_task_generator
@@ -99,4 +99,7 @@ variants:
     python:
       version: python3
       use-system-site-packages: false
-      requirements: [requirements-test.txt]
+      requirements:
+        - requirements-test.txt
+        - python/requirements.txt
+        - src/models/revise_tone_task_generator/model_server/requirements.txt

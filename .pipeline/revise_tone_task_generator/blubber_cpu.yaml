@@ -88,6 +88,10 @@ variants:
     builders:
       - python:
           version: python3
-          requirements: [src/models/revise_tone_task_generator/model_server/requirements_cpu.txt, src/models/revise_tone_task_generator/model_server/requirements.txt, python/requirements.txt, requirements-test.txt]
+          requirements:
+            - requirements-test.txt
+            - python/requirements.txt
+            - src/models/revise_tone_task_generator/model_server/requirements.txt
+            - src/models/revise_tone_task_generator/model_server/requirements_cpu.txt
           use-system-flag: false
     entrypoint: ["./entrypoint.sh", "ci-unit"]

@@ -192,3 +192,22 @@ pipelines:
       - name: run-test
         build: test
         run: true
+
+  revise-tone-task-generator:
+    blubberfile: revise_tone_task_generator/blubber.yaml
+    stages:
+      - name: run-test
+        build: test
+        run: true
+      - name: production
+        build: production
+
+  revise-tone-task-generator-publish:
+    blubberfile: revise_tone_task_generator/blubber.yaml
+    stages:
+      - name: publish
+        build: production
+        publish:
+          image:
+            name: '${setup.project}-revise-tone-task-generator'
+            tags: [stable]
