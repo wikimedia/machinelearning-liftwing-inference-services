@@ -15,6 +15,7 @@ import numpy as np
 import pandas as pd
 import transformers
 from aiohttp import ClientSession, ClientTimeout
+from kserve.errors import InferenceError, InvalidInput
 from utils import (
     fetch_labels_from_api,
     parse_wikidata_revision_difference,
@@ -72,7 +73,12 @@ class RevertRiskWikidataModel(kserve.Model):
             "RevertRiskWikidataGraph2TextModel",
             RevertRiskWikidataGraph2TextModelForLoad,
         )
-        self.model = joblib.load(self.model_path)
+        try:
+            self.model = joblib.load(self.model_path)
+        except Exception as e:
+            error_message = f"Failed to load model from {self.model_path}. Reason: {e}"
+            logging.critical(error_message)
+            raise InferenceError(error_message)
         self.ready = True
 
     def get_http_client_session(self) -> ClientSession:
@@ -111,13 +117,18 @@ class RevertRiskWikidataModel(kserve.Model):
         """
         Fetch the content, parent ID, and page title of a revision.
         """
-        rev_doc = await session.get(
-            action="query",
-            prop="revisions",
-            revids=rev_id,
-            rvprop="content|ids|title",
-            rvslots="main",
-        )
+        try:
+            rev_doc = await session.get(
+                action="query",
+                prop="revisions",
+                revids=rev_id,
+                rvprop="content|ids|title",
+                rvslots="main",
+            )
+        except Exception as e:
+            error_message = f"Failed to fetch revision content in _get_revision_content for rev_id {rev_id}. Reason: {e}"
+            logging.error(error_message)
+            raise InferenceError(error_message)
         page = list(rev_doc["query"]["pages"].values())[0]
         page_title = page["title"]
         current_rev = page["revisions"][0]
@@ -135,13 +146,18 @@ class RevertRiskWikidataModel(kserve.Model):
         Fetch all features for a given revision ID from the MediaWiki API.
         """
         features = {}
-        rev_doc = await session.get(
-            action="query",
-            prop="revisions",
-            revids=rev_id,
-            rvprop="user|userid|timestamp|ids",
-            format="json",
-        )
+        try:
+            rev_doc = await session.get(
+                action="query",
+                prop="revisions",
+                revids=rev_id,
+                rvprop="user|userid|timestamp|ids",
+                format="json",
+            )
+        except Exception as e:
+            error_message = f"Failed to fetch metadata features in _fetch_metadata_features for rev_id {rev_id}. Reason: {e}"
+            logging.error(error_message)
+            raise InferenceError(error_message)
         page_id = list(rev_doc["query"]["pages"].keys())[0]
         revision = rev_doc["query"]["pages"][page_id]["revisions"][0]
         user_name = revision["user"]
@@ -223,6 +239,12 @@ class RevertRiskWikidataModel(kserve.Model):
         """
         inputs = validate_json_input(inputs)
         rev_id = inputs.get("rev_id")
+        if not isinstance(rev_id, int) or rev_id <= 0:
+            error_message = (
+                f"Invalid rev_id: {rev_id}. The rev_id must be a positive integer."
+            )
+            logging.error(error_message)
+            raise InvalidInput(error_message)
         check_input_param(rev_id=rev_id)
 
         session = self.create_mwapi_session()
@@ -237,6 +259,10 @@ class RevertRiskWikidataModel(kserve.Model):
             diffs = parse_wikidata_revision_difference(parent_text, current_text)
 
             metadata_features = await self._fetch_metadata_features(rev_id, session)
+        except Exception as e:
+            error_message = f"Error in preprocess for rev_id {rev_id}. Reason: {e}"
+            logging.error(error_message)
+            raise InferenceError(error_message)
         finally:
             await session.session.close()
 
