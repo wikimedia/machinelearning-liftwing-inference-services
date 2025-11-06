@@ -48,7 +48,7 @@ pipelines:
             tags: [stable]
 
   revertrisk-wikidata-publish:
-    blubberfile: revertrisk/wikidata.yaml
+    blubberfile: revertrisk_wikidata/blubber.yaml
     stages:
       - name: publish
         build: production
