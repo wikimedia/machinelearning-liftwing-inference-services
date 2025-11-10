@@ -183,3 +183,16 @@ services:
       dockerfile: .pipeline/revise_tone_task_generator/blubber_cpu.yaml
       target: test
     image: revise-tone-task-generator:test
+  revertrisk-wikidata:
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: .pipeline/revertrisk_wikidata/blubber.yaml
+      target: production
+    image: revertrisk-wikidata:prod
+    ports:
+      - "8080:8080"
+    environment:
+      MODEL_NAME: "revertrisk-wikidata"
+    volumes:
+      - ${PATH_TO_REVERTRISK_WIKIDATA_MODEL:-/dummy/path}:/mnt/models/

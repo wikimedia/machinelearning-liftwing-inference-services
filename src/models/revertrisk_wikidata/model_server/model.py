@@ -14,7 +14,6 @@ import mwapi
 import numpy as np
 import pandas as pd
 import transformers
-from aiohttp import ClientSession, ClientTimeout
 from kserve.errors import InferenceError, InvalidInput
 from utils import (
     fetch_labels_from_api,
@@ -35,7 +34,6 @@ logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
 class RevertRiskWikidataGraph2TextModelForLoad:
     metadata_classifier: catb.CatBoostClassifier
     text_classifier: transformers.Pipeline
-    id2label: dict[str, str]
     model_version: int
 
 
@@ -48,12 +46,10 @@ class RevertRiskWikidataModel(kserve.Model):
         self.model_path = model_path
         self.force_http = force_http
         self.aiohttp_client_timeout = aiohttp_client_timeout
-        self.http_client_session: Optional[ClientSession] = None
         self.custom_user_agent = (
             "WMF ML Team revertrisk-wikidata model inference (LiftWing)"
         )
         self.ready = False
-        self.id2label = {}
         self.load()
 
     def create_mwapi_session(self):
@@ -66,7 +62,7 @@ class RevertRiskWikidataModel(kserve.Model):
 
     def load(self):
         """
-        Load the Graph2Text model and the id2label dictionary.
+        Load the Graph2Text model.
         """
         setattr(
             sys.modules["__main__"],
@@ -80,17 +76,6 @@ class RevertRiskWikidataModel(kserve.Model):
             logging.critical(error_message)
             raise InferenceError(error_message)
         self.ready = True
-
-    def get_http_client_session(self) -> ClientSession:
-        """
-        Get the aiohttp client session, create it if it doesn't exist.
-        Unlike other model-server's, we want to reuse the same session across requests
-        because this model-server uses one host (Wikidata) for all requests.
-        """
-        if self.http_client_session is None or self.http_client_session.closed:
-            timeout = ClientTimeout(total=self.aiohttp_client_timeout)
-            self.http_client_session = ClientSession(timeout=timeout)
-        return self.http_client_session
 
     def _get_bert_scores(self, texts: list[str]) -> dict[str, float]:
         """
