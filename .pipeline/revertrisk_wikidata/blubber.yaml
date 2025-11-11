@@ -4,7 +4,7 @@ base: docker-registry.wikimedia.org/bookworm:20251026
 runs:
   insecurely: true
   environment:
-    PYTHONPATH: /srv/revertrisk_wikidata:/opt/lib/venv/lib/python3.11/site-packages
+    PYTHONPATH: /srv/revertrisk_wikidata:/srv/revertrisk_wikidata/src/models/revertrisk_wikidata/model_server:/opt/lib/venv/lib/python3.11/site-packages
 
 lives:
   in: /srv/revertrisk_wikidata
@@ -51,3 +51,49 @@ variants:
       version: python3
       use-system-site-packages: false
     entrypoint: ["./entrypoint.sh"]
+
+  test:
+    copies:
+      - from: build
+        source: /opt/lib/venv/lib/python3.11/site-packages
+        destination: /opt/lib/venv/lib/python3.11/site-packages
+      - from: local
+        source: src/models/revertrisk_wikidata
+        destination: src/models/revertrisk_wikidata/
+      - from: local
+        source: test/unit/__init__.py
+        destination: test/unit/__init__.py
+      - from: local
+        source: test/unit/revertrisk_wikidata
+        destination: test/unit/revertrisk_wikidata/
+      - from: local
+        source: python
+        destination: python/
+      - from: local
+        source: requirements-test.txt
+        destination: .
+      - from: local
+        source: tox.ini
+        destination: .
+      - from: local
+        source: ruff.toml
+        destination: .
+      - from: local
+        source: .pre-commit-config.yaml
+        destination: .
+      - from: local
+        source: ci_entrypoint.sh
+        destination: entrypoint.sh
+    apt:
+      packages:
+        - python3
+        - python3-distutils
+        - python3-setuptools
+        - python3-venv
+        - wmf-certificates
+        - git
+    python:
+      version: python3
+      use-system-site-packages: false
+      requirements: [requirements-test.txt]
+    entrypoint: ["./entrypoint.sh", "ci-lint", "ci-unit"]
