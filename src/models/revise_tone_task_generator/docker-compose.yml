@@ -1,0 +1,87 @@
+services:
+  cassandra:
+    image: cassandra:4.1
+    container_name: revise-tone-cassandra
+    ports:
+      - "9042:9042"  # CQL native transport port
+    environment:
+      - CASSANDRA_CLUSTER_NAME=local-cluster
+      - CASSANDRA_DC=datacenter1
+      - CASSANDRA_ENDPOINT_SNITCH=GossipingPropertyFileSnitch
+      - MAX_HEAP_SIZE=1G
+      - HEAP_NEWSIZE=256M
+    volumes:
+      - cassandra_data:/var/lib/cassandra
+      - ./cassandra-init.cql:/schema.cql:ro
+      - ./cassandra-entrypoint.sh:/cassandra-entrypoint.sh:ro
+    entrypoint: ["/bin/bash", "/cassandra-entrypoint.sh"]
+    healthcheck:
+      test: ["CMD-SHELL", "cqlsh -e 'describe cluster'"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  revise-tone-task-generator:
+    platform: linux/amd64
+    build:
+      context: ../../..
+      dockerfile: .pipeline/revise_tone_task_generator/blubber.yaml
+      target: production
+    image: revise-tone-task-generator:prod
+    ports:
+      - "8080:8080"
+    environment:
+      MODEL_NAME: "revise-tone-task-generator"
+      MODEL_VERSION: "v1.0"
+      USE_CACHE: "true"
+      CASSANDRA_SERVERS: "cassandra"
+      CASSANDRA_KEYSPACE: "ml_cache"
+      CASSANDRA_TABLE: "page_paragraph_tone_scores"
+      CASSANDRA_USER: "cassandra"
+      CASSANDRA_PASSWORD: "cassandra"
+      CASSANDRA_DATACENTER: "datacenter1"
+      CQLENG_ALLOW_SCHEMA_MANAGEMENT: "0"
+    volumes:
+      - ${PATH_TO_REVISE_TONE_TASK_GENERATOR_MODEL:-/dummy/path}:/mnt/models/
+    depends_on:
+      cassandra:
+        condition: service_healthy
+
+  revise-tone-task-generator-cpu:
+    platform: linux/amd64
+    build:
+      context: ../../..
+      dockerfile: .pipeline/revise_tone_task_generator/blubber_cpu.yaml
+      target: production
+    image: revise-tone-task-generator:cpu
+    ports:
+      - "8080:8080"
+    environment:
+      MODEL_NAME: "revise-tone-task-generator"
+      MODEL_VERSION: "v1.0"
+      USE_CACHE: "true"
+      CASSANDRA_SERVERS: "cassandra"
+      CASSANDRA_KEYSPACE: "ml_cache"
+      CASSANDRA_TABLE: "page_paragraph_tone_scores"
+      CASSANDRA_USER: "cassandra"
+      CASSANDRA_PASSWORD: "cassandra"
+      CASSANDRA_DATACENTER: "datacenter1"
+      CQLENG_ALLOW_SCHEMA_MANAGEMENT: "0"
+    volumes:
+      - ${PATH_TO_REVISE_TONE_TASK_GENERATOR_MODEL:-/dummy/path}:/mnt/models/
+    depends_on:
+      cassandra:
+        condition: service_healthy
+
+  revise-tone-task-generator-test:
+    platform: linux/amd64
+    build:
+      context: ../../..
+      dockerfile: .pipeline/revise_tone_task_generator/blubber_cpu.yaml
+      target: test
+    image: revise-tone-task-generator:test
+
+volumes:
+  cassandra_data:
+    driver: local

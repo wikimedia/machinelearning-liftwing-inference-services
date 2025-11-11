@@ -1,34 +1,43 @@
 # Revise Tone Task Generator
 
-The Tone Suggestion Generator is a streaming application in Lift Wing that sources page_content_change events and updates the necessary systems for downstream use. It does the following:
+The Tone Suggestion Generator is a streaming application in Lift Wing that sources page_content_change events and updates the necessary systems for downstream use. To learn more about the use-case, please visit the (Phabricator page.)[https://phabricator.wikimedia.org/T408538]
 
-- **Consumes events** (triggered by changeprop): `mediawiki.page_content_change.v1`
-- **Filters pages**, processes and parses content into paragraphs, then gets scores from the Tone Check model
-- **Updates the search weighted tags** by emitting events: `mediawiki.cirrussearch.page_weighted_tags_change.v1`
-- **Updates (inserts/deletes) data in Cassandra**
+1. Consumes events triggered by changeprop: `mediawiki.page_content_change.v1`
+2. Filters the articles to a selected group of article topics. Topics are retrieved by querying article topic model on LiftWing.
+3. Splits the article into paragraphs and runs tone check inference on each paragraph.
+4. Paragraphs with tone check issues are saved into Cassandra table.
+5. We update the search weighed tags by emitting events: `mediawiki.cirrussearch.page_weighted_tags_change.v1`
 
-## Model Structure
+## Local Cassandra setup
 
-The model server implements the standard KServe interface with three main methods:
-
-- `preprocess`: Validates and preprocesses the input request
-- `predict`: Runs inference using the loaded model
-- `postprocess`: Formats the predictions into the response payload
+For local development, Cassandra service was added to the docker compose in `src/models/revise_tone_task_generator/docker-compose.yml`.
+There are also 2 initialzation files helping to set up local Cassandra tables:
+- **`cassandra-init.cql`**: Schema definition for `ml_cache.page_paragraph_tone_scores` table
+- **`cassandra-entrypoint.sh`**: Initialization script that starts Cassandra and applies schema automatically
 
 ## Usage
 
-### Running the Model Server
+This model has its own `docker-compose.yml` file for easier local development and testing.
 
-The model server can be run with either CPU or GPU support:
+### Testing the Model and Cache
 
-**GPU Version (requires AMD GPU with ROCm support):**
+To test the model server with a sample request and verify caching:
+
+**1. Start Cassandra and the model server:**
 ```bash
-PATH_TO_REVISE_TONE_TASK_GENERATOR_MODEL=/path/to/tone_check/model docker-compose up revise-tone-task-generator
+PATH_TO_REVISE_TONE_TASK_GENERATOR_MODEL=/path/to/tone_check/model docker-compose -f src/models/revise_tone_task_generator/docker-compose.yml up cassandra revise-tone-task-generator-cpu
 ```
 
-**CPU Version:**
+**2. Send a sample prediction request:**
 ```bash
-PATH_TO_REVISE_TONE_TASK_GENERATOR_MODEL=/path/to/tone_check/model docker-compose up revise-tone-task-generator-cpu
+curl -X POST http://localhost:8080/v1/models/revise-tone-task-generator:predict \
+  -H "Content-Type: application/json" \
+  -d @test/unit/revise_tone_task_generator/sample_payload.json
+```
+
+**3. Verify data was cached in Cassandra:**
+```bash
+docker exec revise-tone-cassandra cqlsh -e "SELECT wiki_id, page_id, revision_id, model_version, idx, score FROM ml_cache.page_paragraph_tone_scores;"
 ```
 
 ### Running Tests
@@ -36,15 +45,5 @@ PATH_TO_REVISE_TONE_TASK_GENERATOR_MODEL=/path/to/tone_check/model docker-compos
 To run the unit tests with Docker:
 
 ```bash
-docker-compose build revise-tone-task-generator-test && docker-compose run --rm revise-tone-task-generator-test
+docker-compose -f src/models/revise_tone_task_generator/docker-compose.yml build revise-tone-task-generator-test && docker-compose -f src/models/revise_tone_task_generator/docker-compose.yml run --rm revise-tone-task-generator-test
 ```
-
-## TODO
-
-- [x] Consume and process `mediawiki.page_content_change.v1` events (triggered by changeprop)
-- [x] Parse content into paragraphs
-- [x] Fetch article topics from outlink-topic-model API
-- [x] Get scores from the Tone Check model for each paragraph
-- [x] Filter pages based on article topic criteria (Culture.Biography.Biography*, Culture.Biography.Women, Culture.Sports)
-- [ ] Emit `mediawiki.cirrussearch.page_weighted_tags_change.v1` events to update search weighted tags
-- [ ] Update (insert/delete) data in Cassandra

@@ -13,7 +13,9 @@ from src.models.revise_tone_task_generator.model_server.model import (
 def mock_model():
     """Create a ReviseToneTaskGenerator instance with mocked model loading."""
     with patch.object(ReviseToneTaskGenerator, "load", return_value=MagicMock()):
-        model = ReviseToneTaskGenerator(name="revise-tone-task-generator")
+        model = ReviseToneTaskGenerator(
+            name="revise-tone-task-generator", use_cache=False
+        )
         return model
 
 

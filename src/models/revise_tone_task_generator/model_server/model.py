@@ -45,14 +45,24 @@ ALLOWED_TOPICS = {
     "Culture.Sports",
 }
 
+TONE_CHECK_TRUE_LABEL = "LABEL_1"
+
 
 class ReviseToneTaskGenerator(kserve.Model):
-    def __init__(self, name: str) -> None:
+    def __init__(self, name: str, use_cache: bool = True) -> None:
         super().__init__(name)
         self.name = name
         self.ready = False
         self.model_path = os.environ.get("MODEL_PATH", "/mnt/models/")
+        self.model_version = os.environ.get("MODEL_VERSION", "v1.0")
         self.model_pipeline = self.load()
+
+        self.use_cache = use_cache
+        if self.use_cache:
+            from model_cache import ReviseToneCache
+
+            self.cache = ReviseToneCache()
+            logging.info("Cache initialised!")
 
     def load(self) -> Pipeline:
         """Load model and resources.
@@ -219,12 +229,13 @@ class ReviseToneTaskGenerator(kserve.Model):
     ) -> dict[str, Any]:
         logging.info("Preprocessing mediawiki.page_content_change.v1 event")
 
+        revision_info = inputs.get("revision", {})
         content_body = (
-            inputs.get("revision", {})
-            .get("content_slots", {})
+            revision_info.get("content_slots", {})
             .get("main", {})
             .get("content_body", "")
         )
+        revision_id = revision_info.get("rev_id")
 
         page_info = inputs.get("page", {})
         page_id = page_info.get("page_id")
@@ -232,6 +243,13 @@ class ReviseToneTaskGenerator(kserve.Model):
         wiki_id = inputs.get("wiki_id")
 
         lang = wiki_id.replace("wiki", "") if wiki_id else "en"
+
+        # Remove old cached predictions for this page before processing
+        if self.use_cache and wiki_id and page_id:
+            try:
+                self.cache.remove_from_cache(wiki_id=wiki_id, page_id=page_id)
+            except Exception as e:
+                logging.error(f"Failed to remove old cache entries: {e}", exc_info=True)
 
         paragraphs = self.extract_paragraphs(content_body, lang)
 
@@ -245,6 +263,7 @@ class ReviseToneTaskGenerator(kserve.Model):
             "page_id": page_id,
             "page_title": page_title,
             "wiki_id": wiki_id,
+            "revision_id": revision_id,
             "lang": lang,
             "article_topics": article_topics,
             "should_process": should_process,
@@ -325,25 +344,47 @@ class ReviseToneTaskGenerator(kserve.Model):
         request_data = predictions.get("request_data", {})
         paragraphs = request_data.get("paragraphs", [])
 
-        # Combine predictions with paragraph information
+        # Filter out negative predictions
         formatted_predictions = []
         for i, (pred, (section_name, text)) in enumerate(
             zip(prediction_results, paragraphs)
         ):
-            formatted_predictions.append(
-                {
-                    "paragraph_index": i,
-                    "section_name": section_name,
-                    "text": text,
-                    "label": pred.get("label"),
-                    "score": pred.get("score"),
-                }
-            )
+            if pred.get("label") == TONE_CHECK_TRUE_LABEL:
+                # The 'paragraph_index' field is reserved for future use when we switch
+                # to HTML source. At that point, Growth can use it to locate specific
+                # paragraphs in articles instead of relying on string matching.
+                formatted_predictions.append(
+                    {
+                        "paragraph_index": i,
+                        "section_name": section_name,
+                        "text": text,
+                        "score": pred.get("score"),
+                    }
+                )
+
+        # Cache the predictions if caching is enabled and we have predictions
+        if self.use_cache and formatted_predictions:
+            wiki_id = request_data.get("wiki_id")
+            page_id = request_data.get("page_id")
+            revision_id = request_data.get("revision_id")
+
+            if wiki_id and page_id and revision_id:
+                try:
+                    self.cache.to_cache(
+                        wiki_id=wiki_id,
+                        page_id=page_id,
+                        revision_id=revision_id,
+                        model_version=self.model_version,
+                        predictions=formatted_predictions,
+                    )
+                except Exception as e:
+                    logging.error(f"Failed to cache predictions: {e}")
 
         return {
             "page_id": request_data.get("page_id"),
             "page_title": request_data.get("page_title"),
             "wiki_id": request_data.get("wiki_id"),
+            "revision_id": request_data.get("revision_id"),
             "lang": request_data.get("lang"),
             "article_topics": request_data.get("article_topics"),
             "should_process": request_data.get("should_process"),
@@ -352,5 +393,8 @@ class ReviseToneTaskGenerator(kserve.Model):
 
 
 if __name__ == "__main__":
-    model = ReviseToneTaskGenerator(name="revise-tone-task-generator")
+    use_cache = os.environ.get("USE_CACHE", "false").lower() == "true"
+    model = ReviseToneTaskGenerator(
+        name="revise-tone-task-generator", use_cache=use_cache
+    )
     kserve.ModelServer(workers=1).start([model])
