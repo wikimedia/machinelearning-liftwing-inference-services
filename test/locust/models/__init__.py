@@ -6,5 +6,6 @@ from .huggingface import *  # noqa
 from .logo_detection import *  # noqa
 from .readability import *  # noqa
 from .revertrisk import *  # noqa
+from .revertrisk_wikidata import *  # noqa
 from .revscoring import *  # noqa
 from .reference_quality import *  # noqa
