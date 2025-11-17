@@ -274,22 +274,11 @@ class ReviseToneCache(BaseCassandraCache):
             if model_version is not None:
                 query = query.filter(model_version=model_version)
 
-            # Get count before deletion
-            count = query.count()
-
-            if count == 0:
-                logger.info(
-                    f"No cache entries to remove for wiki_id={wiki_id}, "
-                    f"page_id={page_id}"
-                )
-                return
-
             # Delete using the query's delete method
             query.delete()
 
             logger.info(
-                f"Removed {count} cache entries for wiki_id={wiki_id}, "
-                f"page_id={page_id}"
+                f"Removed cache entries for wiki_id={wiki_id}, page_id={page_id}"
             )
 
         except Exception as e:
