@@ -29,6 +29,10 @@ from python.preprocess_utils import check_input_param, validate_json_input
 logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
 
 
+NUMERIC_NaN = -999
+CATEGORICAL_NaN = "nan"
+
+
 # This class is needed for joblib to unpickle the model
 @dataclass
 class RevertRiskWikidataGraph2TextModelForLoad:
@@ -82,7 +86,7 @@ class RevertRiskWikidataModel(kserve.Model):
         Calculate BERT scores for the diffs.
         """
         if not texts:
-            return {"mean": -999.0, "max": -999.0}
+            return {"mean": NUMERIC_NaN, "max": NUMERIC_NaN}
 
         tokenizer_kwargs = {"truncation": True, "max_length": 512}
         texts_to_process = prepare_input_for_bert(texts)
@@ -92,8 +96,8 @@ class RevertRiskWikidataModel(kserve.Model):
         scores = process_transformer_predictions(predictions)
 
         return {
-            "mean": np.mean(scores) if scores else -999.0,
-            "max": np.max(scores) if scores else -999.0,
+            "mean": np.mean(scores) if scores else NUMERIC_NaN,
+            "max": np.max(scores) if scores else NUMERIC_NaN,
         }
 
     async def _get_revision_content(
@@ -160,23 +164,24 @@ class RevertRiskWikidataModel(kserve.Model):
         )
         user = user_doc["query"]["users"][0]
         features["user_is_anonymous"] = str("userid" not in user)
-        features["user_is_bot"] = str(int("bot" in user.get("groups", [])))
+        if features["user_is_anonymous"] == "True":
+            features["user_is_bot"] = "-1"
+        else:
+            features["user_is_bot"] = str(int("bot" in user.get("groups", [])))
         user_groups = user.get("groups", [])
-
         for group in self.model.metadata_classifier.feature_names_:
             if group.startswith("event_user_groups-"):
-                features[group] = str(float(group.split("-")[1] in user_groups))
-
+                if features["user_is_anonymous"] != "True":
+                    features[group] = str(float(group.split("-")[1] in user_groups))
         if user.get("registration"):
             reg_timestamp = datetime.fromisoformat(
                 user["registration"].replace("Z", "+00:00")
             )
-            features["user_age"] = (rev_timestamp - reg_timestamp).total_seconds() / (
-                60 * 60 * 24
+            features["user_age"] = round(
+                (rev_timestamp - reg_timestamp).total_seconds() / (60 * 60 * 24)
             )
         else:
-            features["user_age"] = 0
-
+            features["user_age"] = NUMERIC_NaN
         if parent_id != 0:
             parent_rev_doc = await session.get(
                 action="query",
@@ -191,12 +196,11 @@ class RevertRiskWikidataModel(kserve.Model):
             parent_rev_timestamp = datetime.fromisoformat(
                 parent_revision["timestamp"].replace("Z", "+00:00")
             )
-            features["page_seconds_since_previous_revision"] = (
-                rev_timestamp - parent_rev_timestamp
-            ).total_seconds()
+            features["page_seconds_since_previous_revision"] = round(
+                (rev_timestamp - parent_rev_timestamp).total_seconds()
+            )
         else:
             features["page_seconds_since_previous_revision"] = 0
-
         first_rev_doc = await session.get(
             action="query",
             prop="revisions",
@@ -210,10 +214,9 @@ class RevertRiskWikidataModel(kserve.Model):
         first_rev_timestamp = datetime.fromisoformat(
             first_revision["timestamp"].replace("Z", "+00:00")
         )
-        features["page_age"] = (rev_timestamp - first_rev_timestamp).total_seconds() / (
-            60 * 60 * 24
+        features["page_age"] = round(
+            (rev_timestamp - first_rev_timestamp).total_seconds() / (60 * 60 * 24)
         )
-
         return features
 
     async def preprocess(
@@ -275,9 +278,18 @@ class RevertRiskWikidataModel(kserve.Model):
             for diff_str in diffs:
                 matches = re.findall(r"Q\d+|P\d+", diff_str)
                 ids.update(matches)
+                numeric_values = re.findall(
+                    r"numeric-id.*?\{[^}]*?new_value':\s*(\d+).*?old_value':\s*(\d+)",
+                    diff_str,
+                )
+                for a, b in numeric_values:
+                    if a.isdigit():
+                        ids.add(f"Q{a}")
+                    if b.isdigit():
+                        ids.add(f"Q{b}")
             return list(ids)
 
-        entity_ids = extract_entity_ids(diffs)
+        entity_ids = extract_entity_ids(diffs) + [page_title]
         session = self.create_mwapi_session()
         try:
             labels_dict = await fetch_labels_from_api(session, entity_ids)
@@ -321,7 +333,7 @@ class RevertRiskWikidataModel(kserve.Model):
         cat_feature_indices = self.model.metadata_classifier.get_cat_feature_indices()
         for i, feature_name in enumerate(self.model.metadata_classifier.feature_names_):
             if pd.isna(features.get(feature_name)):
-                X.append("NaN" if i in cat_feature_indices else -999)
+                X.append(CATEGORICAL_NaN if i in cat_feature_indices else NUMERIC_NaN)
             else:
                 X.append(features[feature_name])
 
