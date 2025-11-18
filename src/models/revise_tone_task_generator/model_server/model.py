@@ -3,7 +3,7 @@ import os
 import re
 from typing import Any
 
-import aiohttp
+# import aiohttp
 import kserve
 import mwedittypes.utils
 import mwparserfromhell
@@ -55,6 +55,10 @@ class ReviseToneTaskGenerator(kserve.Model):
         self.ready = False
         self.model_path = os.environ.get("MODEL_PATH", "/mnt/models/")
         self.model_version = os.environ.get("MODEL_VERSION", "v1.0")
+        # self.outlink_topic_model_url = os.environ.get(
+        #     "OUTLINK_TOPIC_MODEL_URL",
+        #     "http://outlink-topic-model.articletopic-outlink:8080/v1/models/outlink-topic-model:predict",
+        # )
         self.model_pipeline = self.load()
 
         self.use_cache = use_cache
@@ -106,27 +110,29 @@ class ReviseToneTaskGenerator(kserve.Model):
         Returns:
             True if at least one topic matches the allowed topics, False otherwise
         """
-        if not article_topics:
-            return False
-
-        # Extract topic names from the prediction results
-        results = article_topics.get("prediction", {}).get("results", [])
-        predicted_topics = {
-            result.get("topic") for result in results if result.get("topic")
-        }
-
-        # Check if there's at least one match
-        has_match = bool(predicted_topics & ALLOWED_TOPICS)
-
-        if has_match:
-            matching_topics = predicted_topics & ALLOWED_TOPICS
-            logging.info(f"Article matches allowed topics: {matching_topics}")
-        else:
-            logging.info(
-                f"Article does not match allowed topics. Predicted: {predicted_topics}"
-            )
-
-        return has_match
+        # Temporarily disabled - always return True to process all articles
+        return True
+        # if not article_topics:
+        #     return False
+        #
+        # # Extract topic names from the prediction results
+        # results = article_topics.get("prediction", {}).get("results", [])
+        # predicted_topics = {
+        #     result.get("topic") for result in results if result.get("topic")
+        # }
+        #
+        # # Check if there's at least one match
+        # has_match = bool(predicted_topics & ALLOWED_TOPICS)
+        #
+        # if has_match:
+        #     matching_topics = predicted_topics & ALLOWED_TOPICS
+        #     logging.info(f"Article matches allowed topics: {matching_topics}")
+        # else:
+        #     logging.info(
+        #         f"Article does not match allowed topics. Predicted: {predicted_topics}"
+        #     )
+        #
+        # return has_match
 
     def extract_paragraphs(self, text: str, lang: str) -> list[tuple[str, str]]:
         """Extract paragraphs from wikitext content.
@@ -198,31 +204,33 @@ class ReviseToneTaskGenerator(kserve.Model):
             Dict returned directly by the topic model (may contain probabilities,
             topic names, etc.)
         """
-        url = "https://api.wikimedia.org/service/lw/inference/v1/models/outlink-topic-model:predict"
-
-        headers = {
-            "Content-Type": "application/json",
-            "User-Agent": (
-                "Wikimedia-ReviseToneStructuredTask/1.0 "
-                "(https://wikitech.wikimedia.org/wiki/Machine_Learning)"
-            ),
-        }
-
-        payload = {
-            "lang": lang,
-            "page_id": page_id,
-        }
-
-        logging.info(f"Requesting article topics for page_id={page_id} ({lang})")
-
-        async with aiohttp.ClientSession() as session:
-            async with session.post(url, json=payload, headers=headers) as resp:
-                if resp.status != 200:
-                    text = await resp.text()
-                    logging.error(f"Topic model request failed ({resp.status}): {text}")
-                    return {}
-
-                return await resp.json()
+        # Temporarily disabled - return empty dict
+        return {}
+        # url = self.outlink_topic_model_url
+        #
+        # headers = {
+        #     "Content-Type": "application/json",
+        #     "User-Agent": (
+        #         "Wikimedia-ReviseToneStructuredTask/1.0 "
+        #         "(https://wikitech.wikimedia.org/wiki/Machine_Learning)"
+        #     ),
+        # }
+        #
+        # payload = {
+        #     "lang": lang,
+        #     "page_id": page_id,
+        # }
+        #
+        # logging.info(f"Requesting article topics for page_id={page_id} ({lang})")
+        #
+        # async with aiohttp.ClientSession() as session:
+        #     async with session.post(url, json=payload, headers=headers) as resp:
+        #         if resp.status != 200:
+        #             text = await resp.text()
+        #             logging.error(f"Topic model request failed ({resp.status}): {text}")
+        #             return {}
+        #
+        #         return await resp.json()
 
     async def preprocess(
         self, inputs: dict[str, Any], headers: dict[str, str] = None
