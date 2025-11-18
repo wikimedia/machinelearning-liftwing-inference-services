@@ -6,7 +6,7 @@ from kserve.errors import InferenceError
 from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 
 from python.preprocess_utils import validate_json_input
-from src.models.llm import LLM
+from src.models.llm.model import LLM
 
 
 class NLLB(LLM):

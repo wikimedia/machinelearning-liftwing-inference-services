@@ -2,7 +2,7 @@ import os
 
 from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 
-from src.models.llm import LLM
+from src.models.llm.model import LLM
 
 
 class Aya(LLM):

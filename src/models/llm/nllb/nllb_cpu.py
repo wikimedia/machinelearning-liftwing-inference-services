@@ -8,7 +8,7 @@ from kserve.errors import InferenceError
 
 from python.preprocess_utils import validate_json_input
 from python.resource_utils import get_cpu_count
-from src.models.llm import NLLB
+from src.models.llm.nllb.nllb import NLLB
 
 
 class NLLBCTranslate(NLLB):
