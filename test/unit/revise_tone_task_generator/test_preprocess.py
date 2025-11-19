@@ -20,11 +20,75 @@ def mock_model():
 
 
 @pytest.fixture
-def sample_page_content_change_event():
-    """Load sample mediawiki.page_content_change.v1 event from JSON file."""
+def sample_page_change_event():
+    """Load sample mediawiki.page_change.v1 event from JSON file."""
     sample_file = Path(__file__).parent / "sample_payload.json"
     with open(sample_file) as f:
         return json.load(f)
+
+
+@pytest.fixture
+def sample_page_content():
+    """Sample wikitext content for Anees (musician) page."""
+    return """{{Short description|American singer, rapper & songwriter (born 1992)}}
+{{About|the musician|other uses|Anees}}
+{{Use American English|date=July 2022}}
+{{Use mdy dates|date=July 2022}}
+{{Infobox person
+| name               = anees
+| image              =Anees headshot.jpg
+| alt                =
+| caption            = anees in 2022.
+| alias              = anees
+| birth_name         = Anees Mokhiber
+| birth_date         = {{Birth date and age|1992|7|30}}
+| birth_place        = [[Washington D.C.]], U.S.
+| occupation         = {{hlist|Singer|rapper|songwriter}}
+| television         =
+| parents            =
+| awards             =
+| website            = {{URL|aneesofficial.com}}
+| module             = {{Infobox musical artist
+| embed           = yes
+| background      = solo_singer
+| genre           = {{hlist|[[Pop music|Pop]]|[[R&B]]|[[hip hop music|hip hop]]|[[pop rap]]}}
+| instrument      = {{hlist|Vocals|guitar}}
+| years_active    = 2017–present
+| label           =
+| associated_acts = {{hlist|[[Justin Bieber]]|[[Ex Battalion|JRoa]]}}
+}}
+| signature          =
+}}
+
+'''Anees Mokhiber''' (born July 30, 1992), known mononymously as '''anees''' (stylized in small caps), is a [[Palestinian Americans|Palestinian-American]] singer, rapper, and songwriter known for his hit song, "[[Sun and Moon (Anees song)|Sun and Moon]]", becoming the first international artist to top ''[[Billboard charts|Billboard]]'' [[Philippines Songs]] chart.
+
+== Life and career ==
+
+=== 1992–2024: Early life ===
+Anees Mokhiber was born on July 30, 1992, in the suburbs of [[Washington, D.C.|Washington D.C.]]<ref name=":2">{{Cite web |last=Lee |first=Derrick |date=2022-01-20 |title=Anees Performs For The First Time In Los Angeles For WFNM |url=https://blurredculture.com/anees-performs-for-the-first-time-in-los-angeles-for-wfnm/ |access-date=2022-05-15 |website=Blurred Culture |language=en}}</ref> He was raised and has resided in [[Northern Virginia]].<ref name=":0" /> Anees is an Arab American with [[Palestinian]] and [[Lebanese people|Lebanese]] ancestry.<ref name=":6">{{Cite web |last=Ihmoud |first=Nader |date=2021-09-28 |title=Palestine in America — Blog — A Palestinian you should know: Anees Mokhiber |url=https://www.palestineinamerica.com/blog/a-palestinian-you-should-know-anees-mokhiber |access-date=2022-05-15 |website=Palestine in America |language=en-US}}</ref>
+
+== Artistry and influences ==
+Anees described his sound as genre-defying, ranging from [[Hip hop music|hip-hop]], [[Pop music|pop]], [[Rock music|rock]], [[Rhythm and blues|R&B]], and [[Soul music|soul]].
+
+== Discography ==
+
+=== Singles ===
+{| class="wikitable plainrowheaders" style="text-align:center;"
+|+List of singles
+! Title
+! Year
+|-
+! scope="row" | "Sun and Moon"
+| 2022
+|}
+
+== References ==
+{{Reflist}}
+
+{{DEFAULTSORT:Anees}}
+[[Category:Living people]]
+[[Category:1992 births]]
+"""
 
 
 @pytest.fixture
@@ -48,17 +112,25 @@ def mock_article_topics():
 
 @pytest.mark.asyncio
 async def test_preprocess_extracts_paragraphs(
-    mock_model, sample_page_content_change_event, mock_article_topics
+    mock_model, sample_page_change_event, sample_page_content, mock_article_topics
 ):
     """Test that preprocess method extracts and parses paragraphs from the event."""
-    # Mock the get_article_topics method to avoid external API calls
-    with patch.object(
-        mock_model,
-        "get_article_topics",
-        new_callable=AsyncMock,
-        return_value=mock_article_topics,
+    # Mock get_page_content and get_article_topics to avoid external API calls
+    with (
+        patch.object(
+            mock_model,
+            "get_page_content",
+            new_callable=AsyncMock,
+            return_value=sample_page_content,
+        ),
+        patch.object(
+            mock_model,
+            "get_article_topics",
+            new_callable=AsyncMock,
+            return_value=mock_article_topics,
+        ),
     ):
-        result = await mock_model.preprocess(sample_page_content_change_event)
+        result = await mock_model.preprocess(sample_page_change_event)
 
     # Check that paragraphs were extracted
     assert "paragraphs" in result
@@ -83,17 +155,25 @@ async def test_preprocess_extracts_paragraphs(
 
 @pytest.mark.asyncio
 async def test_preprocess_extracts_metadata(
-    mock_model, sample_page_content_change_event, mock_article_topics
+    mock_model, sample_page_change_event, sample_page_content, mock_article_topics
 ):
     """Test that preprocess method extracts necessary metadata from the event."""
-    # Mock the get_article_topics method to avoid external API calls
-    with patch.object(
-        mock_model,
-        "get_article_topics",
-        new_callable=AsyncMock,
-        return_value=mock_article_topics,
+    # Mock get_page_content and get_article_topics to avoid external API calls
+    with (
+        patch.object(
+            mock_model,
+            "get_page_content",
+            new_callable=AsyncMock,
+            return_value=sample_page_content,
+        ),
+        patch.object(
+            mock_model,
+            "get_article_topics",
+            new_callable=AsyncMock,
+            return_value=mock_article_topics,
+        ),
     ):
-        result = await mock_model.preprocess(sample_page_content_change_event)
+        result = await mock_model.preprocess(sample_page_change_event)
 
     # Check that metadata was extracted
     assert "page_id" in result
@@ -111,29 +191,26 @@ async def test_preprocess_extracts_metadata(
 
 @pytest.mark.asyncio
 async def test_preprocess_filters_sections(
-    mock_model, sample_page_content_change_event, mock_article_topics
+    mock_model, sample_page_change_event, sample_page_content, mock_article_topics
 ):
     """Test that preprocess filters out unwanted sections like References."""
-    # Add a References section to the content
-    sample_page_content_change_event["revision"]["content_slots"]["main"][
-        "content_body"
-    ] += """
-
-== References ==
-Some reference content here.
-
-== External links ==
-Some external links here.
-"""
-
-    # Mock the get_article_topics method to avoid external API calls
-    with patch.object(
-        mock_model,
-        "get_article_topics",
-        new_callable=AsyncMock,
-        return_value=mock_article_topics,
+    # The sample_page_content already includes References section
+    # Mock get_page_content and get_article_topics to avoid external API calls
+    with (
+        patch.object(
+            mock_model,
+            "get_page_content",
+            new_callable=AsyncMock,
+            return_value=sample_page_content,
+        ),
+        patch.object(
+            mock_model,
+            "get_article_topics",
+            new_callable=AsyncMock,
+            return_value=mock_article_topics,
+        ),
     ):
-        result = await mock_model.preprocess(sample_page_content_change_event)
+        result = await mock_model.preprocess(sample_page_change_event)
 
     # Check that References and External links sections are not in the paragraphs
     section_names = [p[0] for p in result["paragraphs"]]
@@ -143,17 +220,25 @@ Some external links here.
 
 @pytest.mark.asyncio
 async def test_preprocess_includes_article_topics(
-    mock_model, sample_page_content_change_event, mock_article_topics
+    mock_model, sample_page_change_event, sample_page_content, mock_article_topics
 ):
     """Test that preprocess includes article topics from the outlink model."""
-    # Mock the get_article_topics method
-    with patch.object(
-        mock_model,
-        "get_article_topics",
-        new_callable=AsyncMock,
-        return_value=mock_article_topics,
+    # Mock get_page_content and get_article_topics
+    with (
+        patch.object(
+            mock_model,
+            "get_page_content",
+            new_callable=AsyncMock,
+            return_value=sample_page_content,
+        ),
+        patch.object(
+            mock_model,
+            "get_article_topics",
+            new_callable=AsyncMock,
+            return_value=mock_article_topics,
+        ),
     ):
-        result = await mock_model.preprocess(sample_page_content_change_event)
+        result = await mock_model.preprocess(sample_page_change_event)
 
     # Check that article_topics is included in the result
     assert "article_topics" in result
@@ -221,17 +306,25 @@ def test_should_process_article_with_women_topic(mock_model):
 
 @pytest.mark.asyncio
 async def test_preprocess_sets_should_process_flag(
-    mock_model, sample_page_content_change_event, mock_article_topics
+    mock_model, sample_page_change_event, sample_page_content, mock_article_topics
 ):
     """Test that preprocess sets the should_process flag correctly."""
-    # Mock with matching topics
-    with patch.object(
-        mock_model,
-        "get_article_topics",
-        new_callable=AsyncMock,
-        return_value=mock_article_topics,
+    # Mock get_page_content and get_article_topics with matching topics
+    with (
+        patch.object(
+            mock_model,
+            "get_page_content",
+            new_callable=AsyncMock,
+            return_value=sample_page_content,
+        ),
+        patch.object(
+            mock_model,
+            "get_article_topics",
+            new_callable=AsyncMock,
+            return_value=mock_article_topics,
+        ),
     ):
-        result = await mock_model.preprocess(sample_page_content_change_event)
+        result = await mock_model.preprocess(sample_page_change_event)
 
     # Check that should_process is set to True (mock has Biography topic)
     assert "should_process" in result

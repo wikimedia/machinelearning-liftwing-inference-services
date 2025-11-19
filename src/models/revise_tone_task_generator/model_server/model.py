@@ -1,18 +1,30 @@
 import logging
 import os
 import re
+from http import HTTPStatus
 from typing import Any
 
-# import aiohttp
+import aiohttp
 import kserve
+import mwapi
 import mwedittypes.utils
 import mwparserfromhell
 import torch
+from fastapi import HTTPException
 from transformers import (
     AutoModelForSequenceClassification,
     AutoTokenizer,
     Pipeline,
     pipeline,
+)
+
+from python.preprocess_utils import (
+    get_lang,
+    get_page_id,
+    get_page_title,
+    get_rev_id,
+    is_domain_wikipedia,
+    validate_json_input,
 )
 
 logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
@@ -59,6 +71,17 @@ class ReviseToneTaskGenerator(kserve.Model):
         #     "OUTLINK_TOPIC_MODEL_URL",
         #     "http://outlink-topic-model.articletopic-outlink:8080/v1/models/outlink-topic-model:predict",
         # )
+
+        # Event key for wrapped events
+        self.EVENT_KEY = "event"
+
+        # MediaWiki API configuration
+        self.WIKI_URL = os.environ.get("WIKI_URL")
+        self.TLS_CERT_BUNDLE_PATH = "/etc/ssl/certs/wmf-ca-certificates.crt"
+        self.CUSTOM_UA = "WMF ML Team revise-tone-task-generator svc"
+        self.AIOHTTP_CLIENT_TIMEOUT = os.environ.get("AIOHTTP_CLIENT_TIMEOUT", 5)
+        self._http_client_session = {}
+
         self.model_pipeline = self.load()
 
         self.use_cache = use_cache
@@ -100,6 +123,21 @@ class ReviseToneTaskGenerator(kserve.Model):
         self.ready = True
         logging.info(f"{self.name} model loaded successfully")
         return model_pipeline
+
+    def get_http_client_session(self, endpoint):
+        """Returns a aiohttp session for the specific endpoint passed as input.
+        We need to do it since sharing a single session leads to unexpected
+        side effects (like sharing headers, most notably the Host one)."""
+        timeout = aiohttp.ClientTimeout(total=self.AIOHTTP_CLIENT_TIMEOUT)
+        if (
+            self._http_client_session.get(endpoint, None) is None
+            or self._http_client_session[endpoint].closed
+        ):
+            logging.info(f"Opening a new Asyncio session for {endpoint}.")
+            self._http_client_session[endpoint] = aiohttp.ClientSession(
+                timeout=timeout, raise_for_status=True
+            )
+        return self._http_client_session[endpoint]
 
     def should_process_article(self, article_topics: dict[str, Any]) -> bool:
         """Check if article topics match the filter criteria.
@@ -192,6 +230,74 @@ class ReviseToneTaskGenerator(kserve.Model):
 
         return paragraphs
 
+    async def get_page_content(
+        self, lang: str, page_id: int, revision_id: int = None
+    ) -> str:
+        """Fetch page content (wikitext) from MediaWiki API.
+
+        Args:
+            lang: Language code (e.g., 'en')
+            page_id: ID of the page
+            revision_id: Optional specific revision ID to fetch
+
+        Returns:
+            Wikitext content of the page
+        """
+        session = mwapi.AsyncSession(
+            host=self.WIKI_URL or f"https://{lang}.wikipedia.org",
+            user_agent=self.CUSTOM_UA,
+            session=self.get_http_client_session("mwapi"),
+        )
+        session.headers["Host"] = f"{lang}.wikipedia.org"
+
+        query_params = {
+            "action": "query",
+            "prop": "revisions",
+            "rvprop": "content",
+            "rvslots": "main",
+            "formatversion": "2",
+            "format": "json",
+        }
+
+        # Use revision_id if provided, otherwise use page_id
+        if revision_id:
+            query_params["revids"] = revision_id
+        else:
+            query_params["pageids"] = page_id
+
+        try:
+            result = await session.get(**query_params)
+            pages = result.get("query", {}).get("pages", [])
+
+            if not pages:
+                logging.error(
+                    f"No page found for page_id={page_id}, revision_id={revision_id}"
+                )
+                return ""
+
+            page = pages[0]
+            if "missing" in page:
+                logging.error(f"Page {page_id} is missing")
+                return ""
+
+            revisions = page.get("revisions", [])
+            if not revisions:
+                logging.error(f"No revisions found for page_id={page_id}")
+                return ""
+
+            content = revisions[0].get("slots", {}).get("main", {}).get("content", "")
+            logging.info(
+                f"Fetched content for page_id={page_id}, revision_id={revision_id}"
+            )
+            return content
+
+        except Exception as e:
+            logging.error(
+                f"Error fetching content for page_id={page_id}, revision_id={revision_id}: {e}",
+                exc_info=True,
+            )
+            return ""
+
     async def get_article_topics(self, lang: str, page_id: int) -> dict[str, Any]:
         """
         Query the outlink article topic model from Wikimedia Lift Wing.
@@ -235,22 +341,42 @@ class ReviseToneTaskGenerator(kserve.Model):
     async def preprocess(
         self, inputs: dict[str, Any], headers: dict[str, str] = None
     ) -> dict[str, Any]:
-        logging.info("Preprocessing mediawiki.page_content_change.v1 event")
+        # Validate and parse JSON input
+        inputs = validate_json_input(inputs)
 
-        revision_info = inputs.get("revision", {})
-        content_body = (
-            revision_info.get("content_slots", {})
-            .get("main", {})
-            .get("content_body", "")
+        # Log whether we're processing an event or a regular payload
+        if self.EVENT_KEY in inputs:
+            logging.info("Preprocessing event")
+        else:
+            logging.info("Preprocessing regular payload (debug mode)")
+
+        # Extract data using shared utilities (work for both events and regular payloads)
+        lang = get_lang(inputs, self.EVENT_KEY)
+        page_id = get_page_id(inputs, self.EVENT_KEY)
+        page_title = get_page_title(inputs, self.EVENT_KEY)
+        revision_id = get_rev_id(inputs, self.EVENT_KEY)
+
+        # Get wiki_id for cache operations
+        if self.EVENT_KEY in inputs:
+            event = inputs[self.EVENT_KEY]
+            wiki_id = event.get("wiki_id") or event.get("database")
+
+            # Validate domain is Wikipedia
+            if not is_domain_wikipedia(event):
+                raise HTTPException(
+                    status_code=HTTPStatus.BAD_REQUEST,
+                    detail=(
+                        "This model is not recommended for use in projects outside of Wikipedia"
+                        " — e.g. Wiktionary, Wikinews, etc."
+                    ),
+                )
+        else:
+            wiki_id = f"{lang}wiki"
+
+        # Fetch page content from MW API
+        content_body = await self.get_page_content(
+            lang=lang, page_id=page_id, revision_id=revision_id
         )
-        revision_id = revision_info.get("rev_id")
-
-        page_info = inputs.get("page", {})
-        page_id = page_info.get("page_id")
-        page_title = page_info.get("page_title")
-        wiki_id = inputs.get("wiki_id")
-
-        lang = wiki_id.replace("wiki", "") if wiki_id else "en"
 
         # Remove old cached predictions for this page before processing
         if self.use_cache and wiki_id and page_id:

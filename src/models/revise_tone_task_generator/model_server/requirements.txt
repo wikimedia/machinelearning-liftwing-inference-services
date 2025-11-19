@@ -3,3 +3,4 @@ mwparserfromhell
 mwedittypes
 transformers
 aiohttp
+mwapi

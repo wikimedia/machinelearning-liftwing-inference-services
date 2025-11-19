@@ -1,8 +1,8 @@
 # Revise Tone Task Generator
 
-The Tone Suggestion Generator is a streaming application in Lift Wing that sources page_content_change events and updates the necessary systems for downstream use. To learn more about the use-case, please visit the (Phabricator page.)[https://phabricator.wikimedia.org/T408538]
+The Tone Suggestion Generator is a streaming application in Lift Wing that sources page_change events and updates the necessary systems for downstream use. To learn more about the use-case, please visit the (Phabricator page.)[https://phabricator.wikimedia.org/T408538]
 
-1. Consumes events triggered by changeprop: `mediawiki.page_content_change.v1`
+1. Consumes events: `mediawiki.page_change.v1`
 2. Filters the articles to a selected group of article topics. Topics are retrieved by querying article topic model on LiftWing.
 3. Splits the article into paragraphs and runs tone check inference on each paragraph.
 4. Paragraphs with tone check issues are saved into Cassandra table.
