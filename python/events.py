@@ -182,11 +182,16 @@ def generate_prediction_classification_event(
 
 
 def generate_page_weighted_tags_event(
-    source_event: dict[str, Any], eventgate_stream: str, tags_to_set: dict[str, Any]
+    source_event: dict[str, Any], eventgate_stream: str, weighted_tags: dict[str, Any]
 ) -> dict:
     """
     Generates a page_weighted_tags_change event, tailored for a given model,
     from a page_change event.
+
+    Args:
+        source_event: The source page_change event
+        eventgate_stream: The EventGate stream name
+        weighted_tags: The weighted_tags structure, can contain "set", "clear", or both
     """
     if not source_event["$schema"].startswith("/mediawiki/page/change/1"):
         raise RuntimeError(
@@ -203,7 +208,7 @@ def generate_page_weighted_tags_event(
             "page_id": source_event["page"]["page_id"],
             "page_title": source_event["page"]["page_title"],
         },
-        "weighted_tags": {"set": tags_to_set},
+        "weighted_tags": weighted_tags,
         "wiki_id": source_event["wiki_id"],
         "rev_based": True,
     }

@@ -298,8 +298,9 @@ class ArticleCountryModel(kserve.Model):
                     for result in prediction["prediction"]["results"]
                 ]
             }
+            weighted_tags = {"set": tags_to_set}
             await self.send_weighted_tags_change_event(
-                request.get(self.event_key), tags_to_set
+                request.get(self.event_key), weighted_tags
             )
         return prediction
 
@@ -333,18 +334,17 @@ class ArticleCountryModel(kserve.Model):
     async def send_weighted_tags_change_event(
         self,
         page_change_event: dict[str, Any],
-        tags_to_set: dict[str, Any],
+        weighted_tags: dict[str, Any],
     ) -> None:
         """
         Send a cirrussearch page_weighted_tags_change event to EventGate, generated
-        from the page_change event and prediction results formatted to match the
-        shape of tags_to_set.
+        from the page_change event and prediction results formatted as weighted_tags.
         """
         article_country_weighted_tags_change_event = (
             events.generate_page_weighted_tags_event(
                 page_change_event,
                 self.eventgate_weighted_tags_change_stream,
-                tags_to_set,
+                weighted_tags,
             )
         )
         await events.send_event(

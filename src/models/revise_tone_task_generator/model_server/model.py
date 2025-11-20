@@ -1,3 +1,4 @@
+import datetime
 import logging
 import os
 import re
@@ -18,6 +19,7 @@ from transformers import (
     pipeline,
 )
 
+from python import events
 from python.preprocess_utils import (
     get_lang,
     get_page_id,
@@ -74,6 +76,12 @@ class ReviseToneTaskGenerator(kserve.Model):
 
         # Event key for wrapped events
         self.EVENT_KEY = "event"
+
+        # EventGate configuration
+        self.EVENTGATE_URL = os.environ.get("EVENTGATE_URL")
+        self.EVENTGATE_WEIGHTED_TAGS_CHANGE_STREAM = os.environ.get(
+            "EVENTGATE_WEIGHTED_TAGS_CHANGE_STREAM"
+        )
 
         # MediaWiki API configuration
         self.WIKI_URL = os.environ.get("WIKI_URL")
@@ -138,6 +146,52 @@ class ReviseToneTaskGenerator(kserve.Model):
                 timeout=timeout, raise_for_status=True
             )
         return self._http_client_session[endpoint]
+
+    async def send_weighted_tags_change_event(
+        self,
+        source_data: dict[str, Any],
+        weighted_tags: dict[str, Any],
+    ) -> None:
+        """
+        Send a cirrussearch page_weighted_tags_change event to EventGate, generated
+        from the source data and prediction results formatted as weighted_tags.
+
+        Args:
+            source_data: The source data, either a page_change event or regular payload
+            weighted_tags: The weighted_tags structure containing "set" and/or "clear"
+        """
+        if self.EVENT_KEY in source_data:
+            page_change_event = source_data[self.EVENT_KEY]
+            weighted_tags_change_event = events.generate_page_weighted_tags_event(
+                page_change_event,
+                self.EVENTGATE_WEIGHTED_TAGS_CHANGE_STREAM,
+                weighted_tags,
+            )
+        else:
+            weighted_tags_change_event = {
+                "$schema": "/mediawiki/cirrussearch/page_weighted_tags_change/1.0.0",
+                "dt": datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "meta": {
+                    "stream": self.EVENTGATE_WEIGHTED_TAGS_CHANGE_STREAM,
+                    "domain": f"{source_data['lang']}.wikipedia.org",
+                },
+                "page": {
+                    "namespace_id": 0,
+                    "page_id": source_data["page_id"],
+                    "page_title": source_data["page_title"],
+                },
+                "weighted_tags": weighted_tags,
+                "wiki_id": f"{source_data['lang']}wiki",
+                "rev_based": True,
+            }
+
+        await events.send_event(
+            weighted_tags_change_event,
+            self.EVENTGATE_URL,
+            self.TLS_CERT_BUNDLE_PATH,
+            self.CUSTOM_UA,
+            self.get_http_client_session("eventgate"),
+        )
 
     def should_process_article(self, article_topics: dict[str, Any]) -> bool:
         """Check if article topics match the filter criteria.
@@ -385,6 +439,17 @@ class ReviseToneTaskGenerator(kserve.Model):
             except Exception as e:
                 logging.error(f"Failed to remove old cache entries: {e}", exc_info=True)
 
+        # Send clear event when processing a new revision
+        if self.EVENTGATE_URL:
+            weighted_tags = {"clear": ["recommendation.tone"]}
+            try:
+                await self.send_weighted_tags_change_event(inputs, weighted_tags)
+                logging.info(f"Sent clear weighted tag event for page_id={page_id}")
+            except Exception as e:
+                logging.error(
+                    f"Failed to send clear weighted tags event: {e}", exc_info=True
+                )
+
         paragraphs = self.extract_paragraphs(content_body, lang)
 
         article_topics = await self.get_article_topics(lang, page_id)
@@ -402,6 +467,10 @@ class ReviseToneTaskGenerator(kserve.Model):
             "article_topics": article_topics,
             "should_process": should_process,
         }
+
+        # Store the event if we're processing an event payload
+        if self.EVENT_KEY in inputs:
+            preprocessed[self.EVENT_KEY] = inputs[self.EVENT_KEY]
 
         logging.info(
             f"Extracted {len(paragraphs)} paragraphs; retrieved topics for page_id={page_id}; should_process={should_process}"
@@ -513,6 +582,24 @@ class ReviseToneTaskGenerator(kserve.Model):
                     )
                 except Exception as e:
                     logging.error(f"Failed to cache predictions: {e}")
+
+        # Send set event if predictions exist (after caching)
+        if self.EVENTGATE_URL and formatted_predictions:
+            # Use the maximum score from all predictions
+            max_score = max(pred["score"] for pred in formatted_predictions)
+            weighted_tags = {
+                "set": {"recommendation.tone": [{"tag": "exists", "score": max_score}]}
+            }
+            try:
+                await self.send_weighted_tags_change_event(request_data, weighted_tags)
+                logging.info(
+                    f"Sent set weighted tag event for page_id={request_data.get('page_id')} "
+                    f"with max_score={max_score:.4f}"
+                )
+            except Exception as e:
+                logging.error(
+                    f"Failed to send set weighted tags event: {e}", exc_info=True
+                )
 
         return {
             "page_id": request_data.get("page_id"),
