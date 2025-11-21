@@ -473,7 +473,7 @@ class ReviseToneTaskGenerator(kserve.Model):
             preprocessed[self.EVENT_KEY] = inputs[self.EVENT_KEY]
 
         logging.info(
-            f"Extracted {len(paragraphs)} paragraphs; retrieved topics for page_id={page_id}; should_process={should_process}"
+            f"Extracted {len(paragraphs)} paragraphs; retrieved topics for page_id={page_id}; should_process_topic={should_process}"
         )
 
         return preprocessed
@@ -564,6 +564,9 @@ class ReviseToneTaskGenerator(kserve.Model):
                         "score": pred.get("score"),
                     }
                 )
+
+        if not formatted_predictions:
+            logging.info("No paragraphs with tone issues were found!")
 
         # Cache the predictions if caching is enabled and we have predictions
         if self.use_cache and formatted_predictions:
