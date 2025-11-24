@@ -20,7 +20,7 @@ class LLM(kserve.Model):
         super().__init__(model_name)
         self.model_path = os.environ.get("MODEL_PATH", "/mnt/models/")
         self.quantized = strtobool(os.environ.get("QUANTIZED", "False"))
-        self.dtype = os.environ.get("DTYPE", "torch.bloat16")
+        self.dtype = os.environ.get("DTYPE", "float16")
         self.attn_implementation = os.environ.get(
             "ATTN_IMPLEMENTATION", "flash_attention_2"
         )
