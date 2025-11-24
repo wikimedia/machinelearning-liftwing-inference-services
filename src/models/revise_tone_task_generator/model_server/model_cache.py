@@ -1,6 +1,7 @@
 import logging
 from typing import Any
 
+from cassandra import ConsistencyLevel
 from cassandra.cqlengine import columns
 from cassandra.cqlengine.models import Model
 
@@ -198,8 +199,10 @@ class ReviseToneCache(BaseCassandraCache):
                     logger.warning(f"Skipping invalid prediction entry: {pred}")
                     continue
 
-                # Create cache entry with TTL from settings
-                PageParagraphToneScore.ttl(self.ttl).create(
+                # Create cache entry with TTL and LOCAL_QUORUM consistency
+                PageParagraphToneScore.ttl(self.ttl).consistency(
+                    ConsistencyLevel.LOCAL_QUORUM
+                ).create(
                     wiki_id=wiki_id,
                     page_id=page_id,
                     revision_id=revision_id,
