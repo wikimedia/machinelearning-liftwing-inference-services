@@ -145,7 +145,8 @@ async def test_preprocess_extracts_paragraphs(
         section_name, text = paragraph
         assert isinstance(section_name, str)
         assert isinstance(text, str)
-        assert len(text) > 30  # Should be > 30 chars
+        assert len(text) > 100  # Should be > 100 chars
+        assert len(text) <= 500  # Should be <= 500 chars
 
     # Check that it contains expected content
     all_text = " ".join([p[1] for p in result["paragraphs"]])
@@ -334,21 +335,26 @@ async def test_preprocess_sets_should_process_flag(
 def test_extract_paragraphs_basic(mock_model):
     """Test the extract_paragraphs method with basic wikitext."""
     wikitext = """
-'''Test Article''' is an article for testing.
+'''Test Article''' is an article for testing. Too short.
 
 == Section 1 ==
-This is the first paragraph in section 1. It has enough text to pass the length filter.
+This is the first paragraph in section 1. It has enough text to pass the length filter. It has enough text to pass the length filter. It has enough text to pass the length filter.
 
-This is the second paragraph in section 1. Also long enough.
+This is the second paragraph in section 1. Also long enough. Also long enough. Also long enough. Also long enough. Also long enough.
 
 == Section 2 ==
-This is a paragraph in section 2. It contains sufficient text.
+This is a paragraph in section 2. It contains sufficient text. It contains sufficient text. It contains sufficient text. It contains sufficient text.
+
+== Section 3 ==
+This is a paragraph in section 3. It has more than 500 characters. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc posuere, nunc vitae ultricies cursus, velit augue pulvinar mauris, id malesuada sapien erat quis augue. Suspendisse feugiat sem vitae risus malesuada, eget dictum eros porta. Sed vehicula fermentum felis, sit amet volutpat augue tristique ac. Curabitur accumsan velit leo, sed consectetur odio placerat sit amet. Pellentesque viverra rhoncus ex, eu dignissim odio dignissim nec. Aliquam erat volutpat. Vestibulum sit amet congue orci. Integer varius libero augue, sit amet aliquam nisi facilisis ac. Nam ut risus vitae justo blandit dignissim sit amet non libero. Phasellus vel iaculis nunc, nec ultricies nibh. In hac habitasse platea dictumst. Quisque ut pretium erat, varius luctus justo. Nullam faucibus bibendum metus, eget luctus lorem aliquet at. Donec interdum, ipsum porttitor luctus fermentum, magna nisl euismod risus, ac facilisis dui velit sed mi.
+
 """
 
     paragraphs = mock_model.extract_paragraphs(wikitext, "en")
 
-    assert len(paragraphs) >= 3
+    assert len(paragraphs) == 3
     section_names = [p[0] for p in paragraphs]
-    assert "LEAD_SECTION" in section_names
+    assert "LEAD_SECTION" not in section_names
     assert "Section 1" in section_names
     assert "Section 2" in section_names
+    assert "Section 3" not in section_names

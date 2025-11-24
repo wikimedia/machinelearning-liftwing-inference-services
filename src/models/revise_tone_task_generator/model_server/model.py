@@ -43,10 +43,42 @@ SECTIONS_TO_SKIP = {
         "Sources",
         "Bibliography",
     ],
+    "fr": [
+        "Notes et références",
+        "Annexes",
+        "Bibliographie",
+        "Articles connexes",
+        "Liens externes",
+        "Voir aussi",
+        "Notes",
+        "Références",
+    ],
+    "ar": [
+        "وصلات خارجية",
+        "قراءة موسَّعة",
+        "الهوامش",
+        "انظر أيضاً",
+        "الاستشهاد بالمصادر",
+        "انظر أيضًا",
+        "مراجع",
+    ],
+    "pt": [
+        "Ver também",
+        "Notas e referências",
+        "Ligações externas",
+        "Referências",
+        "Bibliografia",
+        "Notas",
+    ],
 }
 
 # Prefixes for links/files to remove
-PREFIXES_TO_REMOVE = ("file:", "image:", "category:")
+PREFIXES_TO_REMOVE = {
+    "en": ("file:", "image:", "category:"),
+    "fr": ("fichier:", "image:", "catégorie:"),
+    "ar": ("صورة", "ملف", "تصنيف"),
+    "pt": ("file:", "imagem:", "categoria:"),
+}
 
 # Model constants
 BATCH_SIZE = 200  # Batch size for the model pipeline
@@ -236,6 +268,8 @@ class ReviseToneTaskGenerator(kserve.Model):
         Returns:
             List of tuples containing (section_name, paragraph_text)
         """
+        if lang == "test":
+            lang = "en"  # set testwiki to use enwiki's parameters for parsing
         paragraphs = []
 
         wikitext = mwparserfromhell.parse(text)
@@ -253,7 +287,11 @@ class ReviseToneTaskGenerator(kserve.Model):
 
             # Data cleaning
             for link in section.filter_wikilinks():
-                if link.title.strip().lower().startswith(PREFIXES_TO_REMOVE):
+                if (
+                    link.title.strip()
+                    .lower()
+                    .startswith(PREFIXES_TO_REMOVE.get(lang, ()))
+                ):
                     try:
                         section.remove(link)
                     except ValueError:
@@ -272,14 +310,16 @@ class ReviseToneTaskGenerator(kserve.Model):
 
             # Extract paragraphs (more than one newline in between)
             for paragraph in re.split(r"\n+", str(section)):
-                if paragraph.startswith("*"):  # Remove bullet points
-                    continue
-                if paragraph.startswith(" |"):  # Remove table leftover
+                if paragraph.startswith(("*", " |")):
                     continue
                 plaintext = mwedittypes.utils.wikitext_to_plaintext(
                     paragraph, lang
                 ).strip()
-                if plaintext and len(plaintext) > 30:  # Paragraphs more than 30 chars
+                if plaintext.startswith(("*", "{{", "!")):
+                    continue
+                if "quote>" in plaintext or "<ref>" in plaintext or "|" in plaintext:
+                    continue
+                if plaintext and len(plaintext) > 100 and len(plaintext) <= 500:
                     paragraphs.append((section_name, plaintext))
 
         return paragraphs
@@ -410,6 +450,14 @@ class ReviseToneTaskGenerator(kserve.Model):
         page_title = get_page_title(inputs, self.EVENT_KEY)
         revision_id = get_rev_id(inputs, self.EVENT_KEY)
 
+        supported_lang = [lang for lang in SECTIONS_TO_SKIP.keys()] + ["test"]
+        if lang not in supported_lang:
+            logging.info(f"Unsupported lang: {lang}.")
+            raise HTTPException(
+                status_code=HTTPStatus.BAD_REQUEST,
+                detail=("Unsupported lang."),
+            )
+
         # Get wiki_id for cache operations
         if self.EVENT_KEY in inputs:
             event = inputs[self.EVENT_KEY]
@@ -417,6 +465,7 @@ class ReviseToneTaskGenerator(kserve.Model):
 
             # Validate domain is Wikipedia
             if not is_domain_wikipedia(event):
+                logging.info("Unsupported domain.")
                 raise HTTPException(
                     status_code=HTTPStatus.BAD_REQUEST,
                     detail=(
