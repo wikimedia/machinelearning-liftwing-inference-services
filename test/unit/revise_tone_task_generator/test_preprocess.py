@@ -265,7 +265,6 @@ def test_should_process_article_with_matching_topic(mock_model):
     assert mock_model.should_process_article(article_topics) is True
 
 
-@pytest.mark.skip(reason="Topic filtering temporarily disabled")
 def test_should_process_article_without_matching_topic(mock_model):
     """Test that articles without matching topics are not marked for processing."""
     # Article without any matching topics
@@ -282,7 +281,6 @@ def test_should_process_article_without_matching_topic(mock_model):
     assert mock_model.should_process_article(article_topics) is False
 
 
-@pytest.mark.skip(reason="Topic filtering temporarily disabled")
 def test_should_process_article_with_empty_topics(mock_model):
     """Test that articles with empty topics are not marked for processing."""
     # Empty article topics
