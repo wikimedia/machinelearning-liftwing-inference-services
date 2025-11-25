@@ -1,6 +1,6 @@
 aiohttp==3.9.3
 PyYAML==6.0.1
-pyopencl==2024.2.7
+pyopencl==2025.2.7
 prometheus-client>=0.13.1
 cassandra-driver==3.29.3
 pydantic-settings==2.8.1
