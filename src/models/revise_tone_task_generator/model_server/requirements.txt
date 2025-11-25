@@ -1,6 +1,6 @@
 kserve
 mwparserfromhell
 mwedittypes
-transformers
+transformers==4.57.1
 aiohttp
 mwapi
