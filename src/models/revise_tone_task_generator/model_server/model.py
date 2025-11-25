@@ -450,6 +450,7 @@ class ReviseToneTaskGenerator(kserve.Model):
         page_title = get_page_title(inputs, self.EVENT_KEY)
         revision_id = get_rev_id(inputs, self.EVENT_KEY)
 
+        # Validate lang is supported language
         supported_lang = [lang for lang in SECTIONS_TO_SKIP.keys()] + ["test"]
         if lang not in supported_lang:
             logging.info(f"Unsupported lang: {lang}.")
@@ -487,17 +488,6 @@ class ReviseToneTaskGenerator(kserve.Model):
                 self.cache.remove_from_cache(wiki_id=wiki_id, page_id=page_id)
             except Exception as e:
                 logging.error(f"Failed to remove old cache entries: {e}", exc_info=True)
-
-        # Send clear event when processing a new revision
-        if self.EVENTGATE_URL:
-            weighted_tags = {"clear": ["recommendation.tone"]}
-            try:
-                await self.send_weighted_tags_change_event(inputs, weighted_tags)
-                logging.info(f"Sent clear weighted tag event for page_id={page_id}")
-            except Exception as e:
-                logging.error(
-                    f"Failed to send clear weighted tags event: {e}", exc_info=True
-                )
 
         paragraphs = self.extract_paragraphs(content_body, lang)
 
@@ -635,23 +625,43 @@ class ReviseToneTaskGenerator(kserve.Model):
                 except Exception as e:
                     logging.error(f"Failed to cache predictions: {e}")
 
-        # Send set event if predictions exist (after caching)
-        if self.EVENTGATE_URL and formatted_predictions:
-            # Use the maximum score from all predictions
-            max_score = max(pred["score"] for pred in formatted_predictions)
-            weighted_tags = {
-                "set": {"recommendation.tone": [{"tag": "exists", "score": max_score}]}
-            }
-            try:
-                await self.send_weighted_tags_change_event(request_data, weighted_tags)
-                logging.info(
-                    f"Sent set weighted tag event for page_id={request_data.get('page_id')} "
-                    f"with max_score={max_score:.4f}"
-                )
-            except Exception as e:
-                logging.error(
-                    f"Failed to send set weighted tags event: {e}", exc_info=True
-                )
+        # Send weighted tags change event after caching
+        if self.EVENTGATE_URL:
+            if formatted_predictions:
+                # Send set event if predictions exist
+                # Use the maximum score from all predictions
+                max_score = max(pred["score"] for pred in formatted_predictions)
+                weighted_tags = {
+                    "set": {
+                        "recommendation.tone": [{"tag": "exists", "score": max_score}]
+                    }
+                }
+                try:
+                    await self.send_weighted_tags_change_event(
+                        request_data, weighted_tags
+                    )
+                    logging.info(
+                        f"Sent set weighted tag event for page_id={request_data.get('page_id')} "
+                        f"with max_score={max_score:.4f}"
+                    )
+                except Exception as e:
+                    logging.error(
+                        f"Failed to send set weighted tags event: {e}", exc_info=True
+                    )
+            else:
+                # Send clear event if no predictions exist
+                weighted_tags = {"clear": ["recommendation.tone"]}
+                try:
+                    await self.send_weighted_tags_change_event(
+                        request_data, weighted_tags
+                    )
+                    logging.info(
+                        f"Sent clear weighted tag event for page_id={request_data.get('page_id')}"
+                    )
+                except Exception as e:
+                    logging.error(
+                        f"Failed to send clear weighted tags event: {e}", exc_info=True
+                    )
 
         return {
             "page_id": request_data.get("page_id"),
