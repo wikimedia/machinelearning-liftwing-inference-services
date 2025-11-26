@@ -34,7 +34,7 @@ class LLM(kserve.Model):
 
     def validate_inputs(self):
         """
-        Check if a GPU exists and if the model is intructed for quantization.
+        Check if a GPU exists and if the model is instructed for quantization.
         Only GPU models can be quantized, so if a GPU is not available we throw the same
         RuntimeError that transformers throws when trying to quantize a model without GPU.
         """
