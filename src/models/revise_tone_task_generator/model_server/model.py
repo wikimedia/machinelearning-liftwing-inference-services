@@ -482,10 +482,9 @@ class ReviseToneTaskGenerator(kserve.Model):
         else:
             wiki_id = f"{lang}wiki"
 
-        # Fetch page content from MW API
-        content_body = await self.get_page_content(
-            lang=lang, page_id=page_id, revision_id=revision_id
-        )
+        # Check article topics first to enable early exit (optimization)
+        article_topics = await self.get_article_topics(lang, page_id)
+        should_process = self.should_process_article(article_topics)
 
         # Remove old cached predictions for this page before processing
         if self.use_cache and wiki_id and page_id:
@@ -494,12 +493,35 @@ class ReviseToneTaskGenerator(kserve.Model):
             except Exception as e:
                 logging.error(f"Failed to remove old cache entries: {e}", exc_info=True)
 
+        # Early exit if article doesn't match topic criteria
+        # This avoids expensive MW API call and wikitext parsing
+        if not should_process:
+            logging.info(
+                f"Skipping content fetch for page_id={page_id} - "
+                f"article does not match topic criteria"
+            )
+            preprocessed = {
+                "paragraphs": [],
+                "page_id": page_id,
+                "page_title": page_title,
+                "wiki_id": wiki_id,
+                "revision_id": revision_id,
+                "lang": lang,
+                "article_topics": article_topics,
+                "should_process": False,
+            }
+
+            # Store the event if we're processing an event payload
+            if self.EVENT_KEY in inputs:
+                preprocessed[self.EVENT_KEY] = inputs[self.EVENT_KEY]
+
+            return preprocessed
+
+        # Only fetch and parse content if article matches topic criteria
+        content_body = await self.get_page_content(
+            lang=lang, page_id=page_id, revision_id=revision_id
+        )
         paragraphs = self.extract_paragraphs(content_body, lang)
-
-        article_topics = await self.get_article_topics(lang, page_id)
-
-        # Check if article should be processed based on topics
-        should_process = self.should_process_article(article_topics)
 
         preprocessed = {
             "paragraphs": paragraphs,
@@ -517,7 +539,8 @@ class ReviseToneTaskGenerator(kserve.Model):
             preprocessed[self.EVENT_KEY] = inputs[self.EVENT_KEY]
 
         logging.info(
-            f"Extracted {len(paragraphs)} paragraphs; retrieved topics for page_id={page_id}; should_process_topic={should_process}"
+            f"Extracted {len(paragraphs)} paragraphs for page_id={page_id} - "
+            f"article matches topic criteria and will be processed"
         )
 
         return preprocessed
