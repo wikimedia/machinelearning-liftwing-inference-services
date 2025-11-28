@@ -1,6 +1,6 @@
 accelerate==1.12.0
-https://gitlab.wikimedia.org/repos/machine-learning/huggingface-optimum-benchmark-automation/-/raw/main/wheels/gfx90a_and_gfx942/bitsandbytes-0.43.3.dev0-cp311-cp311-linux_x86_64.whl
-https://gitlab.wikimedia.org/repos/machine-learning/huggingface-optimum-benchmark-automation/-/raw/main/wheels/gfx90a_and_gfx942/flash_attn-2.7.4.post1-cp311-cp311-linux_x86_64.whl
+https://gitlab.wikimedia.org/repos/machine-learning/huggingface-optimum-benchmark-automation/-/raw/main/wheels/gfx90a+gfx942/bitsandbytes/20251127170310/bitsandbytes-0.43.3.dev0-cp311-cp311-linux_x86_64.whl
+https://gitlab.wikimedia.org/repos/machine-learning/huggingface-optimum-benchmark-automation/-/raw/main/wheels/gfx90a+gfx942/flashattention2/20251127101413/flash_attn-2.7.4.post1-cp311-cp311-linux_x86_64.whl
 ctranslate2==4.6.1
 einops==0.8.1
 kserve==0.16.0
