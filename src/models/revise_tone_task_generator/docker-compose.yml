@@ -35,6 +35,9 @@ services:
       MODEL_NAME: "revise-tone-task-generator"
       MODEL_VERSION: "v1.0"
       USE_CACHE: "true"
+      NUM_WORKERS: ${NUM_WORKERS:-1}
+      NUM_THREADS: ${NUM_THREADS:-}
+      MAX_ASYNCIO_WORKERS: ${MAX_ASYNCIO_WORKERS:-}
       CASSANDRA_SERVERS: "cassandra"
       CASSANDRA_KEYSPACE: "ml_cache"
       CASSANDRA_TABLE: "page_paragraph_tone_scores"
@@ -62,6 +65,9 @@ services:
       MODEL_VERSION: "v1.0"
       OUTLINK_TOPIC_MODEL_URL: https://api.wikimedia.org/service/lw/inference/v1/models/outlink-topic-model:predict
       USE_CACHE: "true"
+      NUM_WORKERS: ${NUM_WORKERS:-1}
+      NUM_THREADS: ${NUM_THREADS:-}
+      MAX_ASYNCIO_WORKERS: ${MAX_ASYNCIO_WORKERS:-}
       CASSANDRA_SERVERS: "cassandra"
       CASSANDRA_KEYSPACE: "ml_cache"
       CASSANDRA_TABLE: "page_paragraph_tone_scores"

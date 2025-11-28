@@ -98,7 +98,6 @@ class ReviseToneTaskGenerator(kserve.Model):
     def __init__(self, name: str, use_cache: bool = True) -> None:
         super().__init__(name)
         self.name = name
-        self.ready = False
         self.model_path = os.environ.get("MODEL_PATH", "/mnt/models/")
         self.model_version = os.environ.get("MODEL_VERSION", "v1.0")
         self.outlink_topic_model_url = os.environ.get(
@@ -123,14 +122,33 @@ class ReviseToneTaskGenerator(kserve.Model):
         self.AIOHTTP_CLIENT_TIMEOUT = os.environ.get("AIOHTTP_CLIENT_TIMEOUT", 5)
         self._http_client_session = {}
 
-        self.model_pipeline = self.load()
+        # Use lazy loading for model pipeline (initialized per worker)
+        self._model_pipeline = None
 
         self.use_cache = use_cache
-        if self.use_cache:
+        # Cache will be initialized per worker via lazy loading
+        self._cache = None
+
+        # Mark as ready - actual loading happens lazily per worker
+        self.ready = True
+        logging.info(f"{self.name} initialized - model will load lazily per worker")
+
+    @property
+    def model_pipeline(self) -> Pipeline:
+        """Lazy load model pipeline on first access in each worker process."""
+        if self._model_pipeline is None:
+            self._model_pipeline = self.load()
+        return self._model_pipeline
+
+    @property
+    def cache(self):
+        """Lazy load cache on first access in each worker process."""
+        if self.use_cache and self._cache is None:
             from model_cache import ReviseToneCache
 
-            self.cache = ReviseToneCache()
-            logging.info("Cache initialised!")
+            self._cache = ReviseToneCache()
+            logging.info("Cache initialised in worker process!")
+        return self._cache
 
     def load(self) -> Pipeline:
         """Load model and resources.
@@ -161,8 +179,9 @@ class ReviseToneTaskGenerator(kserve.Model):
             batch_size=BATCH_SIZE,
         )
 
-        self.ready = True
-        logging.info(f"{self.name} model loaded successfully")
+        logging.info(
+            f"{self.name} model loaded successfully in worker process {os.getpid()}"
+        )
         return model_pipeline
 
     def get_http_client_session(self, endpoint):
@@ -705,7 +724,17 @@ class ReviseToneTaskGenerator(kserve.Model):
 
 if __name__ == "__main__":
     use_cache = os.environ.get("USE_CACHE", "false").lower() == "true"
+    num_workers = int(os.environ.get("NUM_WORKERS", "1"))
+    max_asyncio_workers = os.environ.get("MAX_ASYNCIO_WORKERS")
+    if max_asyncio_workers:
+        max_asyncio_workers = int(max_asyncio_workers)
+    else:
+        max_asyncio_workers = None
     model = ReviseToneTaskGenerator(
         name="revise-tone-task-generator", use_cache=use_cache
     )
-    kserve.ModelServer(workers=1).start([model])
+    kserve.ModelServer(
+        workers=num_workers,
+        enable_grpc=False,
+        max_asyncio_workers=max_asyncio_workers,
+    ).start([model])
