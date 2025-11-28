@@ -4,6 +4,7 @@ from typing import Any
 from cassandra import ConsistencyLevel
 from cassandra.cqlengine import columns
 from cassandra.cqlengine.models import Model
+from cassandra.cqlengine.query import BatchQuery, BatchType
 
 from python.cassandra_cache import BaseCassandraCache, CassandraSettings
 
@@ -173,6 +174,9 @@ class ReviseToneCache(BaseCassandraCache):
         """
         Store predictions in cache for a specific page revision.
 
+        Uses cqlengine's BatchQuery for efficient writes - all predictions are
+        written in a single network round-trip to Cassandra using the ORM.
+
         Args:
             wiki_id: Wikipedia database identifier (e.g., "enwiki")
             page_id: Numeric page identifier
@@ -187,6 +191,18 @@ class ReviseToneCache(BaseCassandraCache):
             Exception: If caching fails (logged but not re-raised)
         """
         try:
+            if not predictions:
+                logger.info("No predictions to cache")
+                return
+
+            # Create batch query using cqlengine ORM
+            # Use UNLOGGED for better performance - all writes share the same partition
+            # key (wiki_id, page_id) so atomicity is guaranteed by the node itself
+            batch = BatchQuery(
+                batch_type=BatchType.Unlogged,
+                consistency=ConsistencyLevel.LOCAL_QUORUM,
+            )
+
             cached_count = 0
             for pred in predictions:
                 # Extract required fields
@@ -199,10 +215,8 @@ class ReviseToneCache(BaseCassandraCache):
                     logger.warning(f"Skipping invalid prediction entry: {pred}")
                     continue
 
-                # Create cache entry with TTL and LOCAL_QUORUM consistency
-                PageParagraphToneScore.ttl(self.ttl).consistency(
-                    ConsistencyLevel.LOCAL_QUORUM
-                ).create(
+                # Add create operation to batch using ORM
+                PageParagraphToneScore.batch(batch).ttl(self.ttl).create(
                     wiki_id=wiki_id,
                     page_id=page_id,
                     revision_id=revision_id,
@@ -213,11 +227,15 @@ class ReviseToneCache(BaseCassandraCache):
                 )
                 cached_count += 1
 
-            logger.info(
-                f"Cached {cached_count} predictions: wiki_id={wiki_id}, "
-                f"page_id={page_id}, revision_id={revision_id}, "
-                f"model_version={model_version}"
-            )
+            # Execute batch - single network round-trip!
+            if cached_count > 0:
+                batch.execute()
+
+                logger.info(
+                    f"Cached {cached_count} predictions: wiki_id={wiki_id}, "
+                    f"page_id={page_id}, revision_id={revision_id}, "
+                    f"model_version={model_version}"
+                )
 
         except Exception as e:
             logger.error(
