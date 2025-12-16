@@ -2,7 +2,7 @@
 
 The revertrisk-wikidata inference service uses the metadata and content of a Wikidata article revision ID to predict the risk of this revision being reverted.
 
-* Model Card: TBD
+* Model Card: https://meta.wikimedia.org/wiki/Machine_learning_models/Production/RevertRisk_Wikidata
 * Source: https://github.com/trokhymovych/wikidata-vandalism-detection
 * Model: https://drive.google.com/drive/folders/1czw8zFRfkZKyxRFcwFB5PWgBIf_8QeK7?usp=sharing and https://analytics.wikimedia.org/published/wmf-ml-models/revertrisk/wikidata/20251104121312/
 * Model license: Apache 2.0 License
