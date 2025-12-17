@@ -1,0 +1,10 @@
+accelerate==1.12.0
+https://gitlab.wikimedia.org/repos/machine-learning/huggingface-optimum-benchmark-automation/-/raw/main/wheels/gfx90a+gfx942/flashattention2/20251127101413/flash_attn-2.7.4.post1-cp311-cp311-linux_x86_64.whl
+ctranslate2==4.6.1
+einops==0.8.1
+kserve==0.16.0
+sentencepiece==0.2.1
+scipy==1.16.3
+transformers==4.57.1
+pyopencl==2025.2.7
+typing_extensions==4.15.0
