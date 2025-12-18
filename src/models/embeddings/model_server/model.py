@@ -122,7 +122,7 @@ class EmbeddingModel(kserve.Model):
 
             model_version = self.model.config._name_or_path.split("/")[
                 -1
-            ]  # Extract version dynamically
+            ]  # Extract model version dynamically
             return {
                 "model_name": self.name,
                 "model_version": model_version,
