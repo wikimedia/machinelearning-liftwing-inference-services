@@ -211,3 +211,13 @@ pipelines:
           image:
             name: '${setup.project}-revise-tone-task-generator'
             tags: [stable]
+
+  embeddings-publish:
+    blubberfile: embeddings/blubber.yaml
+    stages:
+      - name: publish
+        build: production
+        publish:
+          image:
+            name: '${setup.project}-embeddings'
+            tags: [stable]
