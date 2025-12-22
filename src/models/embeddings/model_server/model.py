@@ -137,7 +137,7 @@ class EmbeddingModel(kserve.Model):
 
 if __name__ == "__main__":
     model_name = os.environ.get("MODEL_NAME", "qwen3-embedding")
-    model_path = os.environ.get("MODEL_PATH", "/mnt/models/Qwen/Qwen3-Embedding-0.6B")
+    model_path = os.environ.get("MODEL_PATH", "/mnt/models/")
     local_files_only = strtobool(os.environ.get("LOCAL_FILES_ONLY", "True"))
     dtype = getattr(torch, os.environ.get("DTYPE", "float16"))
     attn_implementation = os.environ.get("ATTN_IMPLEMENTATION", "flash_attention_2")

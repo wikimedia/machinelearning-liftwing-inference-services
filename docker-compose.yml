@@ -196,3 +196,20 @@ services:
       MODEL_NAME: "revertrisk-wikidata"
     volumes:
       - ${PATH_TO_REVERTRISK_WIKIDATA_MODEL:-/dummy/path}:/mnt/models/
+  embeddings:
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: .pipeline/embeddings/blubber.yaml
+      target: production
+    image: embeddings:prod
+    ports:
+      - "8080:8080"
+    environment:
+      MODEL_NAME: "qwen3-embedding"
+      MODEL_PATH: "Qwen/Qwen3-Embedding-0.6B"
+      LOCAL_FILES_ONLY: "False"
+      DTYPE: "float16"
+      ATTN_IMPLEMENTATION: "eager"
+    volumes:
+      - ${PATH_TO_EMBEDDINGS_MODEL:-/dummy/path}:/mnt/models/
