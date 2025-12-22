@@ -19,6 +19,7 @@ class EmbeddingModel(kserve.Model):
         local_files_only: bool,
         dtype: torch.dtype,
         attn_implementation: str,
+        max_length: int,
     ) -> None:
         super().__init__(name)
         self.name = name
@@ -30,6 +31,7 @@ class EmbeddingModel(kserve.Model):
         self.local_files_only = local_files_only
         self.dtype = dtype
         self.attn_implementation = attn_implementation
+        self.max_length = max_length
 
     def load(self) -> None:
         """
@@ -90,6 +92,8 @@ class EmbeddingModel(kserve.Model):
             raise InvalidInput(error_message)
 
         logging.info("Tokenizing inputs...")
+        if self.max_length is not None:
+            inputs = [input[: self.max_length] for input in inputs]
         encoded_input = self.tokenizer(
             inputs, padding=True, truncation=True, max_length=8192, return_tensors="pt"
         ).to(self.device)
@@ -141,8 +145,9 @@ if __name__ == "__main__":
     local_files_only = strtobool(os.environ.get("LOCAL_FILES_ONLY", "True"))
     dtype = getattr(torch, os.environ.get("DTYPE", "float16"))
     attn_implementation = os.environ.get("ATTN_IMPLEMENTATION", "flash_attention_2")
+    max_length = int(os.environ.get("MAX_LENGTH", 300))
     model = EmbeddingModel(
-        model_name, model_path, local_files_only, dtype, attn_implementation
+        model_name, model_path, local_files_only, dtype, attn_implementation, max_length
     )
     model.load()
     kserve.ModelServer().start([model])
