@@ -28,6 +28,14 @@ def sample_page_change_event():
 
 
 @pytest.fixture
+def sample_page_html():
+    """Load sample html content for Anees (musician) page."""
+    sample_html = Path(__file__).parent / "sample_page_html.txt"
+    with open(sample_html) as f:
+        return f.read()
+
+
+@pytest.fixture
 def sample_page_content():
     """Sample wikitext content for Anees (musician) page."""
     return """{{Short description|American singer, rapper & songwriter (born 1992)}}
@@ -111,17 +119,17 @@ def mock_article_topics():
 
 
 @pytest.mark.asyncio
-async def test_preprocess_extracts_paragraphs(
-    mock_model, sample_page_change_event, sample_page_content, mock_article_topics
+async def test_preprocess_extracts_paragraphs_html(
+    mock_model, sample_page_change_event, sample_page_html, mock_article_topics
 ):
     """Test that preprocess method extracts and parses paragraphs from the event."""
-    # Mock get_page_content and get_article_topics to avoid external API calls
+    # Mock get_page_html and get_article_topics to avoid external API calls
     with (
         patch.object(
             mock_model,
-            "get_page_content",
+            "get_page_html",
             new_callable=AsyncMock,
-            return_value=sample_page_content,
+            return_value=sample_page_html,
         ),
         patch.object(
             mock_model,
@@ -145,8 +153,6 @@ async def test_preprocess_extracts_paragraphs(
         section_name, text = paragraph
         assert isinstance(section_name, str)
         assert isinstance(text, str)
-        assert len(text) > 100  # Should be > 100 chars
-        assert len(text) <= 500  # Should be <= 500 chars
 
     # Check that it contains expected content
     all_text = " ".join([p[1] for p in result["paragraphs"]])
@@ -156,16 +162,16 @@ async def test_preprocess_extracts_paragraphs(
 
 @pytest.mark.asyncio
 async def test_preprocess_extracts_metadata(
-    mock_model, sample_page_change_event, sample_page_content, mock_article_topics
+    mock_model, sample_page_change_event, sample_page_html, mock_article_topics
 ):
     """Test that preprocess method extracts necessary metadata from the event."""
-    # Mock get_page_content and get_article_topics to avoid external API calls
+    # Mock get_page_html and get_article_topics to avoid external API calls
     with (
         patch.object(
             mock_model,
-            "get_page_content",
+            "get_page_html",
             new_callable=AsyncMock,
-            return_value=sample_page_content,
+            return_value=sample_page_html,
         ),
         patch.object(
             mock_model,
@@ -192,17 +198,17 @@ async def test_preprocess_extracts_metadata(
 
 @pytest.mark.asyncio
 async def test_preprocess_filters_sections(
-    mock_model, sample_page_change_event, sample_page_content, mock_article_topics
+    mock_model, sample_page_change_event, sample_page_html, mock_article_topics
 ):
     """Test that preprocess filters out unwanted sections like References."""
-    # The sample_page_content already includes References section
-    # Mock get_page_content and get_article_topics to avoid external API calls
+    # The sample_page_html already includes References section
+    # Mock get_page_html and get_article_topics to avoid external API calls
     with (
         patch.object(
             mock_model,
-            "get_page_content",
+            "get_page_html",
             new_callable=AsyncMock,
-            return_value=sample_page_content,
+            return_value=sample_page_html,
         ),
         patch.object(
             mock_model,
@@ -221,16 +227,16 @@ async def test_preprocess_filters_sections(
 
 @pytest.mark.asyncio
 async def test_preprocess_includes_article_topics(
-    mock_model, sample_page_change_event, sample_page_content, mock_article_topics
+    mock_model, sample_page_change_event, sample_page_html, mock_article_topics
 ):
     """Test that preprocess includes article topics from the outlink model."""
-    # Mock get_page_content and get_article_topics
+    # Mock get_page_html and get_article_topics
     with (
         patch.object(
             mock_model,
-            "get_page_content",
+            "get_page_html",
             new_callable=AsyncMock,
-            return_value=sample_page_content,
+            return_value=sample_page_html,
         ),
         patch.object(
             mock_model,
@@ -305,16 +311,16 @@ def test_should_process_article_with_women_topic(mock_model):
 
 @pytest.mark.asyncio
 async def test_preprocess_sets_should_process_flag(
-    mock_model, sample_page_change_event, sample_page_content, mock_article_topics
+    mock_model, sample_page_change_event, sample_page_html, mock_article_topics
 ):
     """Test that preprocess sets the should_process flag correctly."""
-    # Mock get_page_content and get_article_topics with matching topics
+    # Mock get_page_html and get_article_topics with matching topics
     with (
         patch.object(
             mock_model,
-            "get_page_content",
+            "get_page_html",
             new_callable=AsyncMock,
-            return_value=sample_page_content,
+            return_value=sample_page_html,
         ),
         patch.object(
             mock_model,
@@ -328,31 +334,3 @@ async def test_preprocess_sets_should_process_flag(
     # Check that should_process is set to True (mock has Biography topic)
     assert "should_process" in result
     assert result["should_process"] is True
-
-
-def test_extract_paragraphs_basic(mock_model):
-    """Test the extract_paragraphs method with basic wikitext."""
-    wikitext = """
-'''Test Article''' is an article for testing. Too short.
-
-== Section 1 ==
-This is the first paragraph in section 1. It has enough text to pass the length filter. It has enough text to pass the length filter. It has enough text to pass the length filter.
-
-This is the second paragraph in section 1. Also long enough. Also long enough. Also long enough. Also long enough. Also long enough.
-
-== Section 2 ==
-This is a paragraph in section 2. It contains sufficient text. It contains sufficient text. It contains sufficient text. It contains sufficient text.
-
-== Section 3 ==
-This is a paragraph in section 3. It has more than 500 characters. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc posuere, nunc vitae ultricies cursus, velit augue pulvinar mauris, id malesuada sapien erat quis augue. Suspendisse feugiat sem vitae risus malesuada, eget dictum eros porta. Sed vehicula fermentum felis, sit amet volutpat augue tristique ac. Curabitur accumsan velit leo, sed consectetur odio placerat sit amet. Pellentesque viverra rhoncus ex, eu dignissim odio dignissim nec. Aliquam erat volutpat. Vestibulum sit amet congue orci. Integer varius libero augue, sit amet aliquam nisi facilisis ac. Nam ut risus vitae justo blandit dignissim sit amet non libero. Phasellus vel iaculis nunc, nec ultricies nibh. In hac habitasse platea dictumst. Quisque ut pretium erat, varius luctus justo. Nullam faucibus bibendum metus, eget luctus lorem aliquet at. Donec interdum, ipsum porttitor luctus fermentum, magna nisl euismod risus, ac facilisis dui velit sed mi.
-
-"""
-
-    paragraphs = mock_model.extract_paragraphs(wikitext, "en")
-
-    assert len(paragraphs) == 3
-    section_names = [p[0] for p in paragraphs]
-    assert "LEAD_SECTION" not in section_names
-    assert "Section 1" in section_names
-    assert "Section 2" in section_names
-    assert "Section 3" not in section_names

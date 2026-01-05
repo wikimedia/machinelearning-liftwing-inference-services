@@ -1,15 +1,12 @@
 import datetime
 import logging
 import os
-import re
 from http import HTTPStatus
 from typing import Any
 
 import aiohttp
 import kserve
-import mwapi
-import mwedittypes.utils
-import mwparserfromhell
+import mwparserfromhtml as mw
 import torch
 from fastapi import HTTPException
 from transformers import (
@@ -31,54 +28,7 @@ from python.preprocess_utils import (
 
 logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
 
-# Sections to skip per language
-SECTIONS_TO_SKIP = {
-    "en": [
-        "See also",
-        "References",
-        "External links",
-        "Further reading",
-        "Notes",
-        "Additional sources",
-        "Sources",
-        "Bibliography",
-    ],
-    "fr": [
-        "Notes et références",
-        "Annexes",
-        "Bibliographie",
-        "Articles connexes",
-        "Liens externes",
-        "Voir aussi",
-        "Notes",
-        "Références",
-    ],
-    "ar": [
-        "وصلات خارجية",
-        "قراءة موسَّعة",
-        "الهوامش",
-        "انظر أيضاً",
-        "الاستشهاد بالمصادر",
-        "انظر أيضًا",
-        "مراجع",
-    ],
-    "pt": [
-        "Ver também",
-        "Notas e referências",
-        "Ligações externas",
-        "Referências",
-        "Bibliografia",
-        "Notas",
-    ],
-}
-
-# Prefixes for links/files to remove
-PREFIXES_TO_REMOVE = {
-    "en": ("file:", "image:", "category:"),
-    "fr": ("fichier:", "image:", "catégorie:"),
-    "ar": ("صورة", "ملف", "تصنيف"),
-    "pt": ("file:", "imagem:", "categoria:"),
-}
+SUPPORTED_LANG_CODE = ("en", "fr", "ar", "pt", "test")
 
 # Model constants
 BATCH_SIZE = 200  # Batch size for the model pipeline
@@ -105,6 +55,7 @@ class ReviseToneTaskGenerator(kserve.Model):
             "http://outlink-topic-model.articletopic-outlink:8080/v1/models/outlink-topic-model:predict",
         )
         self.outlink_topic_model_header = os.environ.get("OUTLINK_TOPIC_MODEL_HEADER")
+        self.force_http = os.environ.get("FORCE_HTTP", "false").lower() == "true"
 
         # Event key for wrapped events
         self.EVENT_KEY = "event"
@@ -276,136 +227,81 @@ class ReviseToneTaskGenerator(kserve.Model):
 
         return has_match
 
-    def extract_paragraphs(self, text: str, lang: str) -> list[tuple[str, str]]:
-        """Extract paragraphs from wikitext content.
+    def extract_paragraphs_html(self, article):
+        """Extract paragraphs plaintext from HTML content.
 
         Args:
-            text: Wikitext content to parse
-            lang: Language code (e.g., 'en')
+            article: a mwparserfromhtml's Article object
 
         Returns:
-            List of tuples containing (section_name, paragraph_text)
+            List of tuples containing (heading_name, paragraph_text)
         """
-        if lang == "test":
-            lang = "en"  # set testwiki to use enwiki's parameters for parsing
         paragraphs = []
-
-        wikitext = mwparserfromhell.parse(text)
-        for section in wikitext.get_sections(levels=[2], include_lead=True):
-            # Get the section name
-            headings = section.filter_headings()
-            if not headings:
-                section_name = "LEAD_SECTION"
-            else:
-                section_name = headings[0].title.strip()
-                for heading in headings:
-                    section.remove(heading)  # Remove sub-headings
-                if section_name in SECTIONS_TO_SKIP.get(lang, []):
-                    continue
-
-            # Data cleaning
-            for link in section.filter_wikilinks():
-                if (
-                    link.title.strip()
-                    .lower()
-                    .startswith(PREFIXES_TO_REMOVE.get(lang, ()))
-                ):
-                    try:
-                        section.remove(link)
-                    except ValueError:
-                        continue
-            for tbl in section.filter_tags(matches=lambda node: node.tag == "table"):
-                try:
-                    section.remove(tbl)
-                except ValueError:
-                    continue
-            for tpl in section.filter_templates():
-                if tpl.name.strip().lower().startswith("infobox"):
-                    try:
-                        section.remove(tpl)
-                    except ValueError:
-                        continue
-
-            # Extract paragraphs (more than one newline in between)
-            for paragraph in re.split(r"\n+", str(section)):
-                if paragraph.startswith(("*", " |")):
-                    continue
-                plaintext = mwedittypes.utils.wikitext_to_plaintext(
-                    paragraph, lang
-                ).strip()
-                if plaintext.startswith(("*", "{{", "!")):
-                    continue
-                if "quote>" in plaintext or "<ref>" in plaintext or "|" in plaintext:
-                    continue
-                if plaintext and len(plaintext) > 100 and len(plaintext) <= 500:
-                    paragraphs.append((section_name, plaintext))
-
+        exclude_elements = {
+            "Category",
+            "Citation",
+            "Comment",
+            "Heading",
+            "Infobox",
+            "List",
+            "Math",
+            "Media-audio",
+            "Media-img",
+            "Media-video",
+            "Messagebox",
+            "Navigational",
+            "Note",
+            "Reference",
+            "TF-sup",  # superscript: a little excessive but gets non-citation notes such as citation-needed tags.
+            "TF-blockquote",  # little extra precaution for excluding blockquotes
+            "Table",  # this (and Wikitable) will take care of quotes that are just wrapped in tables
+            "Wikitable",
+        }
+        for section in article.wikistew.get_sections():
+            heading = section.heading if section.heading else "_Lead"
+            for chunk in mw.WikiStew(section.html_tag).to_plaintext(
+                exclude_elements=exclude_elements,
+                exclude_para_context={
+                    "pre-first-para",
+                    "between-paras",
+                    "post-last-para",
+                },
+                exclude_transcluded_paragraphs=True,
+            ):
+                paragraph = " ".join(chunk.split())
+                if paragraph:
+                    paragraphs.append((heading, paragraph))
         return paragraphs
 
-    async def get_page_content(
-        self, lang: str, page_id: int, revision_id: int = None
-    ) -> str:
-        """Fetch page content (wikitext) from MediaWiki API.
+    async def get_page_html(self, lang: str, page_title: str, revision_id: int = None):
+        """Fetch page HTML content from Wikimedia REST API.
 
         Args:
             lang: Language code (e.g., 'en')
-            page_id: ID of the page
+            page_title: Page title. Use underscores instead of spaces.
             revision_id: Optional specific revision ID to fetch
 
         Returns:
-            Wikitext content of the page
+            The html for the given page
         """
-        session = mwapi.AsyncSession(
-            host=self.WIKI_URL or f"https://{lang}.wikipedia.org",
-            user_agent=self.CUSTOM_UA,
-            session=self.get_http_client_session("mwapi"),
-        )
-        session.headers["Host"] = f"{lang}.wikipedia.org"
+        protocol = "http" if self.force_http else "https"
+        session = self.get_http_client_session("restapi")
 
-        query_params = {
-            "action": "query",
-            "prop": "revisions",
-            "rvprop": "content",
-            "rvslots": "main",
-            "formatversion": "2",
-            "format": "json",
-        }
-
-        # Use revision_id if provided, otherwise use page_id
+        # Use revision_id if provided, otherwise use page_title
         if revision_id:
-            query_params["revids"] = revision_id
+            base_url = f"{protocol}://{lang}.wikipedia.org/w/rest.php/v1/revision/{revision_id}/html"
         else:
-            query_params["pageids"] = page_id
+            base_url = f"{protocol}://{lang}.wikipedia.org/w/rest.php/v1/page/{page_title}/html"
 
         try:
-            result = await session.get(**query_params)
-            pages = result.get("query", {}).get("pages", [])
-
-            if not pages:
-                logging.error(
-                    f"No page found for page_id={page_id}, revision_id={revision_id}"
-                )
-                return ""
-
-            page = pages[0]
-            if "missing" in page:
-                logging.error(f"Page {page_id} is missing")
-                return ""
-
-            revisions = page.get("revisions", [])
-            if not revisions:
-                logging.error(f"No revisions found for page_id={page_id}")
-                return ""
-
-            content = revisions[0].get("slots", {}).get("main", {}).get("content", "")
-            logging.info(
-                f"Fetched content for page_id={page_id}, revision_id={revision_id}"
-            )
-            return content
+            async with session.get(
+                base_url, headers={"User-Agent": self.CUSTOM_UA}
+            ) as resp:
+                return await resp.text()
 
         except Exception as e:
             logging.error(
-                f"Error fetching content for page_id={page_id}, revision_id={revision_id}: {e}",
+                f"Error fetching html for page_title={page_title}, revision_id={revision_id}: {e}",
                 exc_info=True,
             )
             return ""
@@ -475,8 +371,7 @@ class ReviseToneTaskGenerator(kserve.Model):
         revision_id = get_rev_id(inputs, self.EVENT_KEY)
 
         # Validate lang is supported language
-        supported_lang = [lang for lang in SECTIONS_TO_SKIP.keys()] + ["test"]
-        if lang not in supported_lang:
+        if lang not in SUPPORTED_LANG_CODE:
             logging.info(f"Unsupported lang: {lang}.")
             raise HTTPException(
                 status_code=HTTPStatus.BAD_REQUEST,
@@ -536,11 +431,11 @@ class ReviseToneTaskGenerator(kserve.Model):
 
             return preprocessed
 
-        # Only fetch and parse content if article matches topic criteria
-        content_body = await self.get_page_content(
-            lang=lang, page_id=page_id, revision_id=revision_id
+        html = await self.get_page_html(
+            lang=lang, page_title=page_title, revision_id=revision_id
         )
-        paragraphs = self.extract_paragraphs(content_body, lang)
+        article = mw.Article(html, flatten_sections=True)
+        paragraphs = self.extract_paragraphs_html(article)
 
         preprocessed = {
             "paragraphs": paragraphs,

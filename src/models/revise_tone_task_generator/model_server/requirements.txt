@@ -1,6 +1,4 @@
 kserve
-mwparserfromhell
-mwedittypes
+mwparserfromhtml
 transformers==4.57.1
 aiohttp
-mwapi
