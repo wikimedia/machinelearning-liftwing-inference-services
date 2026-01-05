@@ -81,13 +81,12 @@ class EmbeddingModel(kserve.Model):
     def preprocess(self, payload: dict, headers: dict[str, str]) -> torch.Tensor:
         """
         Preprocess the input data by validating and tokenizing it.
+        Supports OpenAI-compatible API request format. (see T412338#11482782)
         """
-        if "instances" in payload:
-            inputs = payload["instances"]
+        if "input" in payload:
+            inputs = payload["input"]
         else:
-            error_message = (
-                "Invalid payload format. Use {'instances': ['text1', 'text2']}"
-            )
+            error_message = "Invalid payload format. Use {'input': ['text1', 'text2']}"
             logging.error(error_message)
             raise InvalidInput(error_message)
 
@@ -104,7 +103,7 @@ class EmbeddingModel(kserve.Model):
     ) -> dict:
         """
         Perform inference to generate embeddings.
-        Format expected: {"instances": ["text1", "text2"]}
+        Supports OpenAI-compatible API response format. (see T412338#11482782)
         """
         try:
             # Perform inference
@@ -124,13 +123,19 @@ class EmbeddingModel(kserve.Model):
                 # Normalize embeddings (Important for cosine similarity)
                 embeddings = F.normalize(embeddings, p=2, dim=1)
 
-            model_version = self.model.config._name_or_path.split("/")[
-                -1
-            ]  # Extract model version dynamically
+            # Format response in OpenAI API format
+            data = [
+                {
+                    "object": "embedding",
+                    "embedding": embedding.tolist(),
+                    "index": idx,
+                }
+                for idx, embedding in enumerate(embeddings)
+            ]
             return {
-                "model_name": self.name,
-                "model_version": model_version,
-                "predictions": embeddings.tolist(),
+                "object": "list",
+                "data": data,
+                "model": self.model.config._name_or_path or self.name,
             }
 
         except Exception as e:

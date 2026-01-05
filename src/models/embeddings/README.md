@@ -29,13 +29,13 @@ pip install -r src/models/embeddings/requirements-macos.txt
 We can run the server locally with:
 ```console
 # on linux
-MODEL_NAME=qwen3-embedding MODEL_PATH="Qwen/Qwen3-Embedding-0.6B" LOCAL_FILES_ONLY="False" DTYPE="float16" ATTN_IMPLEMENTATION="flash_attention_2" python3 src/models/embeddings/model_server/model.py
+MODEL_NAME=qwen3-embedding MODEL_PATH="Qwen/Qwen3-Embedding-0.6B" MAX_LENGTH="300" LOCAL_FILES_ONLY="False" DTYPE="float16" ATTN_IMPLEMENTATION="flash_attention_2" python3 src/models/embeddings/model_server/model.py
 
 # on macos since it doesn't support rocm-specific packages like fa2
-MODEL_NAME=qwen3-embedding MODEL_PATH="Qwen/Qwen3-Embedding-0.6B" LOCAL_FILES_ONLY="False" DTYPE="float32" ATTN_IMPLEMENTATION="eager" python3 src/models/embeddings/model_server/model.py
+MODEL_NAME=qwen3-embedding MODEL_PATH="Qwen/Qwen3-Embedding-0.6B" MAX_LENGTH="300" LOCAL_FILES_ONLY="False" DTYPE="float32" ATTN_IMPLEMENTATION="eager" python3 src/models/embeddings/model_server/model.py
 ```
 
 On a separate terminal we can make a request to the server with:
 ```console
-curl -s localhost:8080/v1/models/qwen3-embedding:predict -X POST -d '{"instances": ["text1", "text2"]}' -i -H "Content-type: application/json"
+curl -s localhost:8080/v1/models/qwen3-embedding:predict -X POST -d '{"input": ["text1", "text2"]}' -i -H "Content-type: application/json"
 ```
