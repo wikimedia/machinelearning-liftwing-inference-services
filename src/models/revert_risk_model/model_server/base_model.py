@@ -72,7 +72,12 @@ class RevisionRevertRiskModel(kserve.Model):
             return f"{protocol}://{updated_lang}.wikipedia.org"
 
     def check_canonical_wikis(self, lang):
-        # Validate lang parameter against canonical wikis
+        # Validate lang parameter against canonical wikis.
+        if (
+            lang == "test"
+        ):  # Treat 'testwiki' as 'enwiki' on the fly for testing purposes.
+            lang = "en"
+
         if lang not in self.wp_language_codes:
             error_message = f"lang '{lang}' does not exist in the canonical Wikipedia language list."
             logging.error(error_message)
