@@ -16,6 +16,7 @@ class EmbeddingModel(kserve.Model):
         self,
         name: str,
         model_path: str,
+        model_version: str,
         local_files_only: bool,
         dtype: torch.dtype,
         attn_implementation: str,
@@ -24,6 +25,7 @@ class EmbeddingModel(kserve.Model):
         super().__init__(name)
         self.name = name
         self.model_path = model_path
+        self.model_version = model_version
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.tokenizer = None
         self.model = None
@@ -135,7 +137,9 @@ class EmbeddingModel(kserve.Model):
             return {
                 "object": "list",
                 "data": data,
-                "model": self.model.config._name_or_path or self.name,
+                "model": self.model_version
+                or self.model.config._name_or_path
+                or self.name,
             }
 
         except Exception as e:
@@ -147,12 +151,19 @@ class EmbeddingModel(kserve.Model):
 if __name__ == "__main__":
     model_name = os.environ.get("MODEL_NAME", "qwen3-embedding")
     model_path = os.environ.get("MODEL_PATH", "/mnt/models/")
+    model_version = os.environ.get("MODEL_VERSION", "")
     local_files_only = strtobool(os.environ.get("LOCAL_FILES_ONLY", "True"))
     dtype = getattr(torch, os.environ.get("DTYPE", "float16"))
     attn_implementation = os.environ.get("ATTN_IMPLEMENTATION", "flash_attention_2")
     max_length = int(os.environ.get("MAX_LENGTH", 300))
     model = EmbeddingModel(
-        model_name, model_path, local_files_only, dtype, attn_implementation, max_length
+        model_name,
+        model_path,
+        model_version,
+        local_files_only,
+        dtype,
+        attn_implementation,
+        max_length,
     )
     model.load()
     kserve.ModelServer().start([model])
