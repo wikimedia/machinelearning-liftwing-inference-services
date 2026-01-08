@@ -15,20 +15,29 @@ df = df[df["question_length"] <= max_length]
 print(df[["question_length"]].describe())
 
 
+def get_prompt(question: str) -> str:
+    return f"""Instruct: Given a web search query, retrieve relevant passages that answer the query
+                Query: {question}"""
+
+
+print("Prompt length: ", len(get_prompt("")))
+
+
 class Embeddings(FastHttpUser):
     wait_time = between(0.0, 0.1)
 
     @task
     def get_prediction(self):
         hostname = os.environ.get("HOST", "embeddings")
-        namespace = os.environ.get("NS", "experimental")
+        namespace = os.environ.get("NS", "llm")
         headers = {
             "Content-Type": "application/json",
             "Host": f"{hostname}.{namespace}.wikimedia.org",
         }
         questions = list(df.sample(n=1)["question"])
+        prompts = [get_prompt(question) for question in questions]
         self.client.post(
             "/v1/models/qwen3-embedding:predict",
-            json={"instances": questions},
+            json={"input": prompts},
             headers=headers,
         )
