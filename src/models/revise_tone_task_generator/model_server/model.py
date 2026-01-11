@@ -66,11 +66,10 @@ class ReviseToneTaskGenerator(kserve.Model):
             "EVENTGATE_WEIGHTED_TAGS_CHANGE_STREAM"
         )
 
-        # MediaWiki API configuration
-        self.WIKI_URL = os.environ.get("WIKI_URL")
+        # Wikimedia REST API configuration
         self.TLS_CERT_BUNDLE_PATH = "/etc/ssl/certs/wmf-ca-certificates.crt"
         self.CUSTOM_UA = "WMF ML Team revise-tone-task-generator svc"
-        self.AIOHTTP_CLIENT_TIMEOUT = os.environ.get("AIOHTTP_CLIENT_TIMEOUT", 5)
+        self.AIOHTTP_CLIENT_TIMEOUT = int(os.environ.get("AIOHTTP_CLIENT_TIMEOUT", 5))
         self._http_client_session = {}
 
         # Use lazy loading for model pipeline (initialized per worker)
@@ -434,8 +433,11 @@ class ReviseToneTaskGenerator(kserve.Model):
         html = await self.get_page_html(
             lang=lang, page_title=page_title, revision_id=revision_id
         )
-        article = mw.Article(html, flatten_sections=True)
-        paragraphs = self.extract_paragraphs_html(article)
+        if html:
+            article = mw.Article(html, flatten_sections=True)
+            paragraphs = self.extract_paragraphs_html(article)
+        else:
+            paragraphs = []
 
         preprocessed = {
             "paragraphs": paragraphs,
