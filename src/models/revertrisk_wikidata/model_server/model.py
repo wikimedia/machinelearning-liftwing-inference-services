@@ -1,4 +1,6 @@
+import asyncio
 import logging
+import multiprocessing
 import os
 import re
 import sys
@@ -53,8 +55,11 @@ class RevertRiskWikidataModel(kserve.Model):
         self.custom_user_agent = (
             "WMF ML Team revertrisk-wikidata model inference (LiftWing)"
         )
-        self.ready = False
-        self.load()
+        # The model is not loaded yet, but we set ready to True to pass the initial
+        # readiness check in the main process. Actual model loading happens lazily per worker.
+        self.ready = True
+        self.model = None
+        self.model_load_lock = asyncio.Lock()
 
     def create_mwapi_session(self):
         """
@@ -79,7 +84,14 @@ class RevertRiskWikidataModel(kserve.Model):
             error_message = f"Failed to load model from {self.model_path}. Reason: {e}"
             logging.critical(error_message)
             raise InferenceError(error_message)
-        self.ready = True
+
+    async def lazy_model_loading(self):
+        """
+        Ensures the model is loaded, using a lock to prevent race conditions.
+        """
+        async with self.model_load_lock:
+            if self.model is None:
+                self.load()
 
     def _get_bert_scores(self, texts: list[str]) -> dict[str, float]:
         """
@@ -225,6 +237,7 @@ class RevertRiskWikidataModel(kserve.Model):
         """
         Preprocess the input request to fetch features.
         """
+        await self.lazy_model_loading()
         inputs = validate_json_input(inputs)
         rev_id = inputs.get("rev_id")
         if not isinstance(rev_id, int) or rev_id <= 0:
@@ -267,6 +280,7 @@ class RevertRiskWikidataModel(kserve.Model):
         """
         Make a prediction with the model.
         """
+        await self.lazy_model_loading()
         rev_id = inputs["rev_id"]
         page_title = inputs["page_title"]
         diffs = inputs["diffs"]
@@ -360,10 +374,19 @@ if __name__ == "__main__":
     )
     force_http = strtobool(os.environ.get("FORCE_HTTP", "False"))
     aiohttp_client_timeout = int(os.environ.get("AIOHTTP_CLIENT_TIMEOUT", 5))
+    workers = int(os.environ.get("WORKERS", 1))
+    max_asyncio_workers = int(
+        os.environ.get("MAX_ASYNCIO_WORKERS", min(32, multiprocessing.cpu_count() + 4))
+    )
+
     model = RevertRiskWikidataModel(
         name=model_name,
         model_path=model_path,
         force_http=force_http,
         aiohttp_client_timeout=aiohttp_client_timeout,
     )
-    kserve.ModelServer(workers=1).start([model])
+
+    # Start the KServe ModelServer with multiple workers and asyncio workers
+    kserve.ModelServer(workers=workers, max_asyncio_workers=max_asyncio_workers).start(
+        [model]
+    )
