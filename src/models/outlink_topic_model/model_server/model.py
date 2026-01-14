@@ -14,6 +14,7 @@ from python.logging_utils import set_log_level
 from python.preprocess_utils import (
     get_lang,
     get_page_id,
+    get_rev_id,
     is_domain_wikipedia,
     validate_json_input,
 )
@@ -124,6 +125,69 @@ class OutlinksTopicModel(kserve.Model):
         )
         return outlink_qids
 
+    async def get_outlinks_by_revision(
+        self, revision_id: int, lang: str, limit=1000
+    ) -> set:
+        """Gather set of up to `limit` outlinks for a specific revision.
+
+        Uses a 2-query approach:
+        1. Parse API to get links from the specific revision
+        2. Batch query to get QIDs for those links
+        """
+        session = mwapi.AsyncSession(
+            host=self.WIKI_URL or f"https://{lang}.wikipedia.org",
+            user_agent="WMF ML Team outlink-topic-model svc",
+            session=self.get_http_client_session("mwapi"),
+        )
+        session.headers["Host"] = f"{lang}.wikipedia.org"
+
+        # Step 1: Get links from specific revision via parse API
+        parse_result = await session.get(
+            action="parse",
+            oldid=revision_id,
+            prop="links",
+            format="json",
+            formatversion=2,
+        )
+        links = parse_result.get("parse", {}).get("links", [])
+        # Filter to ns=0 and existing pages
+        titles = [
+            link["title"]
+            for link in links
+            if link.get("ns") == 0 and link.get("exists")
+        ]
+
+        if not titles:
+            logging.debug(
+                "revision_id=%s (%s) fetched 0 outlinks", str(revision_id), lang
+            )
+            return set()
+
+        # Step 2: Get QIDs for those titles (batch in groups of 50)
+        outlink_qids = set()
+        for i in range(0, min(len(titles), limit), 50):
+            batch = titles[i : i + 50]
+            result = await session.get(
+                action="query",
+                titles="|".join(batch),
+                prop="pageprops",
+                ppprop="wikibase_item",
+                format="json",
+                formatversion=2,
+            )
+            for page in result.get("query", {}).get("pages", []):
+                qid = page.get("pageprops", {}).get("wikibase_item")
+                if qid is not None:
+                    outlink_qids.add(qid)
+
+        logging.debug(
+            "revision_id=%s (%s) fetched %d outlinks",
+            str(revision_id),
+            lang,
+            len(outlink_qids),
+        )
+        return outlink_qids
+
     async def _get_page_id_from_page_title(self, page_title: str, lang: str) -> int:
         session = mwapi.AsyncSession(
             host=self.WIKI_URL or f"https://{lang}.wikipedia.org",
@@ -189,13 +253,31 @@ class OutlinksTopicModel(kserve.Model):
                         " — e.g. Wiktionary, Wikinews, etc."
                     ),
                 )
+        # Extract revision_id if provided (optional parameter)
+        revision_id = inputs.get("revision_id")
+        if self.EVENT_KEY in inputs and revision_id is None:
+            # Get revision_id from the event using the utility function
+            # that handles different event schemas
+            try:
+                revision_id = get_rev_id(inputs, self.EVENT_KEY)
+            except InvalidInput:
+                # revision_id is optional, so we ignore if not found
+                pass
+
         if "features_str" in inputs:
             # If the features are already provided in the input,
             # we don't need to call the MW API to get features
             features_str = inputs["features_str"]
         else:
             try:
-                outlinks = await self.get_outlinks(page_id=page_id, lang=lang)
+                if revision_id is not None:
+                    # Use 2-query approach for specific revision
+                    outlinks = await self.get_outlinks_by_revision(
+                        revision_id=revision_id, lang=lang
+                    )
+                else:
+                    # Use fast query for current page state
+                    outlinks = await self.get_outlinks(page_id=page_id, lang=lang)
             except Exception:
                 if self.EVENT_KEY in inputs:
                     logging.info("Logging source event: %s", inputs[self.EVENT_KEY])
