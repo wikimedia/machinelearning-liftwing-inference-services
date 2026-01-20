@@ -39,6 +39,8 @@ ALLOWED_TOPICS = {
     "Culture.Biography.Biography*",
     "Culture.Biography.Women",
     "Culture.Sports",
+    "History_and_Society.Business_and_economics",
+    "STEM.Technology",
 }
 
 TONE_CHECK_TRUE_LABEL = "LABEL_1"
