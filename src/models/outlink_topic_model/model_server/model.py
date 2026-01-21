@@ -163,10 +163,10 @@ class OutlinksTopicModel(kserve.Model):
             )
             return set()
 
-        # Step 2: Get QIDs for those titles (batch in groups of 50)
+        # Step 2: Get QIDs for those titles (batch in groups of 25)
         outlink_qids = set()
-        for i in range(0, min(len(titles), limit), 50):
-            batch = titles[i : i + 50]
+        for i in range(0, min(len(titles), limit), 25):
+            batch = titles[i : i + 25]
             result = await session.get(
                 action="query",
                 titles="|".join(batch),
