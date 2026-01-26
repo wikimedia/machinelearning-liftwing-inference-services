@@ -125,6 +125,43 @@ class OutlinksTopicModel(kserve.Model):
         )
         return outlink_qids
 
+    @staticmethod
+    def _batch_titles_by_length(
+        titles: list[str], max_bytes: int = 6000, max_titles: int = 50
+    ) -> list[list[str]]:
+        """Batch titles ensuring total encoded length stays under max_bytes.
+
+        MediaWiki API has two limits:
+        - Max 50 titles per request
+        - URL length limit (~8KB, we use 6KB to be safe)
+
+        This batches dynamically to maximize titles per request while
+        respecting both limits.
+        """
+        batches = []
+        current_batch = []
+        current_length = 0
+
+        for title in titles:
+            # Account for URL encoding: pipe becomes %7C (3 chars)
+            title_length = len(title.encode("utf-8")) + 3
+
+            if current_batch and (
+                current_length + title_length > max_bytes
+                or len(current_batch) >= max_titles
+            ):
+                batches.append(current_batch)
+                current_batch = [title]
+                current_length = title_length
+            else:
+                current_batch.append(title)
+                current_length += title_length
+
+        if current_batch:
+            batches.append(current_batch)
+
+        return batches
+
     async def get_outlinks_by_revision(
         self, revision_id: int, lang: str, limit=1000
     ) -> set:
@@ -163,10 +200,19 @@ class OutlinksTopicModel(kserve.Model):
             )
             return set()
 
-        # Step 2: Get QIDs for those titles (batch in groups of 25)
+        # Step 2: Get QIDs for those titles using dynamic batching
+        titles_to_process = titles[:limit]
+        batches = self._batch_titles_by_length(titles_to_process)
+        logging.debug(
+            "revision_id=%s: processing %d titles in %d batches (sizes: %s)",
+            str(revision_id),
+            len(titles_to_process),
+            len(batches),
+            [len(b) for b in batches],
+        )
+
         outlink_qids = set()
-        for i in range(0, min(len(titles), limit), 25):
-            batch = titles[i : i + 25]
+        for batch in batches:
             result = await session.get(
                 action="query",
                 titles="|".join(batch),

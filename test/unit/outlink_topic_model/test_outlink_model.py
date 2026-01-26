@@ -101,7 +101,7 @@ from src.models.outlink_topic_model.model_server.model import OutlinksTopicModel
                 "Q545",
                 "Q120068791",
                 "Q7615342",
-                "Q506250",
+                "Q1754",
                 "Q122999030",
                 "Q3740541",
                 "Q850472",
