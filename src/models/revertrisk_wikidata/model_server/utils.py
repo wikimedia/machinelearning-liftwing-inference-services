@@ -270,12 +270,15 @@ def process_sentence(items: list[str], labels_dict: dict) -> str:
     """
 
     def get_label(val):
-        if val in labels_dict:
-            return labels_dict[val]
-        elif check_id_pattern(val):
+        # Defensively cast val to a string before using it as a dictionary key
+        # This prevents 'unhashable type: dict' errors (see T414060#11578047)
+        val_str = str(val)
+        if val_str in labels_dict:
+            return labels_dict[val_str]
+        elif check_id_pattern(val_str):
             return "unknown"
         else:
-            return val
+            return val_str
 
     items_transformed = [get_label(i) for i in items]
     return " ".join(items_transformed)
