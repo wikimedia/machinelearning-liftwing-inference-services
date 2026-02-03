@@ -17,6 +17,7 @@ import numpy as np
 import pandas as pd
 import transformers
 from kserve.errors import InferenceError, InvalidInput
+from tenacity import retry, stop_after_attempt, wait_exponential
 from utils import (
     fetch_labels_from_api,
     parse_wikidata_revision_difference,
@@ -112,6 +113,17 @@ class RevertRiskWikidataModel(kserve.Model):
             "max": np.max(scores) if scores else NUMERIC_NaN,
         }
 
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=0.2, min=0.2, max=5),
+        reraise=True,
+    )
+    async def _session_get_with_retry(self, session: mwapi.AsyncSession, **kwargs):
+        """
+        A wrapper around session.get to provide exponential backoff on retries.
+        """
+        return await session.get(**kwargs)
+
     async def _get_revision_content(
         self, session: mwapi.AsyncSession, rev_id: int
     ) -> tuple[str, Optional[int], str]:
@@ -119,7 +131,8 @@ class RevertRiskWikidataModel(kserve.Model):
         Fetch the content, parent ID, and page title of a revision.
         """
         try:
-            rev_doc = await session.get(
+            rev_doc = await self._session_get_with_retry(
+                session,
                 action="query",
                 prop="revisions",
                 revids=rev_id,
@@ -148,7 +161,8 @@ class RevertRiskWikidataModel(kserve.Model):
         """
         features = {}
         try:
-            rev_doc = await session.get(
+            rev_doc = await self._session_get_with_retry(
+                session,
                 action="query",
                 prop="revisions",
                 revids=rev_id,
@@ -167,7 +181,8 @@ class RevertRiskWikidataModel(kserve.Model):
         )
         parent_id = revision.get("parentid", 0)
 
-        user_doc = await session.get(
+        user_doc = await self._session_get_with_retry(
+            session,
             action="query",
             list="users",
             ususers=user_name,
@@ -195,7 +210,8 @@ class RevertRiskWikidataModel(kserve.Model):
         else:
             features["user_age"] = NUMERIC_NaN
         if parent_id != 0:
-            parent_rev_doc = await session.get(
+            parent_rev_doc = await self._session_get_with_retry(
+                session,
                 action="query",
                 prop="revisions",
                 revids=parent_id,
@@ -213,7 +229,8 @@ class RevertRiskWikidataModel(kserve.Model):
             )
         else:
             features["page_seconds_since_previous_revision"] = 0
-        first_rev_doc = await session.get(
+        first_rev_doc = await self._session_get_with_retry(
+            session,
             action="query",
             prop="revisions",
             pageids=page_id,

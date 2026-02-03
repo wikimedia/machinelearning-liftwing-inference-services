@@ -7,3 +7,4 @@ torch==1.13.1+cpu
 numpy==1.26.4
 deepdiff==8.6.1
 mwapi==0.6.1
+tenacity==9.1.2
