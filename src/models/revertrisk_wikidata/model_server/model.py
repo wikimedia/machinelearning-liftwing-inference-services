@@ -1,4 +1,5 @@
 import asyncio
+import json
 import logging
 import multiprocessing
 import os
@@ -16,6 +17,7 @@ import mwapi
 import numpy as np
 import pandas as pd
 import transformers
+from diskcache import Cache
 from kserve.errors import InferenceError, InvalidInput
 from tenacity import retry, stop_after_attempt, wait_exponential
 from utils import (
@@ -61,6 +63,11 @@ class RevertRiskWikidataModel(kserve.Model):
         self.ready = True
         self.model = None
         self.model_load_lock = asyncio.Lock()
+        # Initialize a process-safe, file-backed cache for API responses.
+        # It lives in a temporary directory and has a size limit of 256MB.
+        self.api_cache = Cache(
+            "/tmp/revertrisk_wikidata_disk_cache", size_limit=1024 * 1024 * 256
+        )
 
     def create_mwapi_session(self):
         """
@@ -128,8 +135,18 @@ class RevertRiskWikidataModel(kserve.Model):
         self, session: mwapi.AsyncSession, rev_id: int
     ) -> tuple[str, Optional[int], str]:
         """
-        Fetch the content, parent ID, and page title of a revision.
+        Fetch the content, parent ID, and page title of a revision, with cache-aside logic.
         """
+        cache_key = f"revision_content:{rev_id}"
+
+        # Check cache first
+        cached_result_json = self.api_cache.get(cache_key)
+        if cached_result_json:
+            logging.info(f"Cache hit for rev_id {rev_id}")  # for debugging cache hits
+            return json.loads(cached_result_json)  # Deserialize if found
+
+        # Cache Miss: fetch the data from the API
+        logging.info(f"Cache miss for rev_id {rev_id}")  # for debugging cache misses
         try:
             rev_doc = await self._session_get_with_retry(
                 session,
@@ -139,19 +156,24 @@ class RevertRiskWikidataModel(kserve.Model):
                 rvprop="content|ids|title",
                 rvslots="main",
             )
+            page = list(rev_doc["query"]["pages"].values())[0]
+            page_title = page["title"]
+            current_rev = page["revisions"][0]
+            content = current_rev.get("slots", {}).get("main", {}).get("*", "")
+            parent_id = current_rev.get("parentid")
+
+            result_tuple = (content, parent_id, page_title)
+
+            # Save to cache before returning
+            # Set a long TTL (e.g: 7 days = 604800 seconds) for immutable revision content
+            self.api_cache.set(cache_key, json.dumps(result_tuple), expire=604800)
+
+            return result_tuple
+
         except Exception as e:
             error_message = f"Failed to fetch revision content in _get_revision_content for rev_id {rev_id}. Reason: {e}"
             logging.error(error_message)
             raise InferenceError(error_message)
-        page = list(rev_doc["query"]["pages"].values())[0]
-        page_title = page["title"]
-        current_rev = page["revisions"][0]
-        if "slots" in current_rev:
-            content = current_rev["slots"]["main"]["*"]
-        else:
-            content = current_rev.get("*", "")
-        parent_id = current_rev.get("parentid")
-        return content, parent_id, page_title
 
     async def _fetch_metadata_features(
         self, rev_id: int, session: mwapi.AsyncSession
@@ -159,6 +181,20 @@ class RevertRiskWikidataModel(kserve.Model):
         """
         Fetch all features for a given revision ID from the MediaWiki API.
         """
+        cache_key = f"metadata_features:{rev_id}"
+
+        # Check cache first
+        cached_features_json = self.api_cache.get(cache_key)
+        if cached_features_json:
+            logging.info(
+                f"Cache hit for metadata features of rev_id {rev_id}"
+            )  # for debugging cache hits
+            return json.loads(cached_features_json)  # Deserialize if found
+
+        # Cache Miss: fetch the data from the API
+        logging.info(
+            f"Cache miss for metadata features of rev_id {rev_id}"
+        )  # for debugging cache misses
         features = {}
         try:
             # Sequential Call to get initial data needed for subsequent parallel calls
@@ -277,6 +313,11 @@ class RevertRiskWikidataModel(kserve.Model):
             features["page_age"] = round(
                 (rev_timestamp - first_rev_timestamp).total_seconds() / (60 * 60 * 24)
             )
+
+            # Save to cache before returning
+            # Set a medium TTL (e.g: 4 hours = 14400 seconds) for user/revision metadata
+            self.api_cache.set(cache_key, json.dumps(features), expire=14400)
+
             return features
         except Exception as e:
             error_message = f"Failed to fetch metadata features in _fetch_metadata_features for rev_id {rev_id}. Reason: {e}"
