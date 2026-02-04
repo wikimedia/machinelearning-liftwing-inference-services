@@ -32,6 +32,7 @@ def model_server():
         ]
         model.model.metadata_classifier.get_cat_feature_indices.return_value = []
         model.model.model_version = 2  # Ensure model_version is set for tests
+        model.model_load_lock = AsyncMock()  # Ensure this attribute is included
         yield model
 
 
@@ -99,16 +100,16 @@ async def test_fetch_metadata_features(model_server):
                 ]
             }
         },
-        # Third call for parent revision timestamp (include 'pages' key)
-        {
-            "query": {
-                "pages": {"122": {"revisions": [{"timestamp": "2023-01-01T11:59:00Z"}]}}
-            }
-        },
-        # Fourth call for first revision timestamp (include 'pages' key)
+        # Third call for first revision timestamp (include 'pages' key)
         {
             "query": {
                 "pages": {"123": {"revisions": [{"timestamp": "2023-01-01T10:00:00Z"}]}}
+            }
+        },
+        # Fourth call for parent revision timestamp (include 'pages' key)
+        {
+            "query": {
+                "pages": {"122": {"revisions": [{"timestamp": "2023-01-01T11:59:00Z"}]}}
             }
         },
     ]
@@ -206,16 +207,16 @@ async def test_end_to_end_prediction(model_server):
                 ]
             }
         },
-        # _fetch_metadata_features (parent)
-        {
-            "query": {
-                "pages": {"122": {"revisions": [{"timestamp": "2023-01-01T11:59:00Z"}]}}
-            }
-        },
         # _fetch_metadata_features (first revision)
         {
             "query": {
                 "pages": {"123": {"revisions": [{"timestamp": "2023-01-01T10:00:00Z"}]}}
+            }
+        },
+        # _fetch_metadata_features (parent)
+        {
+            "query": {
+                "pages": {"122": {"revisions": [{"timestamp": "2023-01-01T11:59:00Z"}]}}
             }
         },
         # get_labels

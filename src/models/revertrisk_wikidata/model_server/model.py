@@ -161,6 +161,8 @@ class RevertRiskWikidataModel(kserve.Model):
         """
         features = {}
         try:
+            # Sequential Call to get initial data needed for subsequent parallel calls
+            # This call remains sequential as user_name, parent_id, page_id are extracted from its result.
             rev_doc = await self._session_get_with_retry(
                 session,
                 action="query",
@@ -169,84 +171,117 @@ class RevertRiskWikidataModel(kserve.Model):
                 rvprop="user|userid|timestamp|ids",
                 format="json",
             )
+
+            page_id = list(rev_doc["query"]["pages"].keys())[0]
+            revision = rev_doc["query"]["pages"][page_id]["revisions"][0]
+            user_name = revision["user"]
+            rev_timestamp = datetime.fromisoformat(
+                revision["timestamp"].replace("Z", "+00:00")
+            )
+            parent_id = revision.get("parentid", 0)
+
+            # Parallel Calls for independent data
+            # Prepare the tasks to be run concurrently
+            tasks = []
+
+            # Task for user details
+            user_task = self._session_get_with_retry(
+                session,
+                action="query",
+                list="users",
+                ususers=user_name,
+                usprop="groups|registration",
+                format="json",
+            )
+            tasks.append(user_task)
+
+            # Task for first revision timestamp
+            first_rev_task = self._session_get_with_retry(
+                session,
+                action="query",
+                prop="revisions",
+                pageids=page_id,
+                rvdir="newer",
+                rvlimit=1,
+                rvprop="timestamp",
+                format="json",
+            )
+            tasks.append(first_rev_task)
+
+            # Task for parent revision timestamp (conditional)
+            parent_rev_doc_is_present = False
+            if parent_id != 0:
+                parent_rev_doc_is_present = True
+                parent_rev_task = self._session_get_with_retry(
+                    session,
+                    action="query",
+                    prop="revisions",
+                    revids=parent_id,
+                    rvprop="timestamp",
+                    format="json",
+                )
+                tasks.append(parent_rev_task)
+
+            # Execute tasks in parallel
+            # The order of results in parallel_results will match the order of tasks in the 'tasks' list
+            parallel_results = await asyncio.gather(*tasks)
+
+            # Unpack results based on the order they were added to the 'tasks' list
+            user_doc = parallel_results[0]
+            first_rev_doc = parallel_results[1]
+            parent_rev_doc = None
+            if parent_rev_doc_is_present:
+                parent_rev_doc = parallel_results[
+                    2
+                ]  # This will be the third item if parent_rev_task was appended
+
+            user = user_doc["query"]["users"][0]
+            features["user_is_anonymous"] = str("userid" not in user)
+            if features["user_is_anonymous"] == "True":
+                features["user_is_bot"] = "-1"
+            else:
+                features["user_is_bot"] = str(int("bot" in user.get("groups", [])))
+            user_groups = user.get("groups", [])
+            for group in self.model.metadata_classifier.feature_names_:
+                if group.startswith("event_user_groups-"):
+                    if features["user_is_anonymous"] != "True":
+                        features[group] = str(float(group.split("-")[1] in user_groups))
+            if user.get("registration"):
+                reg_timestamp = datetime.fromisoformat(
+                    user["registration"].replace("Z", "+00:00")
+                )
+                features["user_age"] = round(
+                    (rev_timestamp - reg_timestamp).total_seconds() / (60 * 60 * 24)
+                )
+            else:
+                features["user_age"] = NUMERIC_NaN
+
+            # Process parent revision data if it was fetched
+            if parent_rev_doc_is_present:
+                parent_revision = list(parent_rev_doc["query"]["pages"].values())[0][
+                    "revisions"
+                ][0]
+                parent_rev_timestamp = datetime.fromisoformat(
+                    parent_revision["timestamp"].replace("Z", "+00:00")
+                )
+                features["page_seconds_since_previous_revision"] = round(
+                    (rev_timestamp - parent_rev_timestamp).total_seconds()
+                )
+            else:
+                features["page_seconds_since_previous_revision"] = 0
+
+            first_revision = first_rev_doc["query"]["pages"][page_id]["revisions"][0]
+            first_rev_timestamp = datetime.fromisoformat(
+                first_revision["timestamp"].replace("Z", "+00:00")
+            )
+            features["page_age"] = round(
+                (rev_timestamp - first_rev_timestamp).total_seconds() / (60 * 60 * 24)
+            )
+            return features
         except Exception as e:
             error_message = f"Failed to fetch metadata features in _fetch_metadata_features for rev_id {rev_id}. Reason: {e}"
             logging.error(error_message)
             raise InferenceError(error_message)
-        page_id = list(rev_doc["query"]["pages"].keys())[0]
-        revision = rev_doc["query"]["pages"][page_id]["revisions"][0]
-        user_name = revision["user"]
-        rev_timestamp = datetime.fromisoformat(
-            revision["timestamp"].replace("Z", "+00:00")
-        )
-        parent_id = revision.get("parentid", 0)
-
-        user_doc = await self._session_get_with_retry(
-            session,
-            action="query",
-            list="users",
-            ususers=user_name,
-            usprop="groups|registration",
-            format="json",
-        )
-        user = user_doc["query"]["users"][0]
-        features["user_is_anonymous"] = str("userid" not in user)
-        if features["user_is_anonymous"] == "True":
-            features["user_is_bot"] = "-1"
-        else:
-            features["user_is_bot"] = str(int("bot" in user.get("groups", [])))
-        user_groups = user.get("groups", [])
-        for group in self.model.metadata_classifier.feature_names_:
-            if group.startswith("event_user_groups-"):
-                if features["user_is_anonymous"] != "True":
-                    features[group] = str(float(group.split("-")[1] in user_groups))
-        if user.get("registration"):
-            reg_timestamp = datetime.fromisoformat(
-                user["registration"].replace("Z", "+00:00")
-            )
-            features["user_age"] = round(
-                (rev_timestamp - reg_timestamp).total_seconds() / (60 * 60 * 24)
-            )
-        else:
-            features["user_age"] = NUMERIC_NaN
-        if parent_id != 0:
-            parent_rev_doc = await self._session_get_with_retry(
-                session,
-                action="query",
-                prop="revisions",
-                revids=parent_id,
-                rvprop="timestamp",
-                format="json",
-            )
-            parent_revision = list(parent_rev_doc["query"]["pages"].values())[0][
-                "revisions"
-            ][0]
-            parent_rev_timestamp = datetime.fromisoformat(
-                parent_revision["timestamp"].replace("Z", "+00:00")
-            )
-            features["page_seconds_since_previous_revision"] = round(
-                (rev_timestamp - parent_rev_timestamp).total_seconds()
-            )
-        else:
-            features["page_seconds_since_previous_revision"] = 0
-        first_rev_doc = await self._session_get_with_retry(
-            session,
-            action="query",
-            prop="revisions",
-            pageids=page_id,
-            rvdir="newer",
-            rvlimit=1,
-            rvprop="timestamp",
-            format="json",
-        )
-        first_revision = first_rev_doc["query"]["pages"][page_id]["revisions"][0]
-        first_rev_timestamp = datetime.fromisoformat(
-            first_revision["timestamp"].replace("Z", "+00:00")
-        )
-        features["page_age"] = round(
-            (rev_timestamp - first_rev_timestamp).total_seconds() / (60 * 60 * 24)
-        )
-        return features
 
     async def preprocess(
         self, inputs: dict[str, Any], headers: dict[str, str] = None
