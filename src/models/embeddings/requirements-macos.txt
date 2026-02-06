@@ -1,5 +1,4 @@
 accelerate==1.12.0
-ctranslate2==4.6.1
 einops==0.8.1
 kserve==0.16.0
 sentencepiece==0.2.1
