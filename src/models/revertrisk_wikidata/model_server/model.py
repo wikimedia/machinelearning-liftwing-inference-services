@@ -383,7 +383,7 @@ class RevertRiskWikidataModel(kserve.Model):
         def extract_entity_ids(diffs):
             ids = set()
             for diff_str in diffs:
-                matches = re.findall(r"Q\d+|P\d+", diff_str)
+                matches = re.findall(r"\b(Q\d+|P\d+)\b", diff_str)
                 ids.update(matches)
                 numeric_values = re.findall(
                     r"numeric-id.*?\{[^}]*?new_value':\s*(\d+).*?old_value':\s*(\d+)",
