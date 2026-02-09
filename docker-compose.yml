@@ -213,3 +213,20 @@ services:
       ATTN_IMPLEMENTATION: "eager"
     volumes:
       - ${PATH_TO_EMBEDDINGS_MODEL:-/dummy/path}:/mnt/models/
+  labse-embeddings:
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: .pipeline/embeddings/blubber.yaml
+      target: production
+    image: embeddings:prod
+    ports:
+      - "8080:8080"
+    environment:
+      MODEL_NAME: "labse-embedding"
+      MODEL_PATH: "sentence-transformers/LaBSE"
+      LOCAL_FILES_ONLY: "False"
+      DTYPE: "float16"
+      ATTN_IMPLEMENTATION: "eager"
+    volumes:
+      - ${PATH_TO_EMBEDDINGS_MODEL:-/dummy/path}:/mnt/models/
