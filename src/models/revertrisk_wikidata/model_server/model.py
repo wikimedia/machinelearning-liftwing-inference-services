@@ -379,11 +379,11 @@ class RevertRiskWikidataModel(kserve.Model):
         diffs = inputs["diffs"]
         metadata_features = inputs["metadata_features"]
 
-        # Extract all Q/P IDs from diffs for label fetching
+        # Extract all Q/P IDs from diffs for label fetching (see T414060#11596249 and T414060#11605878)
         def extract_entity_ids(diffs):
             ids = set()
             for diff_str in diffs:
-                matches = re.findall(r"\b(Q\d+|P\d+)\b", diff_str)
+                matches = re.findall(r"\b(Q[1-9]\d*|P[1-9]\d*)\b", diff_str)
                 ids.update(matches)
                 numeric_values = re.findall(
                     r"numeric-id.*?\{[^}]*?new_value':\s*(\d+).*?old_value':\s*(\d+)",
