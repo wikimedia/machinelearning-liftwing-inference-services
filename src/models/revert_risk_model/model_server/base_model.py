@@ -30,6 +30,8 @@ class RevisionRevertRiskModel(kserve.Model):
         aiohttp_client_timeout: int,
         force_http: bool,
         allow_revision_json_input: bool,
+        eventgate_url: str | None = None,
+        eventgate_stream: str | None = None,
     ) -> None:
         super().__init__(name)
         self.name = name
@@ -46,6 +48,11 @@ class RevisionRevertRiskModel(kserve.Model):
         self._http_client_session = {}
         self.device = None
         self.wp_language_codes = set()
+        self.event_key = "event"
+        self.eventgate_url = eventgate_url
+        self.eventgate_stream = eventgate_stream
+        self.tls_cert_bundle_path = "/etc/ssl/certs/wmf-ca-certificates.crt"
+        self.custom_user_agent = "WMF ML Team revert-risk model inference (LiftWing)"
         self.load()
 
     def get_http_client_session(self, endpoint):

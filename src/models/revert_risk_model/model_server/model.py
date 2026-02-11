@@ -5,6 +5,7 @@ from distutils.util import strtobool
 import kserve
 from base_model import RevisionRevertRiskModel
 from batch_model import RevisionRevertRiskModelBatch
+from gpu_model import RevertRiskMultilingualGPU
 
 logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
 
@@ -25,6 +26,7 @@ if __name__ == "__main__":
     eventgate_url = os.environ.get("EVENTGATE_URL")
     eventgate_stream = os.environ.get("EVENTGATE_STREAM")
     if model_name == "revertrisk-language-agnostic":
+        logging.info("Model Server: RevisionRevertRiskModelBatch")
         model = RevisionRevertRiskModelBatch(
             model_name,
             module_name,
@@ -36,7 +38,21 @@ if __name__ == "__main__":
             eventgate_url,
             eventgate_stream,
         )
+    elif model_name == "revertrisk-multilingual":
+        logging.info("Model Server: RevertRiskMultilingualGPU")
+        model = RevertRiskMultilingualGPU(
+            model_name,
+            module_name,
+            model_path,
+            wiki_url,
+            aiohttp_client_timeout,
+            force_http,
+            allow_revision_json_input,
+            eventgate_url,
+            eventgate_stream,
+        )
     else:
+        logging.info("Model Server: RevisionRevertRiskModel")
         model = RevisionRevertRiskModel(
             model_name,
             module_name,

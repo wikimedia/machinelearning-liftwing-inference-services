@@ -175,7 +175,7 @@ def generate_prediction_classification_event(
         }
     else:
         raise RuntimeError(
-            f"Unsupported event of schema {event['$schema']}, please contact "
+            f"Unsupported event of schema {source_event['$schema']}, please contact "
             "the ML team."
         )
     return event

@@ -1,10 +1,10 @@
-# syntax=docker-registry.wikimedia.org/repos/releng/blubber/buildkit:v0.22.0
+# syntax=docker-registry.wikimedia.org/repos/releng/blubber/buildkit:v1.0.1
 version: v4
-base: docker-registry.wikimedia.org/bookworm:20250720
+base: docker-registry.wikimedia.org/amd-pytorch25:2.5.1rocm6.1-1
 runs:
   insecurely: true
   environment:
-    PYTHONPATH: /srv/revert_risk_model
+    PYTHONPATH: /opt/lib/venv/lib/python3.11/site-packages:/srv/revert_risk_model:/opt/lib/python/site-packages
 
 lives:
   in: /srv/revert_risk_model
@@ -20,6 +20,7 @@ variants:
         - python3-pip
         - python3-dev
         - python3-setuptools
+        - python3.11-venv
         - git
 
   production:
@@ -36,6 +37,9 @@ variants:
       - from: build
         source: /opt/lib/python/site-packages
         destination: /opt/lib/python/site-packages
+      - from: build
+        source: /opt/lib/venv/lib/python3.11/site-packages/
+        destination: /opt/lib/venv/lib/python3.11/site-packages/
       - from: local
         source: model_server_entrypoint.sh
         destination: entrypoint.sh
@@ -49,7 +53,8 @@ variants:
         - wmf-certificates
         - python3-setuptools
         - libdrm-amdgpu1
+        - python3.11-venv
     python:
       version: python3
-      use-system-flag: false
+      use-system-site-packages: true
     entrypoint: ["./entrypoint.sh"]
