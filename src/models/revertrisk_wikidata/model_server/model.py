@@ -221,26 +221,30 @@ class RevertRiskWikidataModel(kserve.Model):
             tasks = []
 
             # Task for user details
-            user_task = self._session_get_with_retry(
-                session,
-                action="query",
-                list="users",
-                ususers=user_name,
-                usprop="groups|registration",
-                format="json",
+            user_task = asyncio.create_task(
+                self._session_get_with_retry(
+                    session,
+                    action="query",
+                    list="users",
+                    ususers=user_name,
+                    usprop="groups|registration",
+                    format="json",
+                )
             )
             tasks.append(user_task)
 
             # Task for first revision timestamp
-            first_rev_task = self._session_get_with_retry(
-                session,
-                action="query",
-                prop="revisions",
-                pageids=page_id,
-                rvdir="newer",
-                rvlimit=1,
-                rvprop="timestamp",
-                format="json",
+            first_rev_task = asyncio.create_task(
+                self._session_get_with_retry(
+                    session,
+                    action="query",
+                    prop="revisions",
+                    pageids=page_id,
+                    rvdir="newer",
+                    rvlimit=1,
+                    rvprop="timestamp",
+                    format="json",
+                )
             )
             tasks.append(first_rev_task)
 
@@ -248,13 +252,15 @@ class RevertRiskWikidataModel(kserve.Model):
             parent_rev_doc_is_present = False
             if parent_id != 0:
                 parent_rev_doc_is_present = True
-                parent_rev_task = self._session_get_with_retry(
-                    session,
-                    action="query",
-                    prop="revisions",
-                    revids=parent_id,
-                    rvprop="timestamp",
-                    format="json",
+                parent_rev_task = asyncio.create_task(
+                    self._session_get_with_retry(
+                        session,
+                        action="query",
+                        prop="revisions",
+                        revids=parent_id,
+                        rvprop="timestamp",
+                        format="json",
+                    )
                 )
                 tasks.append(parent_rev_task)
 

@@ -1,4 +1,5 @@
 import ast
+import asyncio
 import json
 import logging
 import re
@@ -460,19 +461,33 @@ async def fetch_labels_from_api(
     session: mwapi.AsyncSession, entity_ids: list[str]
 ) -> dict[str, str]:
     """
-    Fetch labels for a list of Wikidata entity/property IDs using the Wikidata API.
+    Fetch labels for a list of Wikidata entity/property IDs using the Wikidata API
+    by creating and executing all batch requests concurrently.
     """
     batch_size = 50
     labels = {}
+    tasks = []
+
+    # 1. Create a list of tasks for each batch without awaiting them
     for idx in range(0, len(entity_ids), batch_size):
-        result = await session.get(
-            action="wbgetentities",
-            props="labels",
-            languages="en",
-            ids=entity_ids[idx : idx + batch_size],
+        task = asyncio.create_task(
+            session.get(
+                action="wbgetentities",
+                props="labels",
+                languages="en",
+                ids=entity_ids[idx : idx + batch_size],
+            )
         )
-        for id, entity in result.get("entities", {}).items():
-            label = entity.get("labels", {}).get("en", {}).get("value")
-            if label:
-                labels[id] = f'"{label}"'
+        tasks.append(task)
+
+    # 2. Execute all tasks in parallel
+    parallel_results = await asyncio.gather(*tasks)
+
+    # 3. Process the parallel results from all completed tasks
+    for result in parallel_results:
+        if result:  # Ensure the result is not None
+            for id, entity in result.get("entities", {}).items():
+                label = entity.get("labels", {}).get("en", {}).get("value")
+                if label:
+                    labels[id] = f'"{label}"'
     return labels
