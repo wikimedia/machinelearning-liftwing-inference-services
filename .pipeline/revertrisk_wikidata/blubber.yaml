@@ -1,10 +1,10 @@
 # syntax=docker-registry.wikimedia.org/repos/releng/blubber/buildkit:v1.5.1
 version: v4
-base: docker-registry.wikimedia.org/bookworm:20251026
+base: docker-registry.wikimedia.org/amd-pytorch25:2.5.1rocm6.1-1-20260125
 runs:
   insecurely: true
   environment:
-    PYTHONPATH: /srv/revertrisk_wikidata:/srv/revertrisk_wikidata/src/models/revertrisk_wikidata/model_server:/opt/lib/venv/lib/python3.11/site-packages
+    PYTHONPATH: /srv/revertrisk_wikidata:/srv/revertrisk_wikidata/src/models/revertrisk_wikidata/model_server:/opt/lib/venv/lib/python3.11/site-packages:/opt/lib/python/site-packages
 
 lives:
   in: /srv/revertrisk_wikidata

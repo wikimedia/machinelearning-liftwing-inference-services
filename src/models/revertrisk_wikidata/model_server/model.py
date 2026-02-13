@@ -16,6 +16,7 @@ import kserve
 import mwapi
 import numpy as np
 import pandas as pd
+import torch
 import transformers
 from diskcache import Cache
 from kserve.errors import InferenceError, InvalidInput
@@ -36,6 +37,9 @@ logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
 
 NUMERIC_NaN = -999
 CATEGORICAL_NaN = "nan"
+# Determine the device to run the model on.
+# This makes the code portable between GPU and CPU environments.
+DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
 # This class is needed for joblib to unpickle the model
@@ -79,15 +83,44 @@ class RevertRiskWikidataModel(kserve.Model):
 
     def load(self):
         """
-        Load the Graph2Text model.
+        Load the Graph2Text model and place the text_classifier component onto the GPU.
         """
+        logging.info(f"Starting model loading for device: {DEVICE}...")
         setattr(
             sys.modules["__main__"],
             "RevertRiskWikidataGraph2TextModel",
             RevertRiskWikidataGraph2TextModelForLoad,
         )
         try:
-            self.model = joblib.load(self.model_path)
+            # Load the original model object from the pickle file
+            original_model_object = joblib.load(self.model_path)
+
+            # Extract the raw mBERT model and tokenizer
+            mbert_model = original_model_object.text_classifier.model
+            tokenizer = original_model_object.text_classifier.tokenizer
+
+            # Move the mBERT model to the GPU
+            logging.info(f"Moving mBERT model to {DEVICE}...")
+            mbert_model.to(DEVICE)
+
+            # Re-create the pipeline, explicitly telling it which device to use
+            # device=0 corresponds to "cuda:0"
+            gpu_device_id = 0 if DEVICE.type == "cuda" else -1
+            text_classifier_pipeline = transformers.pipeline(
+                "text-classification",
+                model=mbert_model,
+                tokenizer=tokenizer,
+                device=gpu_device_id,
+            )
+
+            # Assemble the final model object for the server
+            self.model = RevertRiskWikidataGraph2TextModelForLoad(
+                metadata_classifier=original_model_object.metadata_classifier,
+                text_classifier=text_classifier_pipeline,
+                model_version=original_model_object.model_version,
+            )
+            logging.info("Model loading complete.")
+
         except Exception as e:
             error_message = f"Failed to load model from {self.model_path}. Reason: {e}"
             logging.critical(error_message)
