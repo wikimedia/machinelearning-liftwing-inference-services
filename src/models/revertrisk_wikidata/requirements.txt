@@ -3,7 +3,6 @@ scikit-learn==1.7.2
 kserve==0.16.0
 catboost==1.2.8
 transformers==4.25.1
-torch==1.13.1+cpu
 numpy==1.26.4
 deepdiff==8.6.1
 mwapi==0.6.1
