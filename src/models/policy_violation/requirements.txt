@@ -1,0 +1,3 @@
+# NOTE: The following dependencies are provided by the vLLM base image: ROCm 7.0.0, Torch 2.10.0, MoRi 0.1, FlashAttention 2.8.3, Aiter 0.1.7, and vLLM 0.14.
+
+kserve==0.16.0
