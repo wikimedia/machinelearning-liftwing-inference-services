@@ -1,0 +1,59 @@
+# syntax=docker-registry.wikimedia.org/repos/releng/blubber/buildkit:v1.0.1
+version: v4
+base: docker-registry.wikimedia.org/ml/amd-vllm014:gfx90agfx942rocm7.0.0pytorch2.10.0mori0.1flash-attn2.8.3aiter0.1.7vllm0.14
+runs:
+  insecurely: true
+  environment:
+    PYTHONPATH: /srv/venv/lib/python3.11/site-packages:/opt/lib/venv/lib/python3.11/site-packages:/srv/app:/srv/venv/bin/python3
+    PATH: $PATH:/srv/app
+    # Overwrite proxy variables with empty strings
+    http_proxy:
+    https_proxy:
+    no_proxy:
+
+lives:
+  in: /srv/app
+
+variants:
+  build:
+    python:
+      version: python3
+      requirements: [src/models/policy_violation/requirements.txt, python/requirements.txt]
+      use-system-site-packages: true
+      no-deps: false
+    apt:
+      packages:
+        - build-essential
+        - cmake
+        - git
+        - pkg-config
+
+
+  production:
+    copies:
+      - from: local
+        source: src/models/policy_violation/.
+        destination: .
+      - from: local
+        source: python
+        destination: python
+      - from: build
+        source: /opt/lib/venv/lib/python3.11/site-packages
+        destination: /opt/lib/venv/lib/python3.11/site-packages
+      - from: local
+        source: model_server_entrypoint.sh
+        destination: entrypoint.sh
+      - from: local
+        source: common_settings.sh
+        destination: common_settings.sh
+
+    apt:
+      packages:
+        - wmf-certificates
+        - libdrm-amdgpu1
+        - g++
+    python:
+      version: python3
+      use-system-site-packages: true
+      no-deps: false
+    entrypoint: ["./entrypoint.sh"]

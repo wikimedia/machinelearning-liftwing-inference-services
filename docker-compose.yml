@@ -230,3 +230,18 @@ services:
       ATTN_IMPLEMENTATION: "eager"
     volumes:
       - ${PATH_TO_EMBEDDINGS_MODEL:-/dummy/path}:/mnt/models/
+  policy-violation:
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: .pipeline/policy_violation/blubber.yaml
+      target: production
+    image: policy-violation:prod
+    ports:
+      - "8080:8080"
+    environment:
+      MODEL_NAME: "policy-violation"
+      MODEL_PATH: "openai/gpt-oss-safeguard-20b"
+      TRUST_REMOTE_CODE: "True"
+    volumes:
+      - ${PATH_TO_POLICY_VIOLATION_MODEL:-/dummy/path}:/mnt/models/

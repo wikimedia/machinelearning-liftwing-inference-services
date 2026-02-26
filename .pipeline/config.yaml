@@ -221,3 +221,13 @@ pipelines:
           image:
             name: '${setup.project}-embeddings'
             tags: [stable]
+
+  policy-violation-publish:
+    blubberfile: policy_violation/blubber.yaml
+    stages:
+      - name: publish
+        build: production
+        publish:
+          image:
+            name: '${setup.project}-policy-violation'
+            tags: [stable]
