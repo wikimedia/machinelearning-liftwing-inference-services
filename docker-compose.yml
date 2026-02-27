@@ -244,3 +244,16 @@ services:
       TRUST_REMOTE_CODE: "True"
     volumes:
       - ${PATH_TO_POLICY_VIOLATION_MODEL:-/dummy/path}:/mnt/models/
+  outlink-cache-adapter:
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: .pipeline/outlink_cache_adapter/blubber.yaml
+      target: production
+    image: outlink-cache-adapter:prod
+    ports:
+      - "50051:50051"
+    environment:
+      GRPC_PORT: "50051"
+      KSERVE_URL: "http://outlink-topic-model:8080/v1/models/outlink-topic-model:predict"
+      KSERVE_HOST_HEADER: ""

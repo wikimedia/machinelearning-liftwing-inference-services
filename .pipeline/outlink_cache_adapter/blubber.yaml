@@ -1,0 +1,44 @@
+# syntax=docker-registry.wikimedia.org/repos/releng/blubber/buildkit:v0.21.0
+version: v4
+base: docker-registry.wikimedia.org/bookworm:20250720
+runs:
+  insecurely: true
+  environment:
+    PYTHONPATH: /srv/outlink_cache_adapter
+
+lives:
+  in: /srv/outlink_cache_adapter
+
+variants:
+  build:
+    python:
+      version: python3
+      requirements: [src/models/outlink_topic_model/outlink_cache_adapter/requirements.txt]
+    apt:
+      packages:
+        - build-essential
+        - python3-pip
+        - python3-dev
+        - python3-setuptools
+
+  production:
+    copies:
+      - from: local
+        source: src/models/outlink_topic_model/outlink_cache_adapter/adapter.py
+        destination: adapter.py
+      - from: local
+        source: src/models/outlink_topic_model/outlink_cache_adapter/proto
+        destination: proto/
+      - from: local
+        source: src/models/outlink_topic_model/outlink_cache_adapter/data
+        destination: data/
+      - from: build
+        source: /opt/lib/python/site-packages
+        destination: /opt/lib/python/site-packages
+    apt:
+      packages:
+        - python3
+    python:
+      version: python3
+      use-system-flag: false
+    entrypoint: ["python3", "adapter.py"]
