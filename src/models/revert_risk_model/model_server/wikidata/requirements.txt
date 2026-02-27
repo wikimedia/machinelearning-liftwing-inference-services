@@ -1,4 +1,0 @@
---extra-index-url https://download.pytorch.org/whl/cpu
-knowledge_integrity[revertrisk-wikidata] @ git+https://gitlab.wikimedia.org/repos/research/knowledge_integrity.git@v0.6.0
-kserve==0.12.1
-PyYAML==6.0.1
