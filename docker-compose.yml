@@ -208,9 +208,8 @@ services:
     environment:
       MODEL_NAME: "qwen3-embedding"
       MODEL_PATH: "Qwen/Qwen3-Embedding-0.6B"
-      LOCAL_FILES_ONLY: "False"
       DTYPE: "float16"
-      ATTN_IMPLEMENTATION: "eager"
+      TRUST_REMOTE_CODE: "True"
     volumes:
       - ${PATH_TO_EMBEDDINGS_MODEL:-/dummy/path}:/mnt/models/
   labse-embeddings:

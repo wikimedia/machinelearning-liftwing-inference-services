@@ -6,7 +6,7 @@ import kserve
 import torch
 import torch.nn.functional as F
 from kserve.errors import InferenceError, InvalidInput
-from transformers import AutoModel, AutoTokenizer
+from vllm import LLM
 
 logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
 
@@ -17,72 +17,51 @@ class EmbeddingModel(kserve.Model):
         name: str,
         model_path: str,
         model_version: str,
-        local_files_only: bool,
-        dtype: torch.dtype,
-        attn_implementation: str,
-        max_length: int,
+        dtype: str,
+        trust_remote_code: bool,
+        gpu_memory_utilization: float,
+        max_model_len: int,
     ) -> None:
         super().__init__(name)
         self.name = name
         self.model_path = model_path
         self.model_version = model_version
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
-        self.tokenizer = None
+        self.dtype = dtype
+        self.trust_remote_code = trust_remote_code
+        self.gpu_memory_utilization = gpu_memory_utilization
+        self.max_model_len = max_model_len
         self.model = None
         self.ready = False
-        self.local_files_only = local_files_only
-        self.dtype = dtype
-        self.attn_implementation = attn_implementation
-        self.max_length = max_length
 
     def load(self) -> None:
         """
-        Load the tokenizer and model for embeddings.
+        Load the vLLM engine for embeddings.
         """
         try:
-            logging.info("Loading tokenizer...")
-            self.tokenizer = AutoTokenizer.from_pretrained(
-                self.model_path,
-                trust_remote_code=True,
-                local_files_only=self.local_files_only,
+            logging.info("Loading vLLM model...")
+
+            # Initialize vLLM without task="embed" as this was causing a crash due to our ROCm-specific setup.
+            # Instead, we will call embed() directly in predict() which works without the task argument.
+            # Unlike the previous transformers-based isvc, vLLM handles tokenizer, attention implementation, and pooling internally.
+            self.model = LLM(
+                model=self.model_path,
+                dtype=self.dtype,
+                trust_remote_code=self.trust_remote_code,
+                gpu_memory_utilization=self.gpu_memory_utilization,
+                max_model_len=self.max_model_len,
+                enforce_eager=False,  # Allows CUDA graph capture for performance
             )
 
-            logging.info("Loading model...")
-            self.model = AutoModel.from_pretrained(
-                self.model_path,
-                attn_implementation=self.attn_implementation,  # Qwen recommends enabling fa2 for better acceleration and memory saving
-                torch_dtype=self.dtype,  # Use float16 for ROCm speed
-                device_map=self.device,
-                local_files_only=self.local_files_only,
-            )
-            self.model.eval()
             self.ready = True
+            logging.info("vLLM model loaded successfully!")
         except Exception as e:
-            error_message = f"Failed to load model or tokenizer. Reason: {e}"
+            error_message = f"Failed to load vLLM model. Reason: {e}"
             logging.critical(error_message)
             raise kserve.errors.InferenceError(error_message)
 
-    def last_token_pooling(
-        self, last_hidden_states: torch.Tensor, attention_mask: torch.Tensor
-    ) -> torch.Tensor:
+    def preprocess(self, payload: dict, headers: dict[str, str]) -> list[str]:
         """
-        Extracts the embedding from the last token (EOS) position.
-        This is common for Qwen/LLM-based embedding models.
-        """
-        left_padding = attention_mask[:, -1].sum() == attention_mask.shape[0]
-        if left_padding:
-            return last_hidden_states[:, -1]
-        else:
-            sequence_lengths = attention_mask.sum(dim=1) - 1
-            batch_size = last_hidden_states.shape[0]
-            return last_hidden_states[
-                torch.arange(batch_size, device=last_hidden_states.device),
-                sequence_lengths,
-            ]
-
-    def preprocess(self, payload: dict, headers: dict[str, str]) -> torch.Tensor:
-        """
-        Preprocess the input data by validating and tokenizing it.
+        Preprocess the input data. vLLM expects a list of strings.
         Supports OpenAI-compatible API request format. (see T412338#11482782)
         """
         if "input" in payload:
@@ -92,38 +71,36 @@ class EmbeddingModel(kserve.Model):
             logging.error(error_message)
             raise InvalidInput(error_message)
 
-        logging.info("Tokenizing inputs...")
-        if self.max_length is not None:
-            inputs = [input[: self.max_length] for input in inputs]
-        encoded_input = self.tokenizer(
-            inputs, padding=True, truncation=True, max_length=8192, return_tensors="pt"
-        ).to(self.device)
-        return encoded_input
+        # Ensure input is a list
+        if isinstance(inputs, str):
+            inputs = [inputs]
 
-    def predict(
-        self, encoded_input: torch.Tensor, headers: dict[str, str] = None
-    ) -> dict:
+        return inputs
+
+    def predict(self, inputs: list[str], headers: dict[str, str] = None) -> dict:
         """
-        Perform inference to generate embeddings.
+        Perform inference using vLLM to generate embeddings.
         Supports OpenAI-compatible API response format. (see T412338#11482782)
         """
         try:
-            # Perform inference
             logging.info("Performing inference...")
-            with torch.no_grad():
-                outputs = self.model(**encoded_input)
 
-                # Check architecture type to decide pooling
-                if hasattr(outputs, "last_hidden_state"):
-                    embeddings = self.last_token_pooling(
-                        outputs.last_hidden_state, encoded_input["attention_mask"]
-                    )
-                else:
-                    # Fallback for some architectures
-                    embeddings = outputs[0]
+            # vLLM inference
+            # model.embed returns a list of RequestOutput objects
+            outputs = self.model.embed(inputs)
 
-                # Normalize embeddings (Important for cosine similarity)
-                embeddings = F.normalize(embeddings, p=2, dim=1)
+            # Extract embeddings from vLLM output
+            # Each output has an `outputs` attribute which contains the `embedding`
+            raw_embeddings = [output.outputs.embedding for output in outputs]
+
+            # Convert to tensor for normalization
+            # We use the device of the first embedding (likely CPU return from vLLM)
+            # or force to CPU for F.normalize calculation
+            tensor_embeddings = torch.tensor(raw_embeddings)
+
+            # Normalize embeddings (Important for cosine similarity)
+            # vLLM returns raw embeddings, so normalization is still required manually
+            normalized_embeddings = F.normalize(tensor_embeddings, p=2, dim=1)
 
             # Format response in OpenAI API format
             data = [
@@ -132,14 +109,13 @@ class EmbeddingModel(kserve.Model):
                     "embedding": embedding.tolist(),
                     "index": idx,
                 }
-                for idx, embedding in enumerate(embeddings)
+                for idx, embedding in enumerate(normalized_embeddings)
             ]
+
             return {
                 "object": "list",
                 "data": data,
-                "model": self.model_version
-                or self.model.config._name_or_path
-                or self.name,
+                "model": self.model_version or self.name,
             }
 
         except Exception as e:
@@ -152,18 +128,24 @@ if __name__ == "__main__":
     model_name = os.environ.get("MODEL_NAME", "qwen3-embedding")
     model_path = os.environ.get("MODEL_PATH", "/mnt/models/")
     model_version = os.environ.get("MODEL_VERSION", "")
-    local_files_only = strtobool(os.environ.get("LOCAL_FILES_ONLY", "True"))
-    dtype = getattr(torch, os.environ.get("DTYPE", "float16"))
-    attn_implementation = os.environ.get("ATTN_IMPLEMENTATION", "flash_attention_2")
-    max_length = int(os.environ.get("MAX_LENGTH", 300))
+    dtype = os.environ.get(
+        "DTYPE", "float16"
+    )  # vLLM supports 'auto', 'float16', 'bfloat16'
+    trust_remote_code = strtobool(os.environ.get("TRUST_REMOTE_CODE", "True"))
+    gpu_memory_utilization = float(os.environ.get("GPU_MEMORY_UTILIZATION", "0.9"))
+
+    # Context length limit (Qwen3-Embedding supports up to 32k, default to 8192 if safe)
+    # If not set, vLLM attempts to derive it from config.json
+    max_model_len = int(os.environ.get("MAX_MODEL_LEN", 8192))
+
     model = EmbeddingModel(
-        model_name,
-        model_path,
-        model_version,
-        local_files_only,
-        dtype,
-        attn_implementation,
-        max_length,
+        name=model_name,
+        model_path=model_path,
+        model_version=model_version,
+        dtype=dtype,
+        trust_remote_code=trust_remote_code,
+        gpu_memory_utilization=gpu_memory_utilization,
+        max_model_len=max_model_len,
     )
     model.load()
     kserve.ModelServer().start([model])

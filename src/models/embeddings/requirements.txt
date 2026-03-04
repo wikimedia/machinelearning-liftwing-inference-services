@@ -1,9 +1,3 @@
-accelerate==1.12.0
-https://gitlab.wikimedia.org/repos/machine-learning/huggingface-optimum-benchmark-automation/-/raw/main/wheels/gfx90a+gfx942/flashattention2/20251127101413/flash_attn-2.7.4.post1-cp311-cp311-linux_x86_64.whl
-einops==0.8.1
+# NOTE: The following dependencies are provided by the vLLM base image: ROCm 7.0.0, Torch 2.10.0, MoRi 0.1, FlashAttention 2.8.3, Aiter 0.1.7, and vLLM 0.14.
+
 kserve==0.16.0
-sentencepiece==0.2.1
-scipy==1.16.3
-transformers==4.57.1
-pyopencl==2025.2.7
-typing_extensions==4.15.0
