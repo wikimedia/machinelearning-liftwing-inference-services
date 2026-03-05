@@ -58,6 +58,12 @@ variants:
         - g++
         - rocm-dev
         - rocm-device-libs
+        - hipsparse-dev
+        - rocthrust-dev
+        - rocprim-dev
+        - rocblas-dev
+        - hipblas-dev
+        - rocsparse-dev
     python:
       version: python3
       use-system-site-packages: true
