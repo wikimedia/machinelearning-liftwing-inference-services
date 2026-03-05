@@ -48,10 +48,16 @@ variants:
         destination: common_settings.sh
 
     apt:
+      sources:
+        - url: http://apt.wikimedia.org/wikimedia
+          distribution: bookworm-wikimedia
+          components: [thirdparty/amd-rocm70]
       packages:
         - wmf-certificates
         - libdrm-amdgpu1
         - g++
+        - rocm-dev
+        - rocm-device-libs
     python:
       version: python3
       use-system-site-packages: true

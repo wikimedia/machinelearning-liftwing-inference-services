@@ -21,6 +21,7 @@ class EmbeddingModel(kserve.Model):
         trust_remote_code: bool,
         gpu_memory_utilization: float,
         max_model_len: int,
+        max_num_batched_tokens: int,
     ) -> None:
         super().__init__(name)
         self.name = name
@@ -30,6 +31,7 @@ class EmbeddingModel(kserve.Model):
         self.trust_remote_code = trust_remote_code
         self.gpu_memory_utilization = gpu_memory_utilization
         self.max_model_len = max_model_len
+        self.max_num_batched_tokens = max_num_batched_tokens
         self.model = None
         self.ready = False
 
@@ -49,6 +51,7 @@ class EmbeddingModel(kserve.Model):
                 trust_remote_code=self.trust_remote_code,
                 gpu_memory_utilization=self.gpu_memory_utilization,
                 max_model_len=self.max_model_len,
+                max_num_batched_tokens=self.max_num_batched_tokens,
                 enforce_eager=False,  # Allows CUDA graph capture for performance
             )
 
@@ -137,6 +140,7 @@ if __name__ == "__main__":
     # Context length limit (Qwen3-Embedding supports up to 32k, default to 8192 if safe)
     # If not set, vLLM attempts to derive it from config.json
     max_model_len = int(os.environ.get("MAX_MODEL_LEN", 8192))
+    max_num_batched_tokens = int(os.environ.get("MAX_NUM_BATCHED_TOKENS", 8192))
 
     model = EmbeddingModel(
         name=model_name,
@@ -146,6 +150,7 @@ if __name__ == "__main__":
         trust_remote_code=trust_remote_code,
         gpu_memory_utilization=gpu_memory_utilization,
         max_model_len=max_model_len,
+        max_num_batched_tokens=max_num_batched_tokens,
     )
     model.load()
     kserve.ModelServer().start([model])
