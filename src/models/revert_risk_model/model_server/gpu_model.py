@@ -51,7 +51,7 @@ class RevertRiskMultilingualGPU(RevisionRevertRiskModel):
         """
         if not self.device:
             if torch.cuda.is_available():
-                self.device = torch.device("cuda")
+                self.device = torch.device("cuda:0")
                 logging.info(f"Using device: {self.device}")
             else:
                 self.device = torch.device("cpu")
