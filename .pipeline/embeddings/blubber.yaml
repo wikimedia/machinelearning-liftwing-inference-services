@@ -65,6 +65,7 @@ variants:
         - hipblas-dev
         - rocsparse-dev
         - hipblaslt-dev
+        - hipsolver-dev
     python:
       version: python3
       use-system-site-packages: true
