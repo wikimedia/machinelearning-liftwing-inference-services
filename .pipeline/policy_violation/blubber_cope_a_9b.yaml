@@ -32,7 +32,7 @@ variants:
   production:
     copies:
       - from: local
-        source: src/models/policy_violation/.
+        source: src/models/policy_violation/cope_a_9b/.
         destination: .
       - from: local
         source: python
@@ -56,4 +56,4 @@ variants:
       version: python3
       use-system-site-packages: true
       no-deps: false
-    entrypoint: ["./entrypoint.sh"]
+    entrypoint: ["./entrypoint.sh", "model.py"]

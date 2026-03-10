@@ -222,14 +222,24 @@ pipelines:
             name: '${setup.project}-embeddings'
             tags: [stable]
 
-  policy-violation-publish:
-    blubberfile: policy_violation/blubber.yaml
+  policy-violation-gpt-oss-safeguard-publish:
+    blubberfile: policy_violation/blubber_gpt_oss_safeguard_20b.yaml
     stages:
       - name: publish
         build: production
         publish:
           image:
-            name: '${setup.project}-policy-violation'
+            name: '${setup.project}-policy-violation-gpt-oss-safeguard'
+            tags: [stable]
+
+  policy-violation-cope-a-9b-publish:
+    blubberfile: policy_violation/blubber_cope_a_9b.yaml
+    stages:
+      - name: publish
+        build: production
+        publish:
+          image:
+            name: '${setup.project}-policy-violation-cope-a-9b'
             tags: [stable]
 
   outlink-cache-adapter-publish:

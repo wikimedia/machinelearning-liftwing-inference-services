@@ -229,13 +229,13 @@ services:
       ATTN_IMPLEMENTATION: "eager"
     volumes:
       - ${PATH_TO_EMBEDDINGS_MODEL:-/dummy/path}:/mnt/models/
-  policy-violation:
+  policy-violation-gpt-oss-safeguard:
     platform: linux/amd64
     build:
       context: .
-      dockerfile: .pipeline/policy_violation/blubber.yaml
+      dockerfile: .pipeline/policy_violation/blubber_gpt_oss_safeguard_20b.yaml
       target: production
-    image: policy-violation:prod
+    image: policy-violation-gpt-oss-safeguard:prod
     ports:
       - "8080:8080"
     environment:
@@ -244,6 +244,21 @@ services:
       TRUST_REMOTE_CODE: "True"
     volumes:
       - ${PATH_TO_POLICY_VIOLATION_MODEL:-/dummy/path}:/mnt/models/
+  policy-violation-cope-a-9b:
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: .pipeline/policy_violation/blubber_cope_a_9b.yaml
+      target: production
+    image: policy-violation-cope-a-9b:prod
+    ports:
+      - "8081:8080"
+    environment:
+      MODEL_NAME: "cope-a-9b"
+      MODEL_PATH: "/mnt/models"
+      TRUST_REMOTE_CODE: "True"
+    volumes:
+      - ${PATH_TO_COPE_A_9B_MODEL:-/dummy/path}:/mnt/models/
   outlink-cache-adapter:
     platform: linux/amd64
     build:
