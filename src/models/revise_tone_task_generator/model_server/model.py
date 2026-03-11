@@ -401,6 +401,10 @@ class ReviseToneTaskGenerator(kserve.Model):
         article_topics = await self.get_article_topics(lang, page_id)
         should_process = self.should_process_article(article_topics)
 
+        if lang == "test":
+            logging.info("Testwiki - overriding should_process to True for QA purposes")
+            should_process = True
+
         # Remove old cached predictions for this page before processing
         if self.use_cache and wiki_id and page_id:
             try:
