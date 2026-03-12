@@ -53,6 +53,7 @@ class EmbeddingModel(kserve.Model):
                 max_model_len=self.max_model_len,
                 max_num_batched_tokens=self.max_num_batched_tokens,
                 enforce_eager=False,  # Allows CUDA graph capture for performance
+                enable_prefix_caching=False,
             )
 
             self.ready = True

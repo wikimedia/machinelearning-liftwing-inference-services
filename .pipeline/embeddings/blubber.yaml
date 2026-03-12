@@ -1,6 +1,6 @@
 # syntax=docker-registry.wikimedia.org/repos/releng/blubber/buildkit:v1.0.1
 version: v4
-base: docker-registry.wikimedia.org/ml/amd-vllm014:gfx90agfx942rocm7.0.0pytorch2.10.0mori0.1flash-attn2.8.3aiter0.1.7vllm0.14
+base: docker-registry.wikimedia.org/ml/amd-vllm014:gfx90agfx942rocm7.0.0pytorch2.10.0mori0.1flash-attn2.8.3aiter0.1.7vllm0.14-2
 runs:
   insecurely: true
   environment:
@@ -47,25 +47,6 @@ variants:
         source: common_settings.sh
         destination: common_settings.sh
 
-    apt:
-      sources:
-        - url: http://apt.wikimedia.org/wikimedia
-          distribution: bookworm-wikimedia
-          components: [thirdparty/amd-rocm70]
-      packages:
-        - wmf-certificates
-        - libdrm-amdgpu1
-        - g++
-        - rocm-dev
-        - rocm-device-libs
-        - hipsparse-dev
-        - rocthrust-dev
-        - rocprim-dev
-        - rocblas-dev
-        - hipblas-dev
-        - rocsparse-dev
-        - hipblaslt-dev
-        - hipsolver-dev
     python:
       version: python3
       use-system-site-packages: true
