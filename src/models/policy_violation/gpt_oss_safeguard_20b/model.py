@@ -27,6 +27,7 @@ class PolicyViolationModel(kserve.Model):
         trust_remote_code: bool,
         gpu_memory_utilization: float,
         max_model_len: int,
+        block_size: int,
     ) -> None:
         super().__init__(name)
         self.name = name
@@ -34,6 +35,7 @@ class PolicyViolationModel(kserve.Model):
         self.trust_remote_code = trust_remote_code
         self.gpu_memory_utilization = gpu_memory_utilization
         self.max_model_len = max_model_len
+        self.block_size = block_size
         self.model = None
         self.encoding = None
         self.ready = False
@@ -52,6 +54,7 @@ class PolicyViolationModel(kserve.Model):
                 trust_remote_code=self.trust_remote_code,
                 gpu_memory_utilization=self.gpu_memory_utilization,
                 max_model_len=self.max_model_len,
+                block_size=self.block_size,
             )
 
             self.ready = True
@@ -193,6 +196,7 @@ if __name__ == "__main__":
     gpu_memory_utilization = float(os.environ.get("GPU_MEMORY_UTILIZATION", "0.95"))
     # Context length limit (gpt-oss-safeguard-20b supports up to 131k, default to 8192 if safe)
     max_model_len = int(os.environ.get("MAX_MODEL_LEN", 8192))
+    block_size = int(os.environ.get("BLOCK_SIZE", 64))
 
     model = PolicyViolationModel(
         name=model_name,
@@ -200,6 +204,7 @@ if __name__ == "__main__":
         trust_remote_code=trust_remote_code,
         gpu_memory_utilization=gpu_memory_utilization,
         max_model_len=max_model_len,
+        block_size=block_size,
     )
 
     model.load()
