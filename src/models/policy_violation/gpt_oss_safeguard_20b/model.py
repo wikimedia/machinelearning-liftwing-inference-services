@@ -25,11 +25,13 @@ class PolicyViolationModel(kserve.Model):
         name: str,
         model_path: str,
         trust_remote_code: bool,
+        gpu_memory_utilization: float,
     ) -> None:
         super().__init__(name)
         self.name = name
         self.model_path = model_path
         self.trust_remote_code = trust_remote_code
+        self.gpu_memory_utilization = gpu_memory_utilization
         self.model = None
         self.encoding = None
         self.ready = False
@@ -44,7 +46,9 @@ class PolicyViolationModel(kserve.Model):
 
             logging.info("Loading vLLM model...")
             self.model = LLM(
-                model=self.model_path, trust_remote_code=self.trust_remote_code
+                model=self.model_path,
+                trust_remote_code=self.trust_remote_code,
+                gpu_memory_utilization=self.gpu_memory_utilization,
             )
 
             self.ready = True
@@ -183,11 +187,13 @@ if __name__ == "__main__":
         "MODEL_PATH", "/mnt/models/snapshots/8a11e17b25c973a24099d4016bf2e17dd7ec1574"
     )
     trust_remote_code = strtobool(os.environ.get("TRUST_REMOTE_CODE", "True"))
+    gpu_memory_utilization = float(os.environ.get("GPU_MEMORY_UTILIZATION", "0.95"))
 
     model = PolicyViolationModel(
         name=model_name,
         model_path=model_path,
         trust_remote_code=trust_remote_code,
+        gpu_memory_utilization=gpu_memory_utilization,
     )
 
     model.load()
