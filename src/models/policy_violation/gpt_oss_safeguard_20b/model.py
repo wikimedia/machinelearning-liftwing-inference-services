@@ -58,6 +58,10 @@ class PolicyViolationModel(kserve.Model):
                 max_model_len=self.max_model_len,
                 block_size=self.block_size,
                 attention_backend=self.attention_backend,
+                compilation_config={
+                    "use_inductor_graph_partition": True,
+                    "pass_config": {"fuse_rope_kvcache": True},
+                },
             )
 
             self.ready = True
