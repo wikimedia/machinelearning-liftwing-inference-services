@@ -1,6 +1,6 @@
 # syntax=docker-registry.wikimedia.org/repos/releng/blubber/buildkit:v1.0.1
 version: v4
-base: docker-registry.wikimedia.org/ml/amd-vllm014:gfx90agfx942rocm7.0.0pytorch2.10.0mori0.1flash-attn2.8.3aiter0.1.7vllm0.14
+base: docker-registry.wikimedia.org/ml/amd-vllm014:gfx90agfx942rocm7.0.0pytorch2.10.0mori0.1flash-attn2.8.3aiter0.1.7vllm0.14-2
 runs:
   insecurely: true
   environment:

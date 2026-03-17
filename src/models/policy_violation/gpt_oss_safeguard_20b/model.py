@@ -28,6 +28,7 @@ class PolicyViolationModel(kserve.Model):
         gpu_memory_utilization: float,
         max_model_len: int,
         block_size: int,
+        attention_backend: str,
     ) -> None:
         super().__init__(name)
         self.name = name
@@ -36,6 +37,7 @@ class PolicyViolationModel(kserve.Model):
         self.gpu_memory_utilization = gpu_memory_utilization
         self.max_model_len = max_model_len
         self.block_size = block_size
+        self.attention_backend = attention_backend
         self.model = None
         self.encoding = None
         self.ready = False
@@ -55,6 +57,7 @@ class PolicyViolationModel(kserve.Model):
                 gpu_memory_utilization=self.gpu_memory_utilization,
                 max_model_len=self.max_model_len,
                 block_size=self.block_size,
+                attention_backend=self.attention_backend,
             )
 
             self.ready = True
@@ -197,6 +200,10 @@ if __name__ == "__main__":
     # Context length limit (gpt-oss-safeguard-20b supports up to 131k, default to 8192 if safe)
     max_model_len = int(os.environ.get("MAX_MODEL_LEN", 8192))
     block_size = int(os.environ.get("BLOCK_SIZE", 64))
+    # Defaulting to Triton Attention backend since it supports both:
+    # MI210 GPU: https://phabricator.wikimedia.org/P89093#L40 and
+    # MI300x GPU: https://phabricator.wikimedia.org/P89862#L39
+    attention_backend = os.environ.get("ATTENTION_BACKEND", "TRITON_ATTN")
 
     model = PolicyViolationModel(
         name=model_name,
@@ -205,6 +212,7 @@ if __name__ == "__main__":
         gpu_memory_utilization=gpu_memory_utilization,
         max_model_len=max_model_len,
         block_size=block_size,
+        attention_backend=attention_backend,
     )
 
     model.load()
