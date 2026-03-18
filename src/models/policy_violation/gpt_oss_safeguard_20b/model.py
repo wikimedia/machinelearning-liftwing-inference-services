@@ -1,5 +1,6 @@
 import logging
 import os
+import uuid
 from distutils.util import strtobool
 
 import kserve
@@ -13,7 +14,9 @@ from openai_harmony import (
     SystemContent,
     load_harmony_encoding,
 )
-from vllm import LLM, SamplingParams
+from vllm import SamplingParams
+from vllm.engine.arg_utils import AsyncEngineArgs
+from vllm.engine.async_llm_engine import AsyncLLMEngine
 from vllm.inputs import TokensPrompt
 
 logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
@@ -52,8 +55,9 @@ class PolicyViolationModel(kserve.Model):
             logging.info("Loading Harmony encodings...")
             self.encoding = load_harmony_encoding(HarmonyEncodingName.HARMONY_GPT_OSS)
 
-            logging.info("Loading vLLM model...")
-            self.model = LLM(
+            logging.info("Loading Async vLLM engine...")
+            # Define Async Engine Arguments
+            engine_args = AsyncEngineArgs(
                 model=self.model_path,
                 trust_remote_code=self.trust_remote_code,
                 gpu_memory_utilization=self.gpu_memory_utilization,
@@ -65,7 +69,8 @@ class PolicyViolationModel(kserve.Model):
                     "use_inductor_graph_partition": True,
                 },
             )
-
+            # Initialize the Async Engine
+            self.model = AsyncLLMEngine.from_engine_args(engine_args)
             self.ready = True
             logging.info("Model loaded successfully!")
         except Exception as e:
@@ -128,7 +133,7 @@ class PolicyViolationModel(kserve.Model):
             "sampling_params": sampling_params,
         }
 
-    def predict(self, inputs: dict, headers: dict[str, str] = None) -> dict:
+    async def predict(self, inputs: dict, headers: dict[str, str] = None) -> dict:
         """
         Perform inference using vLLM
         """
@@ -138,14 +143,21 @@ class PolicyViolationModel(kserve.Model):
             prompt = inputs["prompt"]
             sampling_params = inputs["sampling_params"]
 
-            # Generate response
-            output = self.model.generate(
-                prompts=[prompt],
+            # Generate response using an async generator
+            request_id = uuid.uuid4().hex
+            results_generator = self.model.generate(
+                prompt=prompt,
                 sampling_params=sampling_params,
+                request_id=request_id,
             )
 
+            # Await the final output from the async generator
+            final_output = None
+            async for request_output in results_generator:
+                final_output = request_output
+
             # Extract just the raw token IDs to pass to postprocess
-            completion_token_ids = output[0].outputs[0].token_ids
+            completion_token_ids = final_output.outputs[0].token_ids
 
             return {"completion_token_ids": completion_token_ids}
 
