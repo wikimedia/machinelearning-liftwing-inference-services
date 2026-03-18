@@ -27,6 +27,7 @@ class PolicyViolationModel(kserve.Model):
         trust_remote_code: bool,
         gpu_memory_utilization: float,
         max_model_len: int,
+        max_num_batched_tokens: int,
         block_size: int,
         attention_backend: str,
     ) -> None:
@@ -36,6 +37,7 @@ class PolicyViolationModel(kserve.Model):
         self.trust_remote_code = trust_remote_code
         self.gpu_memory_utilization = gpu_memory_utilization
         self.max_model_len = max_model_len
+        self.max_num_batched_tokens = max_num_batched_tokens
         self.block_size = block_size
         self.attention_backend = attention_backend
         self.model = None
@@ -56,6 +58,7 @@ class PolicyViolationModel(kserve.Model):
                 trust_remote_code=self.trust_remote_code,
                 gpu_memory_utilization=self.gpu_memory_utilization,
                 max_model_len=self.max_model_len,
+                max_num_batched_tokens=self.max_num_batched_tokens,
                 block_size=self.block_size,
                 attention_backend=self.attention_backend,
                 compilation_config={
@@ -202,6 +205,7 @@ if __name__ == "__main__":
     gpu_memory_utilization = float(os.environ.get("GPU_MEMORY_UTILIZATION", "0.95"))
     # Context length limit (gpt-oss-safeguard-20b supports up to 131k, default to 8192 if safe)
     max_model_len = int(os.environ.get("MAX_MODEL_LEN", 8192))
+    max_num_batched_tokens = int(os.environ.get("MAX_NUM_BATCHED_TOKENS", 8192))
     block_size = int(os.environ.get("BLOCK_SIZE", 64))
     # Defaulting to Triton Attention backend since it supports both:
     # MI210 GPU: https://phabricator.wikimedia.org/P89093#L40 and
@@ -214,6 +218,7 @@ if __name__ == "__main__":
         trust_remote_code=trust_remote_code,
         gpu_memory_utilization=gpu_memory_utilization,
         max_model_len=max_model_len,
+        max_num_batched_tokens=max_num_batched_tokens,
         block_size=block_size,
         attention_backend=attention_backend,
     )
