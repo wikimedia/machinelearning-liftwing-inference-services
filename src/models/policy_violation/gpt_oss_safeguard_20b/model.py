@@ -60,7 +60,6 @@ class PolicyViolationModel(kserve.Model):
                 attention_backend=self.attention_backend,
                 compilation_config={
                     "use_inductor_graph_partition": True,
-                    "pass_config": {"fuse_rope_kvcache": True},
                 },
             )
 
