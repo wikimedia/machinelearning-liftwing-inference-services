@@ -31,6 +31,7 @@ class PolicyViolationModel(kserve.Model):
         gpu_memory_utilization: float,
         max_model_len: int,
         max_num_batched_tokens: int,
+        max_num_seqs: int,
         block_size: int,
         attention_backend: str,
     ) -> None:
@@ -41,6 +42,7 @@ class PolicyViolationModel(kserve.Model):
         self.gpu_memory_utilization = gpu_memory_utilization
         self.max_model_len = max_model_len
         self.max_num_batched_tokens = max_num_batched_tokens
+        self.max_num_seqs = max_num_seqs
         self.block_size = block_size
         self.attention_backend = attention_backend
         self.model = None
@@ -63,8 +65,10 @@ class PolicyViolationModel(kserve.Model):
                 gpu_memory_utilization=self.gpu_memory_utilization,
                 max_model_len=self.max_model_len,
                 max_num_batched_tokens=self.max_num_batched_tokens,
+                max_num_seqs=self.max_num_seqs,
                 block_size=self.block_size,
                 attention_backend=self.attention_backend,
+                enable_prefix_caching=True,
                 compilation_config={
                     "use_inductor_graph_partition": True,
                 },
@@ -218,6 +222,7 @@ if __name__ == "__main__":
     # Context length limit (gpt-oss-safeguard-20b supports up to 131k, default to 8192 if safe)
     max_model_len = int(os.environ.get("MAX_MODEL_LEN", 8192))
     max_num_batched_tokens = int(os.environ.get("MAX_NUM_BATCHED_TOKENS", 8192))
+    max_num_seqs = int(os.environ.get("MAX_NUM_SEQS", 128))
     block_size = int(os.environ.get("BLOCK_SIZE", 64))
     # Defaulting to Triton Attention backend since it supports both:
     # MI210 GPU: https://phabricator.wikimedia.org/P89093#L40 and
@@ -231,6 +236,7 @@ if __name__ == "__main__":
         gpu_memory_utilization=gpu_memory_utilization,
         max_model_len=max_model_len,
         max_num_batched_tokens=max_num_batched_tokens,
+        max_num_seqs=max_num_seqs,
         block_size=block_size,
         attention_backend=attention_backend,
     )
