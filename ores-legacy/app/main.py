@@ -24,8 +24,8 @@ logger = logging.getLogger(__name__)
 
 description = """
 > This is a simple API to translate ORES API calls to our new ML serving infrastructure,  [Lift Wing](https://wikitech.wikimedia.org/wiki/Machine_Learning/LiftWing).
-> You are encouraged to migrate to Lift Wing since the Wikimedia ML team is decommissioning the ORES infrastructure. This service will be available to support users transitioning to the new infrastructure until September 2025. Please note that Lift Wing differs from ORES, check the [docs](https://wikitech.wikimedia.org/wiki/Machine_Learning/LiftWing/Usage#Differences_using_Lift_Wing_instead_of_ORES) for more info.
-> If you want to start experimenting with Lift Wing, please check this [doc](https://wikitech.wikimedia.org/wiki/Machine_Learning/LiftWing/Usage) page containing all the info that you need.
+> You are encouraged to migrate to Lift Wing since the Wikimedia ML team is decommissioning the ORES infrastructure. This service will be available to support users transitioning to the new infrastructure until September 2025. Please note that Lift Wing differs from ORES, check the [docs](https://wikitech.wikimedia.org/wiki/Machine_Learning/LiftWing/API/ORES_migration_guide) for more info.
+> If you want to start experimenting with Lift Wing, please check this [doc](https://wikitech.wikimedia.org/wiki/Machine_Learning/LiftWing/API) page containing all the info that you need.
 > Last but not the least, please reach out to the Wikimedia ML team if you have any question or doubt (see link below to get to our [Phabricator](https://phabricator.wikimedia.org/) board). We are also available in the `#wikimedia-ml` channel on Libera IRC.
 """
 
