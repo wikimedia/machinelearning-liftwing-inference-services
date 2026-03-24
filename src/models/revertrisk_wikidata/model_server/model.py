@@ -10,6 +10,7 @@ from datetime import datetime
 from distutils.util import strtobool
 from typing import Any, Optional
 
+import aiohttp
 import catboost as catb
 import joblib
 import kserve
@@ -19,7 +20,8 @@ import pandas as pd
 import torch
 import transformers
 from diskcache import Cache
-from kserve.errors import InferenceError, InvalidInput
+from fastapi import HTTPException
+from kserve.errors import InferenceError
 from tenacity import retry, stop_after_attempt, wait_exponential
 from utils import (
     fetch_labels_from_api,
@@ -30,7 +32,13 @@ from utils import (
     process_transformer_predictions,
 )
 
-from python.preprocess_utils import check_input_param, validate_json_input
+from python import events
+from python.preprocess_utils import (
+    check_input_param,
+    get_rev_id,
+    is_wikidata_event,
+    validate_json_input,
+)
 
 logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
 
@@ -52,7 +60,13 @@ class RevertRiskWikidataGraph2TextModelForLoad:
 
 class RevertRiskWikidataModel(kserve.Model):
     def __init__(
-        self, name: str, model_path: str, force_http: bool, aiohttp_client_timeout: int
+        self,
+        name: str,
+        model_path: str,
+        force_http: bool,
+        aiohttp_client_timeout: int,
+        eventgate_url: str | None = None,
+        eventgate_stream: str | None = None,
     ):
         super().__init__(name)
         self.name = name
@@ -62,6 +76,11 @@ class RevertRiskWikidataModel(kserve.Model):
         self.custom_user_agent = (
             "WMF ML Team revertrisk-wikidata model inference (LiftWing)"
         )
+        self.event_key = "event"
+        self.eventgate_url = eventgate_url
+        self.eventgate_stream = eventgate_stream
+        self.tls_cert_bundle_path = "/etc/ssl/certs/wmf-ca-certificates.crt"
+        self._http_client_session: dict[str, aiohttp.ClientSession] = {}
         # The model is not loaded yet, but we set ready to True to pass the initial
         # readiness check in the main process. Actual model loading happens lazily per worker.
         self.ready = True
@@ -80,6 +99,18 @@ class RevertRiskWikidataModel(kserve.Model):
         protocol = "http" if self.force_http else "https"
         host = f"{protocol}://www.wikidata.org"
         return mwapi.AsyncSession(host, user_agent=self.custom_user_agent)
+
+    def get_eventgate_session(self) -> aiohttp.ClientSession:
+        """Returns a reusable aiohttp session for EventGate."""
+        timeout = aiohttp.ClientTimeout(total=self.aiohttp_client_timeout)
+        if (
+            self._http_client_session.get("eventgate") is None
+            or self._http_client_session["eventgate"].closed
+        ):
+            self._http_client_session["eventgate"] = aiohttp.ClientSession(
+                timeout=timeout, raise_for_status=True
+            )
+        return self._http_client_session["eventgate"]
 
     def load(self):
         """
@@ -368,17 +399,33 @@ class RevertRiskWikidataModel(kserve.Model):
     ) -> dict[str, Any]:
         """
         Preprocess the input request to fetch features.
+
+        Accepts either a plain {"rev_id": ...} payload or an event-based payload
+        {"event": { ...mediawiki.page_change... }} for stream consumption.
         """
         await self.lazy_model_loading()
         inputs = validate_json_input(inputs)
-        rev_id = inputs.get("rev_id")
-        if not isinstance(rev_id, int) or rev_id <= 0:
-            error_message = (
-                f"Invalid rev_id: {rev_id}. The rev_id must be a positive integer."
-            )
-            logging.error(error_message)
-            raise InvalidInput(error_message)
-        check_input_param(rev_id=rev_id)
+
+        if self.event_key in inputs:
+            source_event = inputs[self.event_key]
+            if not is_wikidata_event(source_event):
+                error_message = (
+                    "This model only handles Wikidata edits "
+                    "(wiki_id must be 'wikidatawiki')."
+                )
+                logging.error(error_message)
+                raise HTTPException(status_code=400, detail=error_message)
+            rev_id = get_rev_id(inputs, self.event_key)
+            check_input_param(rev_id=rev_id)
+        else:
+            rev_id = inputs.get("rev_id")
+            if not isinstance(rev_id, int) or rev_id <= 0:
+                error_message = (
+                    f"Invalid rev_id: {rev_id}. The rev_id must be a positive integer."
+                )
+                logging.error(error_message)
+                raise HTTPException(status_code=400, detail=error_message)
+            check_input_param(rev_id=rev_id)
 
         session = self.create_mwapi_session()
         try:
@@ -399,12 +446,15 @@ class RevertRiskWikidataModel(kserve.Model):
         finally:
             await session.session.close()
 
-        return {
+        result = {
             "rev_id": rev_id,
             "page_title": page_title,
             "diffs": diffs,
             "metadata_features": metadata_features,
         }
+        if self.event_key in inputs:
+            result[self.event_key] = inputs[self.event_key]
+        return result
 
     async def predict(
         self, inputs: dict[str, Any], headers: dict[str, str] = None
@@ -485,7 +535,7 @@ class RevertRiskWikidataModel(kserve.Model):
 
         [_, prob_yes] = self.model.metadata_classifier.predict_proba(X)
 
-        return {
+        prediction = {
             "model_name": self.name,
             "model_version": str(self.model.model_version),
             "revision_id": rev_id,
@@ -497,6 +547,51 @@ class RevertRiskWikidataModel(kserve.Model):
                 },
             },
         }
+
+        if self.event_key in inputs:
+            prediction_results = {
+                "predictions": [str(prediction["output"]["prediction"]).lower()],
+                "probabilities": prediction["output"]["probabilities"],
+            }
+            await self.send_event(
+                inputs[self.event_key],
+                prediction_results,
+                prediction["model_version"],
+            )
+
+        return prediction
+
+    async def send_event(
+        self,
+        page_change_event: dict[str, Any],
+        prediction_results: dict[str, Any],
+        model_version: str,
+    ) -> None:
+        """
+        Send a revertrisk-wikidata prediction classification change event to EventGate
+        generated from the page_change event and prediction_results passed as input.
+        """
+        if not self.eventgate_url or not self.eventgate_stream:
+            logging.error(
+                "EVENTGATE_URL or EVENTGATE_STREAM is not configured; "
+                "skipping event emission for revertrisk-wikidata."
+            )
+            return
+
+        revertrisk_wikidata_event = events.generate_prediction_classification_event(
+            page_change_event,
+            self.eventgate_stream,
+            "revertrisk-wikidata",
+            model_version,
+            prediction_results,
+        )
+        await events.send_event(
+            revertrisk_wikidata_event,
+            self.eventgate_url,
+            self.tls_cert_bundle_path,
+            self.custom_user_agent,
+            self.get_eventgate_session(),
+        )
 
 
 if __name__ == "__main__":
@@ -510,12 +605,16 @@ if __name__ == "__main__":
     max_asyncio_workers = int(
         os.environ.get("MAX_ASYNCIO_WORKERS", min(32, multiprocessing.cpu_count() + 4))
     )
+    eventgate_url = os.environ.get("EVENTGATE_URL")
+    eventgate_stream = os.environ.get("EVENTGATE_STREAM")
 
     model = RevertRiskWikidataModel(
         name=model_name,
         model_path=model_path,
         force_http=force_http,
         aiohttp_client_timeout=aiohttp_client_timeout,
+        eventgate_url=eventgate_url,
+        eventgate_stream=eventgate_stream,
     )
 
     # Start the KServe ModelServer with multiple workers and asyncio workers

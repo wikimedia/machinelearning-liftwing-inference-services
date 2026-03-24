@@ -13,6 +13,12 @@ def is_domain_wikipedia(event: dict) -> bool:
         return False
 
 
+def is_wikidata_event(event: dict) -> bool:
+    # wiki_id is more canonical and stable than meta.domain for identifying
+    # Wikidata events: Wikidata is served from a single wiki_id.
+    return event.get("wiki_id") == "wikidatawiki"
+
+
 def check_input_param(**kwargs: dict[str, Any]):
     for key, value in kwargs.items():
         if not value:

@@ -1,0 +1,125 @@
+{
+  "event":
+  {
+    "changelog_kind": "update",
+    "page_change_kind": "edit",
+    "dt": "2026-06-22T09:48:10Z",
+    "wiki_id": "wikidatawiki",
+    "page": {
+      "page_id": 60683518,
+      "page_title": "Q60828333",
+      "namespace_id": 0,
+      "is_redirect": false,
+      "namespace_is_content": true
+    },
+    "performer": {
+      "user_text": "Spain Up Your Life",
+      "groups": [
+        "*",
+        "user"
+      ],
+      "is_temp": false,
+      "wiki_id": "wikidatawiki",
+      "user_id": 8273563,
+      "edit_count": 1,
+      "registration_dt": "2026-06-08T08:54:30Z",
+      "is_bot": false,
+      "is_system": false,
+      "user_central_id": 84664793
+    },
+    "revision": {
+      "rev_id": 2509134105,
+      "rev_dt": "2026-06-22T09:48:10Z",
+      "is_minor_edit": false,
+      "rev_sha1": "pm4x865ric93o17o45s4ar6ko8z4awb",
+      "rev_size": 4125,
+      "rev_parent_id": 1891469167,
+      "comment": "/* wbsetdescription-add:1|es */ Aceite de oliva español de Navarra",
+      "is_content_visible": true,
+      "is_editor_visible": true,
+      "is_comment_visible": true,
+      "editor": {
+        "user_text": "Spain Up Your Life",
+        "groups": [
+          "*",
+          "user"
+        ],
+        "is_temp": false,
+        "wiki_id": "wikidatawiki",
+        "user_id": 8273563,
+        "edit_count": 1,
+        "registration_dt": "2026-06-08T08:54:30Z",
+        "is_bot": false,
+        "is_system": false,
+        "user_central_id": 84664793
+      },
+      "content_slots": {
+        "main": {
+          "slot_role": "main",
+          "content_model": "wikibase-item",
+          "content_sha1": "pm4x865ric93o17o45s4ar6ko8z4awb",
+          "content_size": 4125,
+          "content_format": "application/json",
+          "origin_rev_id": 2509134105
+        }
+      }
+    },
+    "prior_state": {
+      "revision": {
+        "rev_id": 1891469167,
+        "rev_dt": "2023-05-07T17:56:00Z",
+        "is_minor_edit": false,
+        "rev_sha1": "091ou9wmwyhghf7n2yuttwxxkgvacfv",
+        "rev_size": 4031,
+        "rev_parent_id": 1891469160,
+        "comment": "/* wbcreateclaim-create:1| */ [[Property:P1389]]: [[Q13439060]], [[:toollabs:quickstatements/#/batch/188799|batch #188799]]",
+        "is_content_visible": true,
+        "is_editor_visible": true,
+        "is_comment_visible": true,
+        "editor": {
+          "user_text": "Horcrux",
+          "groups": [
+            "propertycreator",
+            "*",
+            "user",
+            "autoconfirmed"
+          ],
+          "is_temp": false,
+          "wiki_id": "wikidatawiki",
+          "user_id": 100375,
+          "edit_count": 3738247,
+          "registration_dt": "2013-01-27T12:32:46Z",
+          "is_bot": false,
+          "is_system": false,
+          "user_central_id": 4599836
+        },
+        "content_slots": {
+          "main": {
+            "slot_role": "main",
+            "content_model": "wikibase-item",
+            "content_sha1": "091ou9wmwyhghf7n2yuttwxxkgvacfv",
+            "content_size": 4031,
+            "content_format": "application/json",
+            "origin_rev_id": 1891469167
+          }
+        }
+      }
+    },
+    "$schema": "/mediawiki/page/change/1.6.0",
+    "meta": {
+      "stream": "mediawiki.page_change.v1",
+      "uri": "https://www.wikidata.org/wiki/Q60828333",
+      "id": "6bb5507e-90c9-47e4-a86c-c5f0e890c070",
+      "domain": "www.wikidata.org",
+      "request_id": "14a3a3f1-6d2c-4f78-892d-e26fa9d2ad50",
+      "dt": "2026-06-22T09:48:11.082Z",
+      "topic": "eqiad.mediawiki.page_change.v1",
+      "partition": 0,
+      "offset": 958381397,
+      "key": {
+        "wiki_id": "wikidatawiki",
+        "page_id": 60683518
+      }
+    }
+  }
+}
