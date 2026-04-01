@@ -34,6 +34,7 @@ class PolicyViolationModel(kserve.Model):
         max_num_seqs: int,
         block_size: int,
         attention_backend: str,
+        tensor_parallel_size: int,
     ) -> None:
         super().__init__(name)
         self.name = name
@@ -45,6 +46,7 @@ class PolicyViolationModel(kserve.Model):
         self.max_num_seqs = max_num_seqs
         self.block_size = block_size
         self.attention_backend = attention_backend
+        self.tensor_parallel_size = tensor_parallel_size
         self.model = None
         self.encoding = None
         self.ready = False
@@ -68,6 +70,7 @@ class PolicyViolationModel(kserve.Model):
                 max_num_seqs=self.max_num_seqs,
                 block_size=self.block_size,
                 attention_backend=self.attention_backend,
+                tensor_parallel_size=self.tensor_parallel_size,
                 enable_prefix_caching=True,
                 compilation_config={
                     "use_inductor_graph_partition": True,
@@ -228,6 +231,7 @@ if __name__ == "__main__":
     # MI210 GPU: https://phabricator.wikimedia.org/P89093#L40 and
     # MI300x GPU: https://phabricator.wikimedia.org/P89862#L39
     attention_backend = os.environ.get("ATTENTION_BACKEND", "TRITON_ATTN")
+    tensor_parallel_size = int(os.environ.get("TENSOR_PARALLEL_SIZE", 1))
 
     model = PolicyViolationModel(
         name=model_name,
@@ -239,6 +243,7 @@ if __name__ == "__main__":
         max_num_seqs=max_num_seqs,
         block_size=block_size,
         attention_backend=attention_backend,
+        tensor_parallel_size=tensor_parallel_size,
     )
 
     model.load()
