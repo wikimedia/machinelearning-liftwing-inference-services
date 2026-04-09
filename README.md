@@ -56,6 +56,8 @@ Cleaning models in directory models/revertrisk ...
 ### Running locally with Docker Compose
 
 The file `docker-compose.yml` contains the build and runtime instructions for inference-services.
+For Revise Tone, use `src/models/revise_tone_task_generator/docker-compose.yml` instead of
+the root compose file, since it includes additional service-specific dependencies and settings.
 Additionally, you'd need to create a file named `.env` in the root directory which SHOULD not be committed to the repo.
 This file will simply contain the local paths for each model e.g.
 ```

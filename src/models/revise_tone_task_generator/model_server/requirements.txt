@@ -1,4 +1,4 @@
-kserve
+kserve==0.17
 mwparserfromhtml
 transformers==4.57.1
 aiohttp
