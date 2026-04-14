@@ -7,9 +7,12 @@ from base_model import RevisionRevertRiskModel
 from batch_model import RevisionRevertRiskModelBatch
 from gpu_model import RevertRiskMultilingualGPU
 
+from python.logging_utils import configure_kserve_framework_logging
+
 logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
 
 if __name__ == "__main__":
+    configure_kserve_framework_logging()
     model_name = os.environ.get("MODEL_NAME")
     module_name = (
         "revertrisk"

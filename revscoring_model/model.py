@@ -5,6 +5,7 @@ import enchant
 import kserve
 from pyenchant_utils import EnchantStr, UTF16EnchantStr
 
+from python.logging_utils import configure_kserve_framework_logging
 from revscoring_model.model_servers import (
     RevscoringModel,
     RevscoringModelMP,
@@ -18,6 +19,7 @@ enchant.utils.UTF16EnchantStr = UTF16EnchantStr
 enchant.utils.EnchantStr = EnchantStr
 
 if __name__ == "__main__":
+    configure_kserve_framework_logging()
     inference_name = os.environ.get("INFERENCE_NAME")
     model_type = RevscoringModelType.get_model_type(inference_name)
     mp = strtobool(os.environ.get("ASYNCIO_USE_PROCESS_POOL", "False"))
