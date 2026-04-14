@@ -18,7 +18,7 @@ from revscoring.extractors.api import Extractor, MWAPICache
 from python.decorators import elapsed_time, elapsed_time_async
 
 
-@elapsed_time_async
+@elapsed_time_async(threshold=5.0)
 async def get_revscoring_extractor_cache(
     rev_id: int,
     user_agent: str,
@@ -177,7 +177,7 @@ async def get_revscoring_extractor_cache(
     return http_cache
 
 
-@elapsed_time
+@elapsed_time(threshold=5.0)
 def fetch_features(
     rev_id, model_features: tuple, extractor: Extractor, cache: Optional[dict] = None
 ) -> dict:

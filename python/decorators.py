@@ -15,10 +15,16 @@ from python.metric_utils import (
 )
 
 
-def elapsed_time_async(func):
-    """Simple decorator for async functions to log their wall clock execution
-    time.
+def elapsed_time_async(func=None, *, threshold: float | None = None):
+    """Decorator for async functions to log wall clock execution time.
+
+    Args:
+        threshold: Optional threshold in seconds. If set, only logs when
+            execution time is greater than or equal to threshold. If None,
+            keeps the old behavior and logs every call.
     """
+    if func is None:
+        return lambda f: elapsed_time_async(f, threshold=threshold)
 
     @wraps(func)
     async def elapsed_time_wrapper(*args, **kwargs):
@@ -26,16 +32,25 @@ def elapsed_time_async(func):
         result = await func(*args, **kwargs)
         end = time.perf_counter()
         total = end - start
-        logging.info(f"Function {func.__name__} took {total:.2f} seconds to execute.")
+        if threshold is None or total >= threshold:
+            logging.info(
+                f"Function {func.__name__} took {total:.2f} seconds to execute."
+            )
         return result
 
     return elapsed_time_wrapper
 
 
-def elapsed_time(func):
-    """Simple decorator for functions to log their wall clock execution
-    time.
+def elapsed_time(func=None, *, threshold: float | None = None):
+    """Decorator for functions to log wall clock execution time.
+
+    Args:
+        threshold: Optional threshold in seconds. If set, only logs when
+            execution time is greater than or equal to threshold. If None,
+            keeps the old behavior and logs every call.
     """
+    if func is None:
+        return lambda f: elapsed_time(f, threshold=threshold)
 
     @wraps(func)
     def elapsed_time_wrapper(*args, **kwargs):
@@ -43,7 +58,10 @@ def elapsed_time(func):
         result = func(*args, **kwargs)
         end = time.perf_counter()
         total = end - start
-        logging.info(f"Function {func.__name__} took {total:.4f} seconds to execute.")
+        if threshold is None or total >= threshold:
+            logging.info(
+                f"Function {func.__name__} took {total:.4f} seconds to execute."
+            )
         return result
 
     return elapsed_time_wrapper
