@@ -6,6 +6,73 @@ The articletopic-outlink inference service takes a Wikipedia article title and t
 * Model: https://analytics.wikimedia.org/published/wmf-ml-models/articletopic/outlink/
 * Model license: CC0 License
 
+## Inference Protocols
+
+The service supports KServe v1 (REST) and v2 (REST and gRPC) protocols.
+
+### V1 REST
+
+```console
+curl localhost:8080/v1/models/outlink-topic-model:predict \
+  -H "Content-Type: application/json" \
+  -d '{"page_id": 5355, "lang": "en"}'
+```
+
+### V2 REST
+
+```console
+curl localhost:8080/v2/models/outlink-topic-model/infer \
+  -H "Content-Type: application/json" \
+  -d '{"inputs": [{"name": "input", "shape": [1], "datatype": "BYTES", "data": ["{\"page_id\": 5355, \"lang\": \"en\"}"]}]}'
+```
+
+### V2 gRPC
+
+Using grpcurl (download proto first):
+```bash
+curl -sL "https://raw.githubusercontent.com/kserve/kserve/v0.14.1/docs/predict-api/v2/grpc_predict_v2.proto" -o /tmp/grpc_predict_v2.proto
+
+grpcurl \
+  -plaintext \
+  -import-path /tmp \
+  -proto grpc_predict_v2.proto \
+  -d '{
+    "model_name": "outlink-topic-model",
+    "inputs": [{
+      "name": "input",
+      "shape": [1],
+      "datatype": "BYTES",
+      "contents": {"bytes_contents": ["eyJwYWdlX2lkIjogNTM1NSwgImxhbmciOiAiZW4ifQ=="]}
+    }]
+  }' \
+  localhost:8081 \
+  inference.GRPCInferenceService/ModelInfer
+```
+
+Using Python:
+```python
+import grpc
+import json
+from kserve.protocol.grpc import grpc_predict_v2_pb2, grpc_predict_v2_pb2_grpc
+
+channel = grpc.insecure_channel('localhost:8081')
+request = grpc_predict_v2_pb2.ModelInferRequest()
+request.model_name = "outlink-topic-model"
+request.id = "test-123"
+
+input_data = json.dumps({"page_id": 5355, "lang": "en"}).encode("utf-8")
+tensor = request.inputs.add()
+tensor.name = "input"
+tensor.shape.extend([1])
+tensor.datatype = "BYTES"
+tensor.contents.bytes_contents.append(input_data)
+
+stub = grpc_predict_v2_pb2_grpc.GRPCInferenceServiceStub(channel)
+response = stub.ModelInfer(request)
+result = json.loads(response.outputs[0].contents.bytes_contents[0].decode("utf-8"))
+print(json.dumps(result, indent=2))
+```
+
 ## Request Parameters
 
 | Parameter | Type | Required | Description |

@@ -1,6 +1,9 @@
+import json
 import logging
 import os
+import uuid
 from http import HTTPStatus
+from typing import Union
 
 import aiohttp
 import fasttext
@@ -8,6 +11,7 @@ import kserve
 import mwapi
 from fastapi import HTTPException
 from kserve.errors import InferenceError, InvalidInput
+from kserve.protocol.infer_type import InferOutput, InferRequest, InferResponse
 
 from python import events
 from python.logging_utils import set_log_level
@@ -27,6 +31,8 @@ class OutlinksTopicModel(kserve.Model):
         super().__init__(name)
         self.name = name
         self.ready = False
+        self._is_v2_protocol = False
+        self._is_grpc = False
 
         self.EVENT_KEY = "event"
         self.EVENTGATE_URL = os.environ.get("EVENTGATE_URL")
@@ -47,6 +53,41 @@ class OutlinksTopicModel(kserve.Model):
 
     def load(self):
         self.model = fasttext.load_model(self.model_path)
+
+    def _extract_v2_input(self, infer_request: InferRequest) -> dict:
+        """Extract JSON payload from a KServe v2 InferRequest.
+
+        gRPC and REST v2 differ in how they encode the payload:
+        - gRPC: bytes in a flat list
+        - REST v2: string, possibly nested in another list
+        """
+        inputs = infer_request.inputs
+        if not inputs:
+            raise InvalidInput("No inputs in v2 request")
+
+        input_tensor = inputs[0]
+        data = input_tensor.data
+        if not data:
+            raise InvalidInput("No data in v2 request input tensor")
+
+        # REST may wrap data in an extra list layer
+        payload = data[0]
+        if isinstance(payload, list):
+            if not payload:
+                raise InvalidInput("Empty list in v2 request data")
+            payload = payload[0]
+
+        # gRPC sends bytes, REST sends string
+        if self._is_grpc:
+            if not isinstance(payload, bytes):
+                raise InvalidInput("Expected bytes for gRPC request")
+            json_str = payload.decode("utf-8")
+        else:
+            if isinstance(payload, bytes):
+                raise InvalidInput("Expected string for REST request")
+            json_str = payload
+
+        return json.loads(json_str)
 
     def get_http_client_session(self, endpoint):
         """Returns a aiohttp session for the specific endpoint passed as input.
@@ -276,6 +317,13 @@ class OutlinksTopicModel(kserve.Model):
         return (page_id, page_title)
 
     async def preprocess(self, inputs: dict, headers: dict[str, str] = None) -> dict:
+        if isinstance(inputs, InferRequest):
+            self._is_v2_protocol = True
+            self._is_grpc = inputs.from_grpc
+            inputs = self._extract_v2_input(inputs)
+        else:
+            self._is_v2_protocol = False
+            self._is_grpc = False
         inputs = validate_json_input(inputs)
         lang = get_lang(inputs, self.EVENT_KEY)
         page_id, page_title = await self.retrieve_page_id_and_title(inputs, lang=lang)
@@ -348,20 +396,36 @@ class OutlinksTopicModel(kserve.Model):
             request[self.EVENT_KEY] = inputs[self.EVENT_KEY]
         return request
 
-    def postprocess(self, outputs: dict, headers: dict[str, str] = None) -> dict:
-        topics = outputs["topics"]
-        lang = outputs["lang"]
-        page_id = outputs["page_id"]
-        page_title = outputs["page_title"]
-        if page_title is not None:
-            article_url = f"https://{lang}.wikipedia.org/wiki/{page_title}"
-        else:
-            article_url = f"https://{lang}.wikipedia.org/wiki?curid={page_id}"
-        result = {
-            "article": article_url,
-            "results": [{"topic": t[0], "score": t[1]} for t in topics],
-        }
-        return {"prediction": result}
+    async def postprocess(
+        self, result: dict, headers: dict = None, response_headers: dict = None
+    ) -> Union[dict, InferResponse]:
+        if not self._is_v2_protocol:
+            topics = result["topics"]
+            lang = result["lang"]
+            page_id = result["page_id"]
+            page_title = result["page_title"]
+            if page_title is not None:
+                article_url = f"https://{lang}.wikipedia.org/wiki/{page_title}"
+            else:
+                article_url = f"https://{lang}.wikipedia.org/wiki?curid={page_id}"
+            return {
+                "prediction": {
+                    "article": article_url,
+                    "results": [{"topic": t[0], "score": t[1]} for t in topics],
+                }
+            }
+
+        output = InferOutput(
+            name="output",
+            shape=[1],
+            datatype="BYTES",
+            data=[json.dumps(result)],
+        )
+        return InferResponse(
+            response_id=str(uuid.uuid4()),
+            model_name=self.name,
+            infer_outputs=[output],
+        )
 
     async def predict(self, request: dict, headers: dict[str, str] = None) -> dict:
         features_str = request["features_str"]
