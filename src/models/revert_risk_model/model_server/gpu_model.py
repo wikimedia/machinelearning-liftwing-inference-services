@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from typing import Any
 
@@ -114,7 +115,9 @@ class RevertRiskMultilingualGPU(RevisionRevertRiskModel):
         that downstream consumers (e.g. mediawiki.page_revert_risk_prediction_change)
         can incorporate multilingual revert risk scores.
         """
-        prediction = super().predict(request, headers)
+        prediction = await asyncio.get_event_loop().run_in_executor(
+            None, super().predict, request, headers
+        )
 
         if self.event_key in request:
             prediction_results = {
