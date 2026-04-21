@@ -12,7 +12,7 @@ import pandas as pd
 from fastapi import HTTPException
 from knowledge_integrity.mediawiki import Error, get_revision
 from knowledge_integrity.schema import InvalidJSONError, Revision
-from kserve.errors import InferenceError, InvalidInput
+from kserve.errors import InferenceError
 
 from python.config_utils import get_config
 from python.preprocess_utils import check_input_param, validate_json_input
@@ -87,20 +87,26 @@ class RevisionRevertRiskModel(kserve.Model):
 
         if lang not in self.wp_language_codes:
             error_message = f"lang '{lang}' does not exist in the canonical Wikipedia language list."
-            logging.error(error_message)
-            raise InvalidInput(error_message)
+            logging.warning(error_message)
+            raise HTTPException(
+                status_code=HTTPStatus.BAD_REQUEST, detail=error_message
+            )
 
     def check_supported_wikis(self, lang):
         if (
             hasattr(self.model, "supported_wikis")
             and lang not in self.model.supported_wikis
         ):
-            logging.info(f"Unsupported lang: {lang}.")
+            logging.warning(f"Unsupported lang: {lang}.")
 
     def check_wiki_suffix(self, lang):
         if lang.endswith("wiki"):
-            raise InvalidInput(
-                "Language field should not have a 'wiki' suffix, i.e. use 'en', not 'enwiki'"
+            logging.warning(
+                "Validation failed: 'wiki' suffix detected in language field."
+            )
+            raise HTTPException(
+                status_code=HTTPStatus.BAD_REQUEST,
+                detail="Language field should not have a 'wiki' suffix, i.e. use 'en', not 'enwiki'",
             )
 
     def load_canonical_wikis(self) -> None:
@@ -152,7 +158,9 @@ class RevisionRevertRiskModel(kserve.Model):
         try:
             inputs["revision"] = Revision.from_json(revision_json)
         except InvalidJSONError:
-            logging.error("Missing some required fields.")
+            logging.warning(
+                "Validation failed: missing some required fields in revision json data."
+            )
             raise HTTPException(
                 status_code=HTTPStatus.BAD_REQUEST,
                 detail=(
@@ -175,14 +183,9 @@ class RevisionRevertRiskModel(kserve.Model):
     ) -> dict[str, Any]:
         inputs = validate_json_input(inputs)
         if "revision_data" in inputs and self.allow_revision_json_input:
-            logging.info(
-                "Received revision data. Bypassing data retrieval from the MW API."
-            )
             return self.get_revision_from_input(inputs)
         lang = inputs.get("lang")
         rev_id = inputs.get("rev_id")
-        logging.info(f"Received request for revision {rev_id} ({lang}).")
-
         check_input_param(lang=lang, rev_id=rev_id)
 
         self.check_wiki_suffix(lang)
@@ -216,7 +219,7 @@ class RevisionRevertRiskModel(kserve.Model):
 
     def check_wikidata_result(self, result, edit_summary):
         if not result:
-            logging.info(f"Edit type {edit_summary} is not supported at the moment.")
+            logging.warning(f"Edit type {edit_summary} is not supported at the moment.")
             raise HTTPException(
                 status_code=HTTPStatus.BAD_REQUEST,
                 detail=(

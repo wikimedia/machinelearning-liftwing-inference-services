@@ -10,7 +10,7 @@ from base_model import RevisionRevertRiskModel
 from fastapi import HTTPException
 from knowledge_integrity.mediawiki import Error, get_revision
 from knowledge_integrity.schema import InvalidJSONError, Revision
-from kserve.errors import InferenceError, InvalidInput
+from kserve.errors import InferenceError
 
 from python import events
 from python.preprocess_utils import (
@@ -59,9 +59,12 @@ class RevisionRevertRiskModelBatch(RevisionRevertRiskModel):
     def get_lang(self, lang_lst: list[str]) -> str:
         lang_set = set(lang_lst)
         if len(lang_set) > 1:
-            logging.error("More than one language in the request.")
-            raise InvalidInput(
-                "Requesting multiple revisions should have the same language."
+            logging.warning(
+                "Validation failed: multiple languages detected in request."
+            )
+            raise HTTPException(
+                status_code=HTTPStatus.BAD_REQUEST,
+                detail="Requesting multiple revisions should have the same language.",
             )
         return lang_set.pop()
 
@@ -88,9 +91,12 @@ class RevisionRevertRiskModelBatch(RevisionRevertRiskModel):
                 wiki_ids.append(input.get("lang"))
                 rev_ids.append(input.get("rev_id"))
                 if len(rev_ids) > 20:
-                    logging.error("Received request more than 20 rev_ids.")
-                    raise InvalidInput(
-                        "Only accept a maximum of 20 rev_ids in the request."
+                    logging.warning(
+                        "Validation failed: more than 20 rev_ids detected in request."
+                    )
+                    raise HTTPException(
+                        status_code=HTTPStatus.BAD_REQUEST,
+                        detail="Only accept a maximum of 20 rev_ids in the request.",
                     )
             # For now only accept the same language in batch inputs.
             # This allows us to use the same async session.
@@ -101,8 +107,10 @@ class RevisionRevertRiskModelBatch(RevisionRevertRiskModel):
             source_event = inputs.get(self.event_key)
             if not is_domain_wikipedia(source_event):
                 error_message = "This model is not recommended for use in projects outside of Wikipedia (e.g. Wiktionary, Wikinews, etc)"
-                logging.error(error_message)
-                raise InvalidInput(error_message)
+                logging.warning("Validation failed: non-Wikipedia domain detected.")
+                raise HTTPException(
+                    status_code=HTTPStatus.BAD_REQUEST, detail=error_message
+                )
             lang = get_lang(inputs, self.event_key)
             rev_id = get_rev_id(inputs, self.event_key)
             check_input_param(lang=lang, rev_id=rev_id)
@@ -144,9 +152,6 @@ class RevisionRevertRiskModelBatch(RevisionRevertRiskModel):
     ) -> dict[str, Any]:
         inputs = validate_json_input(inputs)
         if "revision_data" in inputs and self.allow_revision_json_input:
-            logging.info(
-                "Received revision data. Bypassing data retrieval from the MW API."
-            )
             return self.get_revision_from_input(inputs)
         rev_ids, lang = self.parse_input_data(inputs)
         self.check_wiki_suffix(lang)
@@ -199,7 +204,6 @@ class RevisionRevertRiskModelBatch(RevisionRevertRiskModel):
                 ),
             )
         num_rev = len(request["revision"])
-        logging.info(f"Getting {num_rev} rev_ids in the request")
         results = self.ModelLoader.classify(self.model, valid_rev.values())
         rev_pred = {k: results[i] for i, k in enumerate(valid_rev.keys())}
         predictions = []
