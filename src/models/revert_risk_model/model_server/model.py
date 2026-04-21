@@ -5,7 +5,6 @@ from distutils.util import strtobool
 import kserve
 from base_model import RevisionRevertRiskModel
 from batch_model import RevisionRevertRiskModelBatch
-from gpu_model import RevertRiskMultilingualGPU
 
 from python.logging_utils import configure_kserve_framework_logging
 
@@ -42,6 +41,8 @@ if __name__ == "__main__":
             eventgate_stream,
         )
     elif model_name == "revertrisk-multilingual":
+        from gpu_model import RevertRiskMultilingualGPU
+
         logging.info("Model Server: RevertRiskMultilingualGPU")
         model = RevertRiskMultilingualGPU(
             model_name,
