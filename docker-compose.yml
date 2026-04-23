@@ -240,3 +240,18 @@ services:
       GRPC_PORT: "50051"
       KSERVE_URL: "http://outlink-topic-model:8080/v1/models/outlink-topic-model:predict"
       KSERVE_HOST_HEADER: ""
+
+  enwiki-goodfaith:
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: .pipeline/revscoring/blubber.yaml
+      target: production
+    image: enwiki-goodfaith:prod
+    ports:
+      - "8080:8080"
+    environment:
+      INFERENCE_NAME: "enwiki-goodfaith"
+      WIKI_URL: "https://en.wikipedia.org"
+    volumes:
+      - ${PATH_TO_ENWIKI_GOODFAITH_MODEL:-/dummy/path}:/mnt/models/
