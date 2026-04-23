@@ -1,10 +1,12 @@
 import logging
 import os
+import warnings
 from distutils.util import strtobool
 
 import kserve
 from base_model import RevisionRevertRiskModel
 from batch_model import RevisionRevertRiskModelBatch
+from fastapi.exceptions import FastAPIDeprecationWarning
 
 from python.logging_utils import configure_kserve_framework_logging
 
@@ -12,6 +14,18 @@ logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
 
 if __name__ == "__main__":
     configure_kserve_framework_logging()
+    # KServe uses ORJSONResponse internally, which triggers a FastAPIDeprecationWarning
+    # on every request. Since this is an upstream dependency issue, we are suppressing
+    # the warning to prevent massive log spam.
+    # TODO: Remove this filter once the KServe framework is updated to handle
+    # Pydantic-based serialization directly.
+    # Reference: https://fastapi.tiangolo.com/advanced/custom-response/#orjson-or-response-model
+    warnings.filterwarnings(
+        "ignore",
+        category=FastAPIDeprecationWarning,
+        message=".*ORJSONResponse is deprecated.*",
+    )
+
     model_name = os.environ.get("MODEL_NAME")
     module_name = (
         "revertrisk"
