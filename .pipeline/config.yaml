@@ -241,13 +241,3 @@ pipelines:
           image:
             name: '${setup.project}-policy-violation-cope-a-9b'
             tags: [stable]
-
-  outlink-cache-adapter-publish:
-    blubberfile: outlink_cache_adapter/blubber.yaml
-    stages:
-      - name: publish
-        build: production
-        publish:
-          image:
-            name: '${setup.project}-outlink-cache-adapter'
-            tags: [stable]

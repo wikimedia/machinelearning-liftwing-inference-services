@@ -1,6 +1,7 @@
 from unittest.mock import patch
 
 import pytest
+from kserve.errors import InvalidInput
 
 from src.models.outlink_topic_model.model_server.model import OutlinksTopicModel
 
@@ -229,3 +230,57 @@ async def test_get_outlinks(page_id, lang, expected):
         t = OutlinksTopicModel("model")
         qids = await t.get_outlinks(page_id, lang)
         assert qids == expected
+
+
+@pytest.fixture
+def model():
+    with patch.object(OutlinksTopicModel, "load", return_value=True):
+        m = OutlinksTopicModel("test-model")
+        m.ready = True
+        return m
+
+
+class TestPreprocessWikiId:
+    """Tests for wiki_id -> lang resolution in preprocess.
+
+    These exercise only the wiki_id resolution branch, which mutates `inputs`
+    in place before any MW API call. We patch out the page lookup and the
+    outlinks fetch so the test stays offline; we don't care about preprocess'
+    return value, only the resolved `lang` (or the raised error).
+    """
+
+    @pytest.mark.asyncio
+    async def test_wiki_id_resolves_to_lang(self, model):
+        inputs = {"page_id": 5355, "wiki_id": "enwiki"}
+
+        with (
+            patch.object(
+                model, "retrieve_page_id_and_title", return_value=(5355, None)
+            ),
+            patch.object(model, "get_outlinks", return_value=set()),
+        ):
+            await model.preprocess(inputs)
+
+        assert inputs["lang"] == "en"
+
+    @pytest.mark.asyncio
+    async def test_unknown_wiki_id_raises_invalid_input(self, model):
+        inputs = {"page_id": 5355, "wiki_id": "nonexistentwiki"}
+
+        with pytest.raises(InvalidInput, match="Unknown wiki_id: nonexistentwiki"):
+            await model.preprocess(inputs)
+
+    @pytest.mark.asyncio
+    async def test_lang_takes_precedence_over_wiki_id(self, model):
+        # frwiki maps to "fr", but explicit lang="en" should win.
+        inputs = {"page_id": 5355, "lang": "en", "wiki_id": "frwiki"}
+
+        with (
+            patch.object(
+                model, "retrieve_page_id_and_title", return_value=(5355, None)
+            ),
+            patch.object(model, "get_outlinks", return_value=set()),
+        ):
+            await model.preprocess(inputs)
+
+        assert inputs["lang"] == "en"

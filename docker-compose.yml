@@ -117,6 +117,13 @@ services:
       dockerfile: .pipeline/edit_check/blubber.yaml
       target: test
     image: edit-check:test
+  outlink-topic-model-test:
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: .pipeline/outlink/blubber.yaml
+      target: test
+    image: outlink-topic-model:test
   pre-commit-check:
     platform: linux/amd64
     build:
@@ -227,20 +234,6 @@ services:
       TRUST_REMOTE_CODE: "True"
     volumes:
       - ${PATH_TO_COPE_A_9B_MODEL:-/dummy/path}:/mnt/models/
-  outlink-cache-adapter:
-    platform: linux/amd64
-    build:
-      context: .
-      dockerfile: .pipeline/outlink_cache_adapter/blubber.yaml
-      target: production
-    image: outlink-cache-adapter:prod
-    ports:
-      - "50051:50051"
-    environment:
-      GRPC_PORT: "50051"
-      KSERVE_URL: "http://outlink-topic-model:8080/v1/models/outlink-topic-model:predict"
-      KSERVE_HOST_HEADER: ""
-
   enwiki-goodfaith:
     platform: linux/amd64
     build:

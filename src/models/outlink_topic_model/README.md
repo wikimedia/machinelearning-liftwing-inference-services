@@ -79,10 +79,19 @@ print(json.dumps(result, indent=2))
 |-----------|------|----------|-------------|
 | `page_title` | string | One of `page_title` or `page_id` | Wikipedia article title |
 | `page_id` | integer | One of `page_title` or `page_id` | Wikipedia page ID |
-| `lang` | string | Yes | Language code (e.g., "en") |
+| `lang` | string | One of `lang` or `wiki_id` | Language code (e.g., "en") |
+| `wiki_id` | string | One of `lang` or `wiki_id` | Wiki database code (e.g., "enwiki"); resolved to `lang` via the bundled `data/wikis.tsv` mapping |
 | `revision_id` | integer | No | Specific revision ID to analyze |
 | `threshold` | float | No | Confidence threshold for results (default: 0.5) |
 | `debug` | boolean | No | Enable debug mode (default: false) |
+
+When both `lang` and `wiki_id` are provided, `lang` takes precedence. Example using `wiki_id`:
+
+```console
+curl localhost:8080/v1/models/outlink-topic-model:predict \
+  -H "Content-Type: application/json" \
+  -d '{"page_id": 5355, "wiki_id": "enwiki"}'
+```
 
 ### Using `revision_id`
 
@@ -163,3 +172,154 @@ In the second terminal make a request to the server:
 curl localhost:8080/v1/models/outlink-topic-model:predict -i -X POST -d '{"page_title": "Douglas_Adams", "lang": "en"}'
 ```
 </details>
+
+## How to test cache integration
+
+End-to-end test of [hoarde](https://gitlab.wikimedia.org/repos/sre/hoarde) talking to
+outlink-topic-model over the KServe v2 gRPC protocol, backed by Cassandra. Assumes macOS
+or Linux with Docker, Go 1.24+, `protoc` and `curl`. The hoarde and inference-services
+repos are assumed to be checked out side-by-side; commands are run from each repo root.
+
+### 1. Download the model
+
+From the root of `inference-services`:
+
+```console
+mkdir -p ./models/outlink/20221111111111
+curl -L -o ./models/outlink/20221111111111/model.bin \
+  https://analytics.wikimedia.org/published/wmf-ml-models/articletopic/outlink/20221111111111/model.bin
+```
+
+The file is ~990 MB.
+
+### 2. Start outlink-topic-model
+
+Still from the root of `inference-services`:
+
+```console
+PATH_TO_OUTLINK_TOPIC_MODEL=$(pwd)/models/outlink/20221111111111 \
+  docker compose up --build outlink-topic-model
+```
+
+(The compose file mounts an absolute host path into the container, so `$(pwd)/...` is
+required; the model files themselves stay under the repo.)
+
+This exposes the model on:
+- `localhost:8080` — KServe v1/v2 REST
+- `localhost:8081` — KServe v2 gRPC (used by hoarde)
+
+Wait for `Application startup complete` in the logs.
+
+### 3. Start Cassandra
+
+```console
+docker run -d --name cassandra -p 9042:9042 cassandra:4.1
+```
+
+Wait until it accepts connections (~30 s):
+
+```console
+until docker exec cassandra cqlsh -e "DESCRIBE KEYSPACES" >/dev/null 2>&1; do sleep 2; done
+```
+
+From the root of `hoarde`, create the keyspace and the table that hoarde expects:
+
+```console
+docker exec cassandra cqlsh -e "
+CREATE KEYSPACE IF NOT EXISTS hoarde
+WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1};"
+
+sed "s/{keyspace_name}/hoarde/g; s/{table_name}/outlink_topic_scores/g" schema.cql \
+  | docker exec -i cassandra cqlsh
+```
+
+### 4. Build hoarde
+
+From the root of `hoarde`:
+
+```console
+# Install protoc plugins (only needed once)
+go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+export PATH="$(go env GOPATH)/bin:$PATH"
+
+make
+```
+
+`make` regenerates the protobuf bindings and produces a `./hoarde` binary.
+
+### 5. Configure hoarde
+
+Create `local-config-kserve.yaml` at the root of the hoarde repo:
+
+```yaml
+service_name: linked-artifact-cache
+log_level: debug
+
+tables:
+  outlink_topic_scores:
+    lambda:
+      type: kserve_v2
+      hostname: localhost
+      port: 8081
+      model_name: outlink-topic-model
+      timeout: 10000ms
+
+listen_port: 8181
+
+cassandra:
+  keyspace: hoarde
+  hosts:
+    - localhost:9042
+  consistency: one
+```
+
+Start hoarde:
+
+```console
+./hoarde -config local-config-kserve.yaml
+```
+
+It is ready when `GET /healthz` returns 200:
+
+```console
+until curl -sf http://localhost:8181/healthz >/dev/null; do sleep 1; done
+```
+
+### 6. Exercise the cache
+
+The hoarde URL pattern is `/v1/{table}/{wiki}/{page}/{revision}`.
+
+Cache miss (forces a call to the lambda):
+
+```console
+curl -s -H "Cache-Control: no-cache" \
+  "http://localhost:8181/v1/outlink_topic_scores/enwiki/5355/1264030954"
+```
+
+Expected output:
+
+```json
+{"topics": [["Culture.Media.Media*", 0.81...], ["Culture.Media.Music", 0.58...]],
+ "lang": "en", "page_id": 5355, "page_title": null}
+```
+
+Cache hit (served from Cassandra; observe the `Last-Modified` header):
+
+```console
+curl -i "http://localhost:8181/v1/outlink_topic_scores/enwiki/5355/1264030954"
+```
+
+Latest known revision for a page:
+
+```console
+curl "http://localhost:8181/v1/outlink_topic_scores/enwiki/5355"
+```
+
+### 7. Tear down
+
+```console
+pkill -f "./hoarde -config"
+docker compose down                       # outlink-topic-model
+docker stop cassandra && docker rm cassandra
+```

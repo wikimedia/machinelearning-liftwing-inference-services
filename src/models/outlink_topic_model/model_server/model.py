@@ -1,3 +1,4 @@
+import csv
 import json
 import logging
 import os
@@ -26,6 +27,17 @@ from python.preprocess_utils import (
 logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
 
 
+def load_wiki_languages(path: str) -> dict[str, str]:
+    """Load wiki_id -> language_code mapping from TSV."""
+    wikis = {}
+    with open(path) as f:
+        reader = csv.reader(f, delimiter="\t")
+        for row in reader:
+            if len(row) >= 2:
+                wikis[row[0]] = row[1]
+    return wikis
+
+
 class OutlinksTopicModel(kserve.Model):
     def __init__(self, name: str):
         super().__init__(name)
@@ -48,6 +60,10 @@ class OutlinksTopicModel(kserve.Model):
         set_log_level()
         self.MODEL_VERSION = os.environ.get("MODEL_VERSION")
         self.model_path = os.environ.get("MODEL_PATH", "/mnt/models/model.bin")
+
+        data_dir = os.path.join(os.path.dirname(__file__), "data")
+        self.wiki_languages = load_wiki_languages(os.path.join(data_dir, "wikis.tsv"))
+
         self.load()
         self.ready = True
 
@@ -325,6 +341,16 @@ class OutlinksTopicModel(kserve.Model):
             self._is_v2_protocol = False
             self._is_grpc = False
         inputs = validate_json_input(inputs)
+        if (
+            self.EVENT_KEY not in inputs
+            and "lang" not in inputs
+            and "wiki_id" in inputs
+        ):
+            wiki_id = inputs["wiki_id"]
+            lang = self.wiki_languages.get(wiki_id)
+            if lang is None:
+                raise InvalidInput(f"Unknown wiki_id: {wiki_id}")
+            inputs["lang"] = lang
         lang = get_lang(inputs, self.EVENT_KEY)
         page_id, page_title = await self.retrieve_page_id_and_title(inputs, lang=lang)
         threshold = inputs.get("threshold", 0.5)
