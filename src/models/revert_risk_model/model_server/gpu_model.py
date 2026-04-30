@@ -84,8 +84,9 @@ class RevertRiskMultilingualGPU(RevisionRevertRiskModel):
         - inject them into the request,
         - and then delegate to the base model's preprocess to fetch revision data.
         """
+
+        inputs = validate_json_input(inputs)
         if self.event_key in inputs:
-            inputs = validate_json_input(inputs)
             source_event = inputs[self.event_key]
             if not is_domain_wikipedia(source_event):
                 error_message = (
@@ -116,6 +117,7 @@ class RevertRiskMultilingualGPU(RevisionRevertRiskModel):
         """
         prediction = super().predict(request, headers)
 
+        request = validate_json_input(request)
         if self.event_key in request:
             prediction_results = {
                 "predictions": [str(prediction["output"]["prediction"]).lower()],
