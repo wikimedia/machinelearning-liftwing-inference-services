@@ -35,7 +35,7 @@ if __name__ == "__main__":
     model_path = os.environ.get("MODEL_PATH", "/mnt/models/model.pkl")
     wiki_url = os.environ.get("WIKI_URL")
     force_http = strtobool(os.environ.get("FORCE_HTTP", "False"))
-    aiohttp_client_timeout = os.environ.get("AIOHTTP_CLIENT_TIMEOUT", 5)
+    aiohttp_client_timeout = int(os.environ.get("AIOHTTP_CLIENT_TIMEOUT", 5))
     allow_revision_json_input = strtobool(
         os.environ.get("ALLOW_REVISION_JSON_INPUT", "False")
     )
