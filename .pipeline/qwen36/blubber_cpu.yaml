@@ -1,0 +1,31 @@
+# syntax=docker-registry.wikimedia.org/repos/releng/blubber/buildkit:v1.0.1
+version: v4
+base: vllm/vllm-openai-cpu:v0.16.0
+runs:
+  insecurely: true
+  environment:
+    VLLM_TARGET_DEVICE: cpu
+    VLLM_USE_V1: "0"
+    PYTHONPATH: /opt/venv/lib/python3.12/site-packages
+    http_proxy:
+    https_proxy:
+    no_proxy:
+
+lives:
+  in: /srv/app
+
+variants:
+  production:
+    copies:
+      - from: local
+        source: src/models/qwen36/model_server/.
+        destination: .
+      - from: local
+        source: python
+        destination: python
+    python:
+      version: python3
+      requirements: [src/models/qwen36/requirements.txt]
+      use-system-site-packages: true
+      no-deps: false
+    entrypoint: ["python", "model.py"]

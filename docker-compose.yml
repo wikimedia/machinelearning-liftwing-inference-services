@@ -234,6 +234,27 @@ services:
       TRUST_REMOTE_CODE: "True"
     volumes:
       - ${PATH_TO_COPE_A_9B_MODEL:-/dummy/path}:/mnt/models/
+  qwen36-27b-cpu:
+    build:
+      context: .
+      dockerfile: .pipeline/qwen36/blubber_cpu.yaml
+      target: production
+    image: qwen36-27b:cpu
+    ports:
+      - "8080:8080"
+    environment:
+      MODEL_NAME: "qwen3-0.6b"
+      MODEL_PATH: "Qwen/Qwen3-0.6B"
+      DTYPE: "auto"
+      TRUST_REMOTE_CODE: "True"
+      TENSOR_PARALLEL_SIZE: "1"
+      MAX_MODEL_LEN: "4096"
+      ATTENTION_BACKEND: "CPU_ATTN"
+      VLLM_CPU_KVCACHE_SPACE: "8"
+      VLLM_CPU_OMP_THREADS_BIND: "nobind"
+    volumes:
+      - ${PATH_TO_QWEN36_CPU_MODEL:-/dummy/path}:/mnt/models/
+    shm_size: 4gb
   enwiki-goodfaith:
     platform: linux/amd64
     build:

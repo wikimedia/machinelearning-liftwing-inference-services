@@ -232,6 +232,23 @@ pipelines:
             name: '${setup.project}-policy-violation-gpt-oss-safeguard'
             tags: [stable]
 
+  qwen36:
+    blubberfile: qwen36/blubber.yaml
+    stages:
+      - name: run-test
+        build: test
+        run: true
+
+  qwen36-publish:
+    blubberfile: qwen36/blubber.yaml
+    stages:
+      - name: publish
+        build: production
+        publish:
+          image:
+            name: '${setup.project}-qwen36'
+            tags: [stable]
+
   policy-violation-cope-a-9b-publish:
     blubberfile: policy_violation/blubber_cope_a_9b.yaml
     stages:
