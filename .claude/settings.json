@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__gerrit__query_changes",
+      "mcp__gerrit__get_commit_message",
+      "mcp__gerrit__list_change_files",
+      "WebFetch"
+    ]
+  }
+}
