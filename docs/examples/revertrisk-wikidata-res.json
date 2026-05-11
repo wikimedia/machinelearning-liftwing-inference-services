@@ -1,0 +1,12 @@
+{
+  "model_name": "revertrisk-wikidata",
+  "model_version": "2",
+  "revision_id": 1799693453,
+  "output": {
+    "prediction": false,
+    "probabilities": {
+      "true": 0.08,
+      "false": 0.92
+    }
+  }
+}

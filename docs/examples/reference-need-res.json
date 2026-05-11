@@ -1,0 +1,7 @@
+{
+  "model_name": "reference-need",
+  "model_version": "1.0",
+  "wiki_db": "enwiki",
+  "revision_id": 123456789,
+  "reference_need_score": 0.72
+}

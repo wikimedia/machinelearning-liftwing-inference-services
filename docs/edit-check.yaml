@@ -1,0 +1,145 @@
+openapi: "3.1.0"
+info:
+  title: Edit Check — Lift Wing inference service
+  description: |
+    Detects tone, NPOV, and weasel-word violations in Wikipedia edits by
+    comparing original and modified text. Supports three check types:
+    `tone` (peacock language), `npov` (non-neutral point of view), and
+    `weasel` (weasel words).
+  version: v1
+servers:
+  - url: https://api.wikimedia.org
+paths:
+  /service/lw/inference/v1/models/edit-check:predict:
+    post:
+      summary: Run an edit check on a text pair
+      description: >
+        Compares original and modified text and returns a prediction
+        indicating whether the edit introduces a tone, NPOV, or weasel
+        violation. Multiple instances can be sent in a single request.
+      operationId: editCheckPredict
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [instances]
+              properties:
+                instances:
+                  type: array
+                  description: List of instances to check (max 20).
+                  minItems: 1
+                  maxItems: 20
+                  items:
+                    type: object
+                    required:
+                      - lang
+                      - page_title
+                      - check_type
+                      - original_text
+                      - modified_text
+                    properties:
+                      lang:
+                        type: string
+                        description: ISO language code (e.g. "en").
+                        example: "en"
+                      page_title:
+                        type: string
+                        description: Page title (or intended title for a new page).
+                        example: "Albert Einstein"
+                      check_type:
+                        type: string
+                        description: Type of check to perform.
+                        enum: [tone, npov, weasel]
+                        example: "tone"
+                      original_text:
+                        type: string
+                        description: The original (unedited) text.
+                        example: "Einstein was a scientist who did things."
+                      modified_text:
+                        type: string
+                        description: The modified (edited) text. Must differ from original_text.
+                        example: "Einstein was the most brilliant and unparalleled genius who ever lived, revolutionizing physics beyond all measure."
+                      return_shap_values:
+                        type: boolean
+                        description: Whether to return SHAP explanation values (default false).
+                        default: false
+                        example: false
+            example:
+              instances:
+                - lang: "en"
+                  page_title: "Albert Einstein"
+                  check_type: "tone"
+                  original_text: "Einstein was a scientist who did things."
+                  modified_text: "Einstein was the most brilliant and unparalleled genius who ever lived, revolutionizing physics beyond all measure."
+      responses:
+        "200":
+          description: Successful prediction.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  predictions:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        status_code:
+                          type: integer
+                          description: HTTP status for this instance (200 = success, 400 = malformed).
+                          example: 200
+                        model_name:
+                          type: string
+                          description: Name of the model.
+                          example: "edit-check"
+                        model_version:
+                          type: string
+                          description: Model version.
+                          example: "v1"
+                        check_type:
+                          type: string
+                          description: The check type that was performed.
+                          enum: [tone, npov, weasel]
+                          example: "tone"
+                        language:
+                          type: string
+                          description: Language code.
+                          example: "en"
+                        page_title:
+                          type: string
+                          description: Page title.
+                          example: "Albert Einstein"
+                        prediction:
+                          type: boolean
+                          description: "`true` if a violation is detected, `false` otherwise."
+                          example: true
+                        probability:
+                          type: number
+                          format: float
+                          description: Confidence score of the prediction (0.0–1.0).
+                          example: 0.937
+                        details:
+                          type: object
+                          description: Additional details (SHAP values if requested).
+                          properties:
+                            violations:
+                              type: array
+                              items:
+                                type: array
+                              description: Top-3 violating tokens with their SHAP values.
+                          example: {}
+              example:
+                predictions:
+                  - status_code: 200
+                    model_name: "edit-check"
+                    model_version: "v1"
+                    check_type: "tone"
+                    language: "en"
+                    page_title: "Albert Einstein"
+                    prediction: true
+                    probability: 0.937
+                    details: {}
+        "400":
+          description: Invalid input (missing or malformed fields).

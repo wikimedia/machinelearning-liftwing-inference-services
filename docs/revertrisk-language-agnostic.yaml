@@ -1,0 +1,148 @@
+openapi: "3.1.0"
+info:
+  title: Revert Risk Language-Agnostic — Lift Wing inference service
+  description: |
+    Predicts whether a Wikipedia edit is likely to be reverted, using a
+    language-agnostic model that works across multiple Wikipedia language
+    editions. Supports single revision, batch, and event-based inputs.
+  version: "1.0"
+servers:
+  - url: https://api.wikimedia.org
+paths:
+  /service/lw/inference/v1/models/revertrisk-language-agnostic:predict:
+    post:
+      summary: Predict revert risk for one or more Wikipedia revisions
+      operationId: revertriskLanguageAgnosticPredict
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - type: object
+                  title: Single revision
+                  required: [rev_id, lang]
+                  properties:
+                    rev_id:
+                      type: integer
+                      description: Wikipedia revision ID.
+                      example: 123456789
+                    lang:
+                      type: string
+                      description: ISO language code (e.g. "en").
+                      example: "en"
+                - type: object
+                  title: Batch revisions
+                  required: [instances]
+                  properties:
+                    instances:
+                      type: array
+                      description: List of revisions to check (max 20, all same language).
+                      maxItems: 20
+                      items:
+                        type: object
+                        required: [rev_id, lang]
+                        properties:
+                          rev_id:
+                            type: integer
+                            description: Wikipedia revision ID.
+                            example: 123456789
+                          lang:
+                            type: string
+                            description: ISO language code (e.g. "en").
+                            example: "en"
+            examples:
+              single:
+                summary: Single revision
+                value:
+                  rev_id: 123456789
+                  lang: "en"
+              batch:
+                summary: Batch revisions
+                value:
+                  instances:
+                    - rev_id: 123456789
+                      lang: "en"
+                    - rev_id: 987654321
+                      lang: "en"
+      responses:
+        "200":
+          description: Successful prediction.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: object
+                    title: Single response
+                    properties:
+                      model_name:
+                        type: string
+                        example: "revertrisk-language-agnostic"
+                      model_version:
+                        type: string
+                        example: "1.0"
+                      wiki_db:
+                        type: string
+                        example: "enwiki"
+                      revision_id:
+                        type: integer
+                        example: 123456789
+                      output:
+                        type: object
+                        properties:
+                          prediction:
+                            type: boolean
+                            description: "`true` if the edit is likely to be reverted."
+                            example: false
+                          probabilities:
+                            type: object
+                            properties:
+                              "true":
+                                type: number
+                                format: float
+                                description: Probability of revert.
+                                example: 0.12
+                              "false":
+                                type: number
+                                format: float
+                                description: Probability of not revert.
+                                example: 0.88
+                    example:
+                      model_name: "revertrisk-language-agnostic"
+                      model_version: "1.0"
+                      wiki_db: "enwiki"
+                      revision_id: 123456789
+                      output:
+                        prediction: false
+                        probabilities:
+                          "true": 0.12
+                          "false": 0.88
+                  - type: object
+                    title: Batch response
+                    properties:
+                      predictions:
+                        type: array
+                        items:
+                          type: object
+                    example:
+                      predictions:
+                        - model_name: "revertrisk-language-agnostic"
+                          model_version: "1.0"
+                          wiki_db: "enwiki"
+                          revision_id: 123456789
+                          output:
+                            prediction: false
+                            probabilities:
+                              "true": 0.12
+                              "false": 0.88
+                        - model_name: "revertrisk-language-agnostic"
+                          model_version: "1.0"
+                          wiki_db: "enwiki"
+                          revision_id: 987654321
+                          output:
+                            prediction: true
+                            probabilities:
+                              "true": 0.78
+                              "false": 0.22
+        "400":
+          description: Invalid input.

@@ -1,0 +1,77 @@
+openapi: "3.1.0"
+info:
+  title: Revert Risk Wikidata — Lift Wing inference service
+  description: |
+    Predicts whether a Wikidata edit is likely to be reverted. Uses a BERT
+    model to score revision diff text combined with a CatBoost classifier
+    over metadata features (user age, bot status, page age, etc.).
+  version: "2"
+servers:
+  - url: https://api.wikimedia.org
+paths:
+  /service/lw/inference/v1/models/revertrisk-wikidata:predict:
+    post:
+      summary: Predict revert risk for a Wikidata revision
+      operationId: revertriskWikidataPredict
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [rev_id]
+              properties:
+                rev_id:
+                  type: integer
+                  description: Wikidata revision ID. Must be a positive integer.
+                  example: 1799693453
+            example:
+              rev_id: 1799693453
+      responses:
+        "200":
+          description: Successful prediction.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  model_name:
+                    type: string
+                    example: "revertrisk-wikidata"
+                  model_version:
+                    type: string
+                    example: "2"
+                  revision_id:
+                    type: integer
+                    example: 1799693453
+                  output:
+                    type: object
+                    properties:
+                      prediction:
+                        type: boolean
+                        description: "`true` if the edit is likely to be reverted."
+                        example: false
+                      probabilities:
+                        type: object
+                        properties:
+                          "true":
+                            type: number
+                            format: float
+                            description: Probability of revert.
+                            example: 0.08
+                          "false":
+                            type: number
+                            format: float
+                            description: Probability of not revert.
+                            example: 0.92
+              example:
+                model_name: "revertrisk-wikidata"
+                model_version: "2"
+                revision_id: 1799693453
+                output:
+                  prediction: false
+                  probabilities:
+                    "true": 0.08
+                    "false": 0.92
+        "400":
+          description: Invalid input.

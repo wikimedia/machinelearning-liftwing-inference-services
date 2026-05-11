@@ -1,0 +1,93 @@
+openapi: "3.1.0"
+info:
+  title: Article Descriptions — Lift Wing inference service
+  description: |
+    Generates short encyclopedic descriptions for Wikipedia articles using a
+    multilingual MT5-based sequence-to-sequence model. Given a Wikipedia
+    article title and language, it generates candidate descriptions by
+    synthesising information from Wikidata descriptions and first paragraphs
+    of the article in multiple languages.
+  version: v1
+servers:
+  - url: https://api.wikimedia.org
+paths:
+  /service/lw/inference/v1/models/article-descriptions:predict:
+    post:
+      summary: Generate article descriptions
+      operationId: articleDescriptionsPredict
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [lang, title, num_beams]
+              properties:
+                lang:
+                  type: string
+                  description: ISO language code (e.g. "en").
+                  example: "en"
+                title:
+                  type: string
+                  description: Wikipedia page title.
+                  example: "Albert Einstein"
+                num_beams:
+                  type: integer
+                  description: Number of beam search hypotheses. Must be a positive integer.
+                  minimum: 1
+                  example: 3
+                debug:
+                  type: integer
+                  description: "Set to 1 to include debug info (groundtruth, latency, features). Default 0."
+                  enum: [0, 1]
+                  default: 0
+                  example: 0
+            example:
+              lang: "en"
+              title: "Albert Einstein"
+              num_beams: 3
+      responses:
+        "200":
+          description: Successful prediction.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  prediction:
+                    type: array
+                    items:
+                      type: string
+                    description: Generated description candidates.
+                    example: ["Physicist who developed the theory of relativity"]
+                  blp:
+                    type: boolean
+                    description: "`true` if the article is about a living person."
+                    example: false
+                  lang:
+                    type: string
+                    example: "en"
+                  title:
+                    type: string
+                    example: "Albert Einstein"
+                  num_beams:
+                    type: integer
+                    example: 3
+                  groundtruth:
+                    type: string
+                    description: Existing article description (only in debug mode).
+                  latency:
+                    type: object
+                    description: Execution timings (only in debug mode).
+                  features:
+                    type: object
+                    description: Model features (only in debug mode).
+              example:
+                prediction:
+                  - "Physicist who developed the theory of relativity"
+                blp: false
+                lang: "en"
+                title: "Albert Einstein"
+                num_beams: 3
+        "400":
+          description: Invalid input.

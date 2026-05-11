@@ -1,0 +1,110 @@
+openapi: "3.1.0"
+info:
+  title: Outlink Topic Model — Lift Wing inference service
+  description: |
+    Predicts the topic of a Wikipedia article based on its outgoing links
+    (outlinks). Uses a fastText model trained on Wikipedia outlink
+    structures. Supports identification by page ID or page title.
+  version: v1
+servers:
+  - url: https://api.wikimedia.org
+paths:
+  /service/lw/inference/v1/models/outlink-topic-model:predict:
+    post:
+      summary: Predict article topic from outlinks
+      operationId: outlinkTopicModelPredict
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              oneOf:
+                - required: [lang, page_id]
+                - required: [lang, page_title]
+                - required: [wiki_id, page_id]
+                - required: [wiki_id, page_title]
+              properties:
+                lang:
+                  type: string
+                  description: ISO language code (e.g. "en"). Not needed if wiki_id is provided.
+                  example: "en"
+                wiki_id:
+                  type: string
+                  description: Wiki identifier (e.g. "enwiki"). Used to derive lang if lang is not given.
+                  example: "enwiki"
+                page_id:
+                  type: integer
+                  description: Wikipedia numeric page ID. Mutually exclusive with page_title.
+                  example: 60520815
+                page_title:
+                  type: string
+                  description: Wikipedia page title. Mutually exclusive with page_id.
+                  example: "Albert Einstein"
+                threshold:
+                  type: number
+                  format: float
+                  description: Minimum score threshold for returned topics (default 0.5).
+                  default: 0.5
+                  example: 0.5
+                debug:
+                  type: boolean
+                  description: When true, all topics are returned (threshold set to 0.0).
+                  default: false
+                  example: false
+                revision_id:
+                  type: integer
+                  description: Fetch outlinks from a specific revision instead of current page.
+                  example: 123456789
+            examples:
+              by-page-id:
+                summary: By page ID
+                value:
+                  lang: "en"
+                  page_id: 60520815
+                  threshold: 0.5
+              by-page-title:
+                summary: By page title
+                value:
+                  page_title: "Albert Einstein"
+                  wiki_id: "enwiki"
+                  threshold: 0.5
+      responses:
+        "200":
+          description: Successful prediction.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  prediction:
+                    type: object
+                    properties:
+                      article:
+                        type: string
+                        description: URL to the Wikipedia article.
+                        example: "https://en.wikipedia.org/wiki/Albert_Einstein"
+                      results:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            topic:
+                              type: string
+                              description: Topic label.
+                              example: "STEM.Physics"
+                            score:
+                              type: number
+                              format: float
+                              description: Probability score (0.0–1.0).
+                              example: 0.95
+              example:
+                prediction:
+                  article: "https://en.wikipedia.org/wiki/Albert_Einstein"
+                  results:
+                    - topic: "STEM.Physics"
+                      score: 0.95
+                    - topic: "Culture.Biography.Biography*"
+                      score: 0.87
+        "400":
+          description: Invalid input.

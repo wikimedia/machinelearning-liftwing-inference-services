@@ -1,0 +1,61 @@
+openapi: "3.1.0"
+info:
+  title: Language Identification — Lift Wing inference service
+  description: |
+    Identifies the language of a given text using a fastText language
+    identification model. Returns the detected language code, wikicode,
+    language name, and confidence score.
+  version: v1
+servers:
+  - url: https://api.wikimedia.org
+paths:
+  /service/lw/inference/v1/models/langid:predict:
+    post:
+      summary: Identify the language of a text
+      operationId: langidPredict
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [text]
+              properties:
+                text:
+                  type: string
+                  description: Text to identify the language of. Newlines and tabs are normalised. Truncated to 100 characters.
+                  example: "Wikipedia is a free online encyclopedia that anyone can edit."
+            example:
+              text: "Wikipedia is a free online encyclopedia that anyone can edit."
+      responses:
+        "200":
+          description: Successful prediction.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  language:
+                    type: string
+                    description: Detected language code.
+                    example: "en"
+                  wikicode:
+                    type: string
+                    description: Wikimedia language code.
+                    example: "en"
+                  languagename:
+                    type: string
+                    description: Full English language name.
+                    example: "English"
+                  score:
+                    type: number
+                    format: float
+                    description: Confidence score (0.0–1.0).
+                    example: 0.98
+              example:
+                language: "en"
+                wikicode: "en"
+                languagename: "English"
+                score: 0.98
+        "400":
+          description: Invalid input.

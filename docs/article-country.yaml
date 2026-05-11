@@ -1,0 +1,113 @@
+openapi: "3.1.0"
+info:
+  title: Article Country — Lift Wing inference service
+  description: |
+    Predicts the country or countries associated with a Wikipedia article
+    based on Wikidata properties, Wikipedia categories, and cross-wiki
+    link analysis. Returns scored country predictions with evidence
+    breakdown.
+  version: "1"
+servers:
+  - url: https://api.wikimedia.org
+paths:
+  /service/lw/inference/v1/models/article-country:predict:
+    post:
+      summary: Predict countries associated with a Wikipedia article
+      operationId: articleCountryPredict
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [lang, title]
+              properties:
+                lang:
+                  type: string
+                  description: ISO language code (e.g. "en").
+                  example: "en"
+                title:
+                  type: string
+                  description: Wikipedia page title.
+                  example: "Eiffel Tower"
+            example:
+              lang: "en"
+              title: "Eiffel Tower"
+      responses:
+        "200":
+          description: Successful prediction.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  model_name:
+                    type: string
+                    example: "article-country"
+                  model_version:
+                    type: string
+                    example: "1"
+                  prediction:
+                    type: object
+                    properties:
+                      article:
+                        type: string
+                        description: URL to the Wikipedia article.
+                        example: "https://en.wikipedia.org/wiki/Eiffel_Tower"
+                      wikidata_item:
+                        type: string
+                        description: Wikidata QID of the article.
+                        example: "Q243"
+                      results:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            country:
+                              type: string
+                              description: Country name.
+                              example: "France"
+                            score:
+                              type: number
+                              format: float
+                              description: Normalised confidence score.
+                              example: 0.95
+                            source:
+                              type: object
+                              description: Evidence breakdown.
+                              properties:
+                                wikidata_properties:
+                                  type: array
+                                  items:
+                                    type: object
+                                  description: Wikidata property evidence.
+                                categories:
+                                  type: array
+                                  items:
+                                    type: string
+                                  description: Wikipedia category evidence.
+                                links:
+                                  type: array
+                                  items:
+                                    type: object
+                                  description: Wikilink evidence.
+              example:
+                model_name: "article-country"
+                model_version: "1"
+                prediction:
+                  article: "https://en.wikipedia.org/wiki/Eiffel_Tower"
+                  wikidata_item: "Q243"
+                  results:
+                    - country: "France"
+                      score: 0.95
+                      source:
+                        wikidata_properties:
+                          - P131: "France"
+                        categories:
+                          - "Buildings and structures in Paris"
+                        links:
+                          - country: "France"
+                            count: 12
+                            prop-tfidf: 0.45
+        "400":
+          description: Invalid input.

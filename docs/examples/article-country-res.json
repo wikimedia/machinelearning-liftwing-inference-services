@@ -1,0 +1,31 @@
+{
+  "model_name": "article-country",
+  "model_version": "1",
+  "prediction": {
+    "article": "https://en.wikipedia.org/wiki/Eiffel_Tower",
+    "wikidata_item": "Q243",
+    "results": [
+      {
+        "country": "France",
+        "score": 0.95,
+        "source": {
+          "wikidata_properties": [
+            {
+              "P131": "France"
+            }
+          ],
+          "categories": [
+            "Buildings and structures in Paris"
+          ],
+          "links": [
+            {
+              "country": "France",
+              "count": 12,
+              "prop-tfidf": 0.45
+            }
+          ]
+        }
+      }
+    ]
+  }
+}
