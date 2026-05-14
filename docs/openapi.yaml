@@ -1,6 +1,6 @@
 openapi: "3.0.0"
 info:
-  title: Lift Wing Inference Services — Wikimedia Machine Learning
+  title: Wikimedia Lift Wing API
   description: |
     Lift Wing provides production-grade machine learning model inference
     services for Wikimedia projects. Each model is exposed as a separate
@@ -11,31 +11,35 @@ info:
     schemas and examples.
 
     For more information:
-    - [Lift Wing on Wikitech](https://wikitech.wikimedia.org/wiki/Machine_Learning/LiftWing)
+    - [Lift Wing API on Wikitech](https://wikitech.wikimedia.org/wiki/Machine_Learning/LiftWing/API)
     - [Source code](https://gerrit.wikimedia.org/r/q/project:machinelearning/liftwing/inference-services)
   version: v1
+  contact:
+    name: Wikimedia Machine Learning Team
+    url: https://www.mediawiki.org/wiki/Special:MyLanguage/Machine_Learning
+  termsOfService: https://foundation.wikimedia.org/wiki/Special:MyLanguage/Policy:Terms_of_Use#12._API_Terms
 servers:
   - url: https://api.wikimedia.org
 paths:
-  /service/lw/inference/v1/models/edit-check:predict:
-    $ref: ./edit-check.yaml#/paths/~1service~1lw~1inference~1v1~1models~1edit-check:predict
+  /service/lw/inference/v1/models/langid:predict:
+    $ref: ./langid.yaml#/paths/~1service~1lw~1inference~1v1~1models~1langid:predict
+  /service/lw/inference/v1/models/article-descriptions:predict:
+    $ref: ./article-descriptions.yaml#/paths/~1service~1lw~1inference~1v1~1models~1article-descriptions:predict
   /service/lw/inference/v1/models/readability:predict:
     $ref: ./readability.yaml#/paths/~1service~1lw~1inference~1v1~1models~1readability:predict
+  /service/lw/inference/v1/models/article-country:predict:
+    $ref: ./article-country.yaml#/paths/~1service~1lw~1inference~1v1~1models~1article-country:predict
+  /service/lw/inference/v1/models/outlink-topic-model:predict:
+    $ref: ./outlink-topic-model.yaml#/paths/~1service~1lw~1inference~1v1~1models~1outlink-topic-model:predict
+  /service/lw/inference/v1/models/reference-need:predict:
+    $ref: ./reference-need.yaml#/paths/~1service~1lw~1inference~1v1~1models~1reference-need:predict
   /service/lw/inference/v1/models/revertrisk-language-agnostic:predict:
     $ref: ./revertrisk-language-agnostic.yaml#/paths/~1service~1lw~1inference~1v1~1models~1revertrisk-language-agnostic:predict
   /service/lw/inference/v1/models/revertrisk-multilingual:predict:
     $ref: ./revertrisk-multilingual.yaml#/paths/~1service~1lw~1inference~1v1~1models~1revertrisk-multilingual:predict
-  /service/lw/inference/v1/models/outlink-topic-model:predict:
-    $ref: ./outlink-topic-model.yaml#/paths/~1service~1lw~1inference~1v1~1models~1outlink-topic-model:predict
-  /service/lw/inference/v1/models/article-descriptions:predict:
-    $ref: ./article-descriptions.yaml#/paths/~1service~1lw~1inference~1v1~1models~1article-descriptions:predict
-  /service/lw/inference/v1/models/langid:predict:
-    $ref: ./langid.yaml#/paths/~1service~1lw~1inference~1v1~1models~1langid:predict
   /service/lw/inference/v1/models/revertrisk-wikidata:predict:
     $ref: ./revertrisk-wikidata.yaml#/paths/~1service~1lw~1inference~1v1~1models~1revertrisk-wikidata:predict
-  /service/lw/inference/v1/models/reference-need:predict:
-    $ref: ./reference-need.yaml#/paths/~1service~1lw~1inference~1v1~1models~1reference-need:predict
   /service/lw/inference/v1/models/reference-risk:predict:
     $ref: ./reference-risk.yaml#/paths/~1service~1lw~1inference~1v1~1models~1reference-risk:predict
-  /service/lw/inference/v1/models/article-country:predict:
-    $ref: ./article-country.yaml#/paths/~1service~1lw~1inference~1v1~1models~1article-country:predict
+  /service/lw/inference/v1/models/edit-check:predict:
+    $ref: ./edit-check.yaml#/paths/~1service~1lw~1inference~1v1~1models~1edit-check:predict

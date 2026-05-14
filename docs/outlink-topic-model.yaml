@@ -1,17 +1,18 @@
 openapi: "3.0.0"
 info:
   title: Outlink Topic Model — Lift Wing inference service
-  description: |
-    Predicts the topic of a Wikipedia article based on its outgoing links
-    (outlinks). Uses a fastText model trained on Wikipedia outlink
-    structures. Supports identification by page ID or page title.
   version: v1
 servers:
   - url: https://api.wikimedia.org
 paths:
   /service/lw/inference/v1/models/outlink-topic-model:predict:
     post:
-      summary: Predict article topic from outlinks
+      summary: Predict topics of a Wikipedia article using outlinks
+      description: |
+        Predicts the topic of a Wikipedia article based on its outgoing links
+        (outlinks). Uses a fastText model trained on Wikipedia outlink
+        structures. Supports identification by page ID or page title. For more
+        information, see the [model card](https://meta.wikimedia.org/wiki/Special:MyLanguage/Machine_learning_models/Production/Language_agnostic_link-based_article_topic).
       operationId: outlinkTopicModelPredict
       requestBody:
         required: true
@@ -19,19 +20,14 @@ paths:
           application/json:
             schema:
               type: object
-              oneOf:
-                - required: [lang, page_id]
-                - required: [lang, page_title]
-                - required: [wiki_id, page_id]
-                - required: [wiki_id, page_title]
               properties:
                 lang:
                   type: string
-                  description: ISO language code (e.g. "en"). Not needed if wiki_id is provided.
+                  description: Language code. Not needed if wiki_id is provided.
                   example: "en"
                 wiki_id:
                   type: string
-                  description: Wiki identifier (e.g. "enwiki"). Used to derive lang if lang is not given.
+                  description: Wiki identifier. Used to derive language if lang is not provided.
                   example: "enwiki"
                 page_id:
                   type: integer
@@ -44,17 +40,17 @@ paths:
                 threshold:
                   type: number
                   format: float
-                  description: Minimum score threshold for returned topics (default 0.5).
+                  description: Minimum score threshold for returned topics
                   default: 0.5
                   example: 0.5
                 debug:
                   type: boolean
-                  description: When true, all topics are returned (threshold set to 0.0).
+                  description: When true, all topics are returned, and threshold is set to 0.0
                   default: false
                   example: false
                 revision_id:
                   type: integer
-                  description: Fetch outlinks from a specific revision instead of current page.
+                  description: Fetch outlinks from a specific revision instead of current page
                   example: 123456789
             examples:
               by-page-id:
@@ -71,7 +67,7 @@ paths:
                   threshold: 0.5
       responses:
         "200":
-          description: Successful prediction.
+          description: Successful prediction
           content:
             application/json:
               schema:
@@ -82,7 +78,7 @@ paths:
                     properties:
                       article:
                         type: string
-                        description: URL to the Wikipedia article.
+                        description: URL to the Wikipedia article
                         example: "https://en.wikipedia.org/wiki/Albert_Einstein"
                       results:
                         type: array
@@ -91,20 +87,22 @@ paths:
                           properties:
                             topic:
                               type: string
-                              description: Topic label.
+                              description: Topic label
                               example: "STEM.Physics"
                             score:
                               type: number
                               format: float
-                              description: Probability score (0.0–1.0).
-                              example: 0.95
+                              description: Probability score
+                              example: 0.9990700483322144
+                              minimum: 0.0
+                              maximum: 1.0
               example:
                 prediction:
                   article: "https://en.wikipedia.org/wiki/Albert_Einstein"
                   results:
                     - topic: "STEM.Physics"
-                      score: 0.95
+                      score: 0.9990700483322144
                     - topic: "Culture.Biography.Biography*"
-                      score: 0.87
+                      score: 0.8267217874526978
         "400":
-          description: Invalid input.
+          description: Invalid input

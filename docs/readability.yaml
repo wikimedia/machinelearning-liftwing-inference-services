@@ -1,17 +1,19 @@
 openapi: "3.0.0"
 info:
   title: Readability — Lift Wing inference service
-  description: |
-    Predicts the readability score of a Wikipedia revision using a BERT-based
-    classifier. Returns a readability score and a Flesch–Kincaid grade-level
-    proxy.
-  version: "1.0"
+  version: v1
 servers:
   - url: https://api.wikimedia.org
 paths:
   /service/lw/inference/v1/models/readability:predict:
     post:
       summary: Predict readability of a Wikipedia revision
+      description: |
+        Predicts the readability score of a Wikipedia revision using a BERT-based
+        classifier. The readability score is a rough proxy to capture how difficult
+        it is for a reader to understand the text of the article. Returns a readability
+        score and a Flesch–Kincaid grade-level proxy. For more information and supported
+        languages, see the [model card](https://meta.wikimedia.org/wiki/Special:MyLanguage/Machine_learning_models/Production/Multilingual_readability_model_card).
       operationId: readabilityPredict
       requestBody:
         required: true
@@ -23,18 +25,18 @@ paths:
               properties:
                 rev_id:
                   type: integer
-                  description: Wikipedia revision ID.
+                  description: Wikipedia revision identifier
                   example: 123456789
                 lang:
                   type: string
-                  description: ISO language code of the Wikipedia (e.g. "en").
+                  description: Language code of the Wikipedia
                   example: "en"
             example:
               rev_id: 123456789
               lang: "en"
       responses:
         "200":
-          description: Successful prediction.
+          description: Successful prediction
           content:
             application/json:
               schema:
@@ -42,17 +44,19 @@ paths:
                 properties:
                   model_name:
                     type: string
+                    description: Name of the machine learning model
                     example: "readability"
                   model_version:
                     type: string
+                    description: Version of the machine learning model
                     example: "1.0"
                   wiki_db:
                     type: string
-                    description: Wiki database name.
+                    description: Wiki database name
                     example: "enwiki"
                   revision_id:
                     type: integer
-                    description: The input revision ID.
+                    description: Revision identifier
                     example: 123456789
                   output:
                     type: object
@@ -60,20 +64,22 @@ paths:
                       score:
                         type: number
                         format: float
-                        description: Readability score (0.0–1.0, higher = more readable).
-                        example: 0.75
+                        description: Readability score. A higher score is more readable.
+                        example: 0.6433582305908203
+                        minimum: 0.0
+                        maximum: 1.0
                       fk_score_proxy:
                         type: number
                         format: float
-                        description: Flesch–Kincaid grade-level proxy.
-                        example: 12.3
+                        description: Flesch–Kincaid grade-level proxy
+                        example: 9.397851597845303
               example:
                 model_name: "readability"
-                model_version: "1.0"
+                model_version: v1
                 wiki_db: "enwiki"
                 revision_id: 123456789
                 output:
-                  score: 0.75
-                  fk_score_proxy: 12.3
+                  score: 0.6433582305908203
+                  fk_score_proxy: 9.397851597845303
         "400":
-          description: Invalid input (missing lang/rev_id or unsupported language).
+          description: Invalid input (missing lang or rev_id, or unsupported language)

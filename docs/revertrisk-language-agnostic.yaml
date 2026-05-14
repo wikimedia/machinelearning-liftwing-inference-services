@@ -1,17 +1,18 @@
 openapi: "3.0.0"
 info:
   title: Revert Risk Language-Agnostic — Lift Wing inference service
-  description: |
-    Predicts whether a Wikipedia edit is likely to be reverted, using a
-    language-agnostic model that works across multiple Wikipedia language
-    editions. Supports single revision, batch, and event-based inputs.
-  version: "1.0"
+  version: v1
 servers:
   - url: https://api.wikimedia.org
 paths:
   /service/lw/inference/v1/models/revertrisk-language-agnostic:predict:
     post:
-      summary: Predict revert risk for one or more Wikipedia revisions
+      summary: Predict revert risk for one or more Wikipedia revisions (language agnostic)
+      description: |
+        Predicts whether a Wikipedia edit is likely to be reverted, using a
+        language-agnostic model that works across multiple Wikipedia language
+        editions. Supports single revision, batch, and event-based inputs. For
+        more information, see the [model card](https://meta.wikimedia.org/wiki/Special:MyLanguage/Machine_learning_models/Production/Language-agnostic_revert_risk).
       operationId: revertriskLanguageAgnosticPredict
       requestBody:
         required: true
@@ -25,11 +26,11 @@ paths:
                   properties:
                     rev_id:
                       type: integer
-                      description: Wikipedia revision ID.
+                      description: Wikipedia revision identifier
                       example: 123456789
                     lang:
                       type: string
-                      description: ISO language code (e.g. "en").
+                      description: Language code
                       example: "en"
                 - type: object
                   title: Batch revisions
@@ -37,7 +38,7 @@ paths:
                   properties:
                     instances:
                       type: array
-                      description: List of revisions to check (max 20, all same language).
+                      description: List of revisions to check, all in the same language
                       maxItems: 20
                       items:
                         type: object
@@ -45,11 +46,11 @@ paths:
                         properties:
                           rev_id:
                             type: integer
-                            description: Wikipedia revision ID.
+                            description: Wikipedia revision identifier
                             example: 123456789
                           lang:
                             type: string
-                            description: ISO language code (e.g. "en").
+                            description: Language code
                             example: "en"
             examples:
               single:
@@ -67,7 +68,7 @@ paths:
                       lang: "en"
       responses:
         "200":
-          description: Successful prediction.
+          description: Successful prediction
           content:
             application/json:
               schema:
@@ -77,22 +78,26 @@ paths:
                     properties:
                       model_name:
                         type: string
+                        description: Name of the machine learning model
                         example: "revertrisk-language-agnostic"
                       model_version:
                         type: string
+                        description: Version of the machine learning model
                         example: "1.0"
                       wiki_db:
                         type: string
+                        description: Wiki database name
                         example: "enwiki"
                       revision_id:
                         type: integer
+                        description: Revision identifier
                         example: 123456789
                       output:
                         type: object
                         properties:
                           prediction:
                             type: boolean
-                            description: "`true` if the edit is likely to be reverted."
+                            description: Whether the edit is likely to be reverted
                             example: false
                           probabilities:
                             type: object
@@ -100,13 +105,13 @@ paths:
                               "true":
                                 type: number
                                 format: float
-                                description: Probability of revert.
-                                example: 0.12
+                                description: Probability of revert
+                                example: 0.3403553068637848
                               "false":
                                 type: number
                                 format: float
-                                description: Probability of not revert.
-                                example: 0.88
+                                description: Probability of not revert
+                                example: 0.6596446931362152
                     example:
                       model_name: "revertrisk-language-agnostic"
                       model_version: "1.0"
@@ -115,8 +120,8 @@ paths:
                       output:
                         prediction: false
                         probabilities:
-                          "true": 0.12
-                          "false": 0.88
+                          "true": 0.3403553068637848
+                          "false": 0.6596446931362152
                   - type: object
                     title: Batch response
                     properties:
@@ -127,14 +132,14 @@ paths:
                     example:
                       predictions:
                         - model_name: "revertrisk-language-agnostic"
-                          model_version: "1.0"
+                          model_version: v1
                           wiki_db: "enwiki"
                           revision_id: 123456789
                           output:
                             prediction: false
                             probabilities:
-                              "true": 0.12
-                              "false": 0.88
+                              "true": 0.3403553068637848
+                              "false": 0.6596446931362152
                         - model_name: "revertrisk-language-agnostic"
                           model_version: "1.0"
                           wiki_db: "enwiki"
@@ -142,7 +147,7 @@ paths:
                           output:
                             prediction: true
                             probabilities:
-                              "true": 0.78
-                              "false": 0.22
+                              "true": 0.3403553068637848
+                              "false": 0.6596446931362152
         "400":
-          description: Invalid input.
+          description: Invalid input

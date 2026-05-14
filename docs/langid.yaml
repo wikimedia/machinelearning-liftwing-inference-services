@@ -1,10 +1,6 @@
 openapi: "3.0.0"
 info:
   title: Language Identification — Lift Wing inference service
-  description: |
-    Identifies the language of a given text using a fastText language
-    identification model. Returns the detected language code, wikicode,
-    language name, and confidence score.
   version: v1
 servers:
   - url: https://api.wikimedia.org
@@ -12,6 +8,9 @@ paths:
   /service/lw/inference/v1/models/langid:predict:
     post:
       summary: Identify the language of a text
+      description: |
+        Identifies the language of a given text using a fastText language
+        identification model. For more information, see the [model card](https://meta.wikimedia.org/wiki/Special:MyLanguage/Machine_learning_models/Production/Language_Identification).
       operationId: langidPredict
       requestBody:
         required: true
@@ -29,7 +28,7 @@ paths:
               text: "Wikipedia is a free online encyclopedia that anyone can edit."
       responses:
         "200":
-          description: Successful prediction.
+          description: Successful prediction
           content:
             application/json:
               schema:
@@ -37,25 +36,27 @@ paths:
                 properties:
                   language:
                     type: string
-                    description: Detected language code.
+                    description: Detected language code
                     example: "en"
                   wikicode:
                     type: string
-                    description: Wikimedia language code.
+                    description: Wikimedia language code
                     example: "en"
                   languagename:
                     type: string
-                    description: Full English language name.
+                    description: Full language name in English
                     example: "English"
                   score:
                     type: number
                     format: float
-                    description: Confidence score (0.0–1.0).
-                    example: 0.98
+                    description: Confidence score
+                    example: 0.9393832683563232
+                    minimum: 0.0
+                    maximum: 1.0
               example:
                 language: "en"
                 wikicode: "en"
                 languagename: "English"
-                score: 0.98
+                score: 0.9393832683563232
         "400":
-          description: Invalid input.
+          description: Invalid input

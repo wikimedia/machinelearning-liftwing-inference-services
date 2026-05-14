@@ -1,18 +1,19 @@
 openapi: "3.0.0"
 info:
   title: Article Country — Lift Wing inference service
-  description: |
-    Predicts the country or countries associated with a Wikipedia article
-    based on Wikidata properties, Wikipedia categories, and cross-wiki
-    link analysis. Returns scored country predictions with evidence
-    breakdown.
-  version: "1"
+  version: v1
 servers:
   - url: https://api.wikimedia.org
 paths:
   /service/lw/inference/v1/models/article-country:predict:
     post:
       summary: Predict countries associated with a Wikipedia article
+      description: |
+        Predicts the country or countries associated with a Wikipedia article
+        based on Wikidata properties, Wikipedia categories, and cross-wiki
+        link analysis. Returns scored country predictions with evidence
+        breakdown. For more information, see the
+        [model card](https://meta.wikimedia.org/wiki/Special:MyLanguage/Machine_learning_models/Production/Article_country).
       operationId: articleCountryPredict
       requestBody:
         required: true
@@ -24,18 +25,18 @@ paths:
               properties:
                 lang:
                   type: string
-                  description: ISO language code (e.g. "en").
+                  description: Language code
                   example: "en"
                 title:
                   type: string
-                  description: Wikipedia page title.
+                  description: Wikipedia page title
                   example: "Eiffel Tower"
             example:
               lang: "en"
               title: "Eiffel Tower"
       responses:
         "200":
-          description: Successful prediction.
+          description: Successful prediction
           content:
             application/json:
               schema:
@@ -43,20 +44,22 @@ paths:
                 properties:
                   model_name:
                     type: string
+                    description: Name of the machine learning model
                     example: "article-country"
                   model_version:
                     type: string
+                    description: Version of the machine learning model
                     example: "1"
                   prediction:
                     type: object
                     properties:
                       article:
                         type: string
-                        description: URL to the Wikipedia article.
+                        description: URL to the Wikipedia article
                         example: "https://en.wikipedia.org/wiki/Eiffel_Tower"
                       wikidata_item:
                         type: string
-                        description: Wikidata QID of the article.
+                        description: Wikidata QID of the article
                         example: "Q243"
                       results:
                         type: array
@@ -65,35 +68,35 @@ paths:
                           properties:
                             country:
                               type: string
-                              description: Country name.
+                              description: Country name
                               example: "France"
                             score:
                               type: number
                               format: float
-                              description: Normalised confidence score.
+                              description: Normalised confidence score
                               example: 0.95
                             source:
                               type: object
-                              description: Evidence breakdown.
+                              description: Evidence breakdown
                               properties:
                                 wikidata_properties:
                                   type: array
                                   items:
                                     type: object
-                                  description: Wikidata property evidence.
+                                  description: Wikidata property evidence
                                 categories:
                                   type: array
                                   items:
                                     type: string
-                                  description: Wikipedia category evidence.
+                                  description: Wikipedia category evidence
                                 links:
                                   type: array
                                   items:
                                     type: object
-                                  description: Wikilink evidence.
+                                  description: Wikilink evidence
               example:
                 model_name: "article-country"
-                model_version: "1"
+                model_version: v1
                 prediction:
                   article: "https://en.wikipedia.org/wiki/Eiffel_Tower"
                   wikidata_item: "Q243"
@@ -110,4 +113,4 @@ paths:
                             count: 12
                             prop-tfidf: 0.45
         "400":
-          description: Invalid input.
+          description: Invalid input

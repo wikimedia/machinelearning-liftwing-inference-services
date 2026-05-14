@@ -1,17 +1,18 @@
 openapi: "3.0.0"
 info:
   title: Reference Need — Lift Wing inference service
-  description: |
-    Predicts whether a Wikipedia edit is likely to need a reference. Given a
-    revision ID and language, it scores how likely it is that the edit adds
-    content requiring a citation.
-  version: "1.0"
+  version: v1
 servers:
   - url: https://api.wikimedia.org
 paths:
   /service/lw/inference/v1/models/reference-need:predict:
     post:
-      summary: Predict reference need for a Wikipedia revision
+      summary: Predict missing references in a Wikipedia revision
+      description: |
+        Predicts whether a Wikipedia edit is likely to need a reference. Given a
+        revision ID and language, it scores how likely it is that the edit adds
+        content requiring a citation. For more information and for language support,
+        see the [model card](https://meta.wikimedia.org/wiki/Special:MyLanguage/Machine_learning_models/Production/Multilingual_reference_need).
       operationId: referenceNeedPredict
       requestBody:
         required: true
@@ -23,18 +24,18 @@ paths:
               properties:
                 rev_id:
                   type: integer
-                  description: Wikipedia revision ID.
+                  description: Wikipedia revision identifier
                   example: 123456789
                 lang:
                   type: string
-                  description: ISO language code (e.g. "en").
+                  description: Language code
                   example: "en"
             example:
               rev_id: 123456789
               lang: "en"
       responses:
         "200":
-          description: Successful prediction.
+          description: Successful prediction
           content:
             application/json:
               schema:
@@ -42,26 +43,32 @@ paths:
                 properties:
                   model_name:
                     type: string
+                    description: Name of the machine learning model
                     example: "reference-need"
                   model_version:
                     type: string
+                    description: Version of the machine learning model
                     example: "1.0"
                   wiki_db:
                     type: string
+                    description: Wiki database name
                     example: "enwiki"
                   revision_id:
                     type: integer
+                    description: Revision identifier
                     example: 123456789
                   reference_need_score:
                     type: number
                     format: float
-                    description: Score indicating how likely the edit needs a reference (0.0–1.0).
-                    example: 0.72
+                    description: Score indicating how likely the edit needs a reference
+                    example: 0.9230769230769231
+                    minimum: 0.0
+                    maximum: 1.0
               example:
                 model_name: "reference-need"
-                model_version: "1.0"
+                model_version: v1
                 wiki_db: "enwiki"
                 revision_id: 123456789
-                reference_need_score: 0.72
+                reference_need_score: 0.9230769230769231
         "400":
-          description: Invalid input.
+          description: Invalid input

@@ -1,18 +1,16 @@
 openapi: "3.0.0"
 info:
   title: Reference Risk — Lift Wing inference service
-  description: |
-    Predicts the risk that a reference in a Wikipedia edit will be reverted.
-    Given a revision ID and language, it returns a risk score along with
-    reference count and survival ratio metrics. Optionally returns detailed
-    reference information.
-  version: "0.5"
+  version: v1
 servers:
   - url: https://api.wikimedia.org
 paths:
   /service/lw/inference/v1/models/reference-risk:predict:
     post:
-      summary: Predict reference risk for a Wikipedia revision
+      summary: Predict revert risk for a reference in a Wikipedia revision
+      description: |
+        Predicts the risk that a reference in a Wikipedia edit will be reverted.
+        For more information, see the [model card](https://meta.wikimedia.org/wiki/Special:MyLanguage/Machine_learning_models/Production/Language-agnostic_reference_risk).
       operationId: referenceRiskPredict
       requestBody:
         required: true
@@ -24,15 +22,15 @@ paths:
               properties:
                 rev_id:
                   type: integer
-                  description: Wikipedia revision ID.
+                  description: Wikipedia revision identifier
                   example: 123456789
                 lang:
                   type: string
-                  description: ISO language code (e.g. "en").
+                  description: Language code
                   example: "en"
                 extended_output:
                   type: boolean
-                  description: When true, includes a detailed `references` array in the response.
+                  description: When true, includes a detailed list of references in the response
                   default: false
                   example: false
             example:
@@ -40,7 +38,7 @@ paths:
               lang: "en"
       responses:
         "200":
-          description: Successful prediction.
+          description: Successful prediction
           content:
             application/json:
               schema:
@@ -48,42 +46,62 @@ paths:
                 properties:
                   model_name:
                     type: string
+                    description: Name of the machine learning model
                     example: "reference-risk"
                   model_version:
                     type: string
+                    description: Version of the machine learning model
                     example: "0.5"
                   wiki_db:
                     type: string
+                    description: Wiki database name
                     example: "enwiki"
                   revision_id:
                     type: integer
+                    description: Revision identifier
                     example: 123456789
                   reference_count:
                     type: integer
-                    description: Number of references in the revision.
+                    description: Number of references in the revision
                     example: 23
                   survival_ratio:
-                    type: number
-                    format: float
-                    description: Ratio of references that survived in the revision.
-                    example: 0.87
+                    type: object
+                    description: Ratio of references that survived in the revision
+                    properties:
+                      min:
+                        type: number
+                        format: float
+                        example: 0.15462119220883494
+                      mean:
+                        type: number
+                        format: float
+                        example: 0.6825915126679182
+                      median:
+                        type: number
+                        format: float
+                        example: 0.7154859966638077
                   reference_risk_score:
                     type: number
                     format: float
-                    description: Risk score indicating how likely references are to be reverted (0.0–1.0).
+                    description: Risk score indicating how likely references are to be reverted
                     example: 0.12
+                    minimum: 0.0
+                    maximum: 1.0
                   references:
                     type: array
-                    description: Detailed reference list (only with extended_output=true).
+                    description: Detailed reference list (only with extended_output=true)
                     items:
                       type: object
               example:
                 model_name: "reference-risk"
-                model_version: "0.5"
+                model_version: v1
                 wiki_db: "enwiki"
                 revision_id: 123456789
                 reference_count: 23
-                survival_ratio: 0.87
+                survival_ratio:
+                  min: 0.15462119220883494
+                  mean: 0.6825915126679182
+                  median: 0.7154859966638077
                 reference_risk_score: 0.12
         "400":
-          description: Invalid input.
+          description: Invalid input
