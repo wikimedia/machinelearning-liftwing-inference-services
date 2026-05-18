@@ -77,19 +77,42 @@ paths:
         "200":
           description: Successful prediction
           content:
-            application/json:
+            text/plain:
               schema:
                 type: object
                 properties:
+                  message:
+                    type: string
+                    description: Status message (empty string on success)
+                    example: ""
+                  batchId:
+                    type: string
+                    description: Unique identifier for the batch request
+                    example: "8a82676f-091c-4a1b-a4b1-a0d5a8f94145"
                   predictions:
                     type: array
                     items:
                       type: object
                       properties:
-                        status_code:
-                          type: integer
-                          description: HTTP status for this instance (200 = success, 400 = malformed)
-                          example: 200
+                        check_type:
+                          type: string
+                          description: Type of edit check
+                          enum: [tone, npov, weasel]
+                          example: "tone"
+                        details:
+                          type: object
+                          description: Additional details (SHAP values if requested)
+                          properties:
+                            violations:
+                              type: array
+                              items:
+                                type: array
+                              description: Top-3 violating tokens with their SHAP values
+                          example: {}
+                        language:
+                          type: string
+                          description: Language code
+                          example: "en"
                         model_name:
                           type: string
                           description: Name of the machine learning model
@@ -98,15 +121,6 @@ paths:
                           type: string
                           description: Version of the machine learning model
                           example: "v1"
-                        check_type:
-                          type: string
-                          description: Type of edit check
-                          enum: [tone, npov, weasel]
-                          example: "tone"
-                        language:
-                          type: string
-                          description: Language code
-                          example: "en"
                         page_title:
                           type: string
                           description: Page title
@@ -119,29 +133,25 @@ paths:
                           type: number
                           format: float
                           description: Confidence score of the prediction
-                          example: 0.937
+                          example: 0.83
                           minimum: 0.0
                           maximum: 1.0
-                        details:
-                          type: object
-                          description: Additional details (SHAP values if requested)
-                          properties:
-                            violations:
-                              type: array
-                              items:
-                                type: array
-                              description: Top-3 violating tokens with their SHAP values
-                          example: {}
+                        status_code:
+                          type: integer
+                          description: HTTP status for this instance (200 = success, 400 = malformed)
+                          example: 200
               example:
+                message: ""
+                batchId: "8a82676f-091c-4a1b-a4b1-a0d5a8f94145"
                 predictions:
-                  - status_code: 200
+                  - check_type: "tone"
+                    details: {}
+                    language: "en"
                     model_name: "edit-check"
                     model_version: "v1"
-                    check_type: "tone"
-                    language: "en"
                     page_title: "Albert Einstein"
                     prediction: true
-                    probability: 0.937
-                    details: {}
+                    probability: 0.83
+                    status_code: 200
         "400":
           description: Invalid input (missing or malformed fields)

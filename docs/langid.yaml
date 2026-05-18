@@ -23,9 +23,9 @@ paths:
                 text:
                   type: string
                   description: Text to identify the language of. Newlines and tabs are normalised. Truncated to 100 characters.
-                  example: "Wikipedia is a free online encyclopedia that anyone can edit."
+                  example: "A wiki is a form of hypertext publication on the internet which is collaboratively edited and managed by its audience directly through a web browser."
             example:
-              text: "Wikipedia is a free online encyclopedia that anyone can edit."
+              text: "A wiki is a form of hypertext publication on the internet which is collaboratively edited and managed by its audience directly through a web browser."
       responses:
         "200":
           description: Successful prediction
@@ -37,7 +37,7 @@ paths:
                   language:
                     type: string
                     description: Detected language code
-                    example: "en"
+                    example: "eng_Latn"
                   wikicode:
                     type: string
                     description: Wikimedia language code
@@ -50,13 +50,13 @@ paths:
                     type: number
                     format: float
                     description: Confidence score
-                    example: 0.9393832683563232
+                    example: 0.392
                     minimum: 0.0
                     maximum: 1.0
               example:
-                language: "en"
+                language: "eng_Latn"
                 wikicode: "en"
                 languagename: "English"
-                score: 0.9393832683563232
+                score: 0.392
         "400":
           description: Invalid input
