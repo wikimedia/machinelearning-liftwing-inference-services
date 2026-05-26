@@ -1,0 +1,73 @@
+openapi: "3.0.0"
+info:
+  title: Language-Agnostic Article Quality — Lift Wing inference service
+  version: v1
+servers:
+  - url: https://api.wikimedia.org
+paths:
+  /service/lw/inference/v1/models/articlequality:predict:
+    post:
+      summary: Predict quality of a Wikipedia article (language agnostic)
+      description: |
+        Get a score that predicts the quality of any Wikipedia article for a given revision.
+        For more information, see the [model card](https://meta.wikimedia.org/wiki/Machine_learning_models/Production/Language-agnostic_Wikipedia_article_quality).
+      operationId: articleQualityLangAgnosticPredict
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - lang
+                - rev_id
+              properties:
+                lang:
+                  type: string
+                  description: Language code
+                  example: "en"
+                rev_id:
+                  type: integer
+                  description: Revision identifier
+                  example: 12345
+                extended_output:
+                  type: boolean
+                  description: |
+                    Whether the response should include the extended output of the model,
+                    such as the list of features used
+                  default: false
+      responses:
+        "200":
+          description: Successful prediction
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  score:
+                    type: number
+                    format: float
+                    description: Quality score
+                    example: 0.10391570042067477
+                  model_name:
+                    type: string
+                    description: Name of the machine learning model
+                    example: "articlequality"
+                  model_version:
+                    type: string
+                    description: Version of the machine learning model
+                    example: "1"
+                  wiki_db:
+                    type: string
+                    description: Wiki database name
+                    example: "enwiki"
+                  revision_id:
+                    type: integer
+                    description: Revision identifier
+                    example: 12345
+              example:
+                score: 0.10391570042067477
+                model_name: "articlequality"
+                model_version: "1"
+                wiki_db: "enwiki"
+                revision_id: 12345

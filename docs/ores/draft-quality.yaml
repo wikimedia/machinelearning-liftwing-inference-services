@@ -1,0 +1,64 @@
+openapi: "3.0.0"
+info:
+  title: Revscoring Draft Quality — Lift Wing inference service
+  version: v1
+servers:
+  - url: https://api.wikimedia.org
+paths:
+  /service/lw/inference/v1/models/{wiki}-draftquality:predict:
+    post:
+      summary: Predict quality of a Wikipedia draft
+      description: |
+        Get a score from the Revscoring Draft Quality models (previously hosted on ORES)
+        for a given revision. For more information and supported languages, see the
+        [model card](https://meta.wikimedia.org/wiki/Machine_learning_models#Revscoring_models).
+      operationId: draftQualityPredict
+      tags:
+        - Revscoring (formerly ORES)
+      parameters:
+        - name: wiki
+          in: path
+          required: true
+          description: Wiki database name
+          schema:
+            type: string
+            example: enwiki
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - rev_id
+              properties:
+                rev_id:
+                  type: integer
+                  description: Revision identifier
+                  example: 12345
+                extended_output:
+                  type: boolean
+                  description: |
+                    Whether the response should include the extended output of the model,
+                    such as the list of features used
+                  default: false
+      responses:
+        "200":
+          description: Successful prediction
+          content:
+            application/json:
+              example:
+                enwiki:
+                  models:
+                    draftquality:
+                      version: "0.8.2"
+                  scores:
+                    "12345":
+                      draftquality:
+                        score:
+                          prediction: "spam"
+                          probability:
+                            OK: 0.2058707138961481
+                            attack: 0.08356921917837876
+                            spam: 0.39768296325893626
+                            vandalism: 0.31287710366653687

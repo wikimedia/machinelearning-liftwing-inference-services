@@ -1,0 +1,57 @@
+openapi: "3.0.0"
+info:
+  title: Revscoring Item Quality — Lift Wing inference service
+  version: v1
+servers:
+  - url: https://api.wikimedia.org
+paths:
+  /service/lw/inference/v1/models/wikidatawiki-itemquality:predict:
+    post:
+      summary: Predict quality of a Wikidata item
+      description: |
+        Get a score from the Revscoring Item Quality models (previously hosted on ORES)
+        for a given revision. For more information and supported languages, see the
+        [model card](https://meta.wikimedia.org/wiki/Machine_learning_models#Revscoring_models).
+      operationId: itemQualityPredict
+      tags:
+        - Revscoring (formerly ORES)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - rev_id
+              properties:
+                rev_id:
+                  type: integer
+                  description: Revision identifier
+                  example: 12345
+                extended_output:
+                  type: boolean
+                  description: |
+                    Whether the response should include the extended output of the model,
+                    such as the list of features used
+                  default: false
+      responses:
+        "200":
+          description: Successful prediction
+          content:
+            application/json:
+              example:
+                wikidatawiki:
+                  models:
+                    itemquality:
+                      version: "0.5.0"
+                  scores:
+                    "12345":
+                      itemquality:
+                        score:
+                          prediction: "E"
+                          probability:
+                            A: 0.0007619706459774424
+                            B: 0.0010723569759644143
+                            C: 0.0034023775960190963
+                            D: 0.01523665595285363
+                            E: 0.9795266388291856

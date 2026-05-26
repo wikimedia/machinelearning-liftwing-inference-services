@@ -43,3 +43,23 @@ paths:
     $ref: ./reference-risk.yaml#/paths/~1service~1lw~1inference~1v1~1models~1reference-risk:predict
   /service/lw/inference/v1/models/edit-check:predict:
     $ref: ./edit-check.yaml#/paths/~1service~1lw~1inference~1v1~1models~1edit-check:predict
+  /service/lw/inference/v1/models/articlequality:predict:
+    $ref: ./article-quality-language-agnostic.yaml#/paths/~1service~1lw~1inference~1v1~1models~1articlequality:predict
+  /service/lw/inference/v1/models/{wiki}-articletopic:predict:
+    $ref: ./ores/article-topic.yaml#/paths/~1service~1lw~1inference~1v1~1models~1{wiki}-articletopic:predict
+  /service/lw/inference/v1/models/wikidatawiki-itemtopic:predict:
+    $ref: ./ores/item-topic.yaml#/paths/~1service~1lw~1inference~1v1~1models~1wikidatawiki-itemtopic:predict
+  /service/lw/inference/v1/models/{wiki}-articlequality:predict:
+    $ref: ./ores/article-quality.yaml#/paths/~1service~1lw~1inference~1v1~1models~1{wiki}-articlequality:predict
+  /service/lw/inference/v1/models/wikidatawiki-itemquality:predict:
+    $ref: ./ores/item-quality.yaml#/paths/~1service~1lw~1inference~1v1~1models~1wikidatawiki-itemquality:predict
+  /service/lw/inference/v1/models/{wiki}-draftquality:predict:
+    $ref: ./ores/draft-quality.yaml#/paths/~1service~1lw~1inference~1v1~1models~1{wiki}-draftquality:predict
+  /service/lw/inference/v1/models/{wiki}-drafttopic:predict:
+    $ref: ./ores/draft-topic.yaml#/paths/~1service~1lw~1inference~1v1~1models~1{wiki}-drafttopic:predict
+  /service/lw/inference/v1/models/{wiki}-damaging:predict:
+    $ref: ./ores/damaging.yaml#/paths/~1service~1lw~1inference~1v1~1models~1{wiki}-damaging:predict
+  /service/lw/inference/v1/models/{wiki}-goodfaith:predict:
+    $ref: ./ores/goodfaith.yaml#/paths/~1service~1lw~1inference~1v1~1models~1{wiki}-goodfaith:predict
+  /service/lw/inference/v1/models/{wiki}-reverted:predict:
+    $ref: ./ores/reverted.yaml#/paths/~1service~1lw~1inference~1v1~1models~1{wiki}-reverted:predict

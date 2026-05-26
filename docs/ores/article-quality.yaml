@@ -1,0 +1,66 @@
+openapi: "3.0.0"
+info:
+  title: Revscoring Article Quality — Lift Wing inference service
+  version: v1
+servers:
+  - url: https://api.wikimedia.org
+paths:
+  /service/lw/inference/v1/models/{wiki}-articlequality:predict:
+    post:
+      summary: Predict quality of a Wikipedia article
+      description: |
+        Get a score from the Revscoring Article Quality models (previously hosted on ORES)
+        for a given revision. For more information and supported languages, see the
+        [model card](https://meta.wikimedia.org/wiki/Machine_learning_models#Revscoring_models).
+      operationId: articleQualityPredict
+      tags:
+        - Revscoring (formerly ORES)
+      parameters:
+        - name: wiki
+          in: path
+          required: true
+          description: Wiki database name
+          schema:
+            type: string
+            example: enwiki
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - rev_id
+              properties:
+                rev_id:
+                  type: integer
+                  description: Revision identifier
+                  example: 12345
+                extended_output:
+                  type: boolean
+                  description: |
+                    Whether the response should include the extended output of the model,
+                    such as the list of features used
+                  default: false
+      responses:
+        "200":
+          description: Successful prediction
+          content:
+            application/json:
+              example:
+                enwiki:
+                  models:
+                    articlequality:
+                      version: "0.8.2"
+                  scores:
+                    "12345":
+                      articlequality:
+                        score:
+                          prediction: "Stub"
+                          probability:
+                            B: 0.04109666150848109
+                            C: 0.02060738177009099
+                            FA: 0.0029400688910391592
+                            GA: 0.004970401857774162
+                            Start: 0.17362493306327959
+                            Stub: 0.7567605529093352

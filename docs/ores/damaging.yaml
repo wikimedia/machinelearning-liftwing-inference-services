@@ -1,0 +1,65 @@
+openapi: "3.0.0"
+info:
+  title: Revscoring Damaging Edit — Lift Wing inference service
+  version: v1
+servers:
+  - url: https://api.wikimedia.org
+paths:
+  /service/lw/inference/v1/models/{wiki}-damaging:predict:
+    post:
+      summary: Predict damaging score for a revision
+      description: |
+        Get a score from the Revscoring Damaging Edit models (previously hosted on ORES)
+        for a given revision. For more information and supported languages, see the
+        [model card](https://meta.wikimedia.org/wiki/Machine_learning_models#Revscoring_models).
+
+        Warning: This model is [planned for deprecation](https://wikitech.wikimedia.org/wiki/ORES#Model_deprecation).
+        Use the multilingual revert risk or language-agnostic revert risk models instead.
+      operationId: damagingPredict
+      tags:
+        - Revscoring (formerly ORES)
+      parameters:
+        - name: wiki
+          in: path
+          required: true
+          description: Wiki database name
+          schema:
+            type: string
+            example: enwiki
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - rev_id
+              properties:
+                rev_id:
+                  type: integer
+                  description: Revision identifier
+                  example: 12345
+                extended_output:
+                  type: boolean
+                  description: |
+                    Whether the response should include the extended output of the model,
+                    such as the list of features used
+                  default: false
+      responses:
+        "200":
+          description: Successful prediction
+          content:
+            application/json:
+              example:
+                enwiki:
+                  models:
+                    damaging:
+                      version: "0.5.1"
+                  scores:
+                    "12345":
+                      damaging:
+                        score:
+                          prediction: false
+                          probability:
+                            "false": 0.744276020191829
+                            "true": 0.255723979808171

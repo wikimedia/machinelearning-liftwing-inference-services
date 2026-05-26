@@ -1,0 +1,55 @@
+openapi: "3.0.0"
+info:
+  title: Revscoring Item Topic — Lift Wing inference service
+  version: v1
+servers:
+  - url: https://api.wikimedia.org
+paths:
+  /service/lw/inference/v1/models/wikidatawiki-itemtopic:predict:
+    post:
+      summary: Predict topics of a Wikidata item
+      description: |
+        Get a score from the Revscoring Item Topic models (previously hosted on ORES)
+        for a given revision. For more information and supported languages, see the
+        [model card](https://meta.wikimedia.org/wiki/Machine_learning_models#Revscoring_models).
+      operationId: itemTopicPredict
+      tags:
+        - Revscoring (formerly ORES)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - rev_id
+              properties:
+                rev_id:
+                  type: integer
+                  description: Revision identifier
+                  example: 12345
+                extended_output:
+                  type: boolean
+                  description: |
+                    Whether the response should include the extended output of the model,
+                    such as the list of features used
+                  default: false
+      responses:
+        "200":
+          description: Successful prediction
+          content:
+            application/json:
+              example:
+                wikidatawiki:
+                  models:
+                    itemtopic:
+                      version: "1.2.0"
+                  scores:
+                    "12345":
+                      itemtopic:
+                        score:
+                          prediction:
+                            - "STEM.STEM*"
+                          probability:
+                            Culture.Biography.Biography*: 0.0037221493203970753
+                            Culture.Biography.Women: 0.0016274082204131065
