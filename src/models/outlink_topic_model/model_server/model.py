@@ -445,7 +445,7 @@ class OutlinksTopicModel(kserve.Model):
             name="output",
             shape=[1],
             datatype="BYTES",
-            data=[json.dumps(result)],
+            data=[json.dumps({"topics": result["topics"]})],
         )
         return InferResponse(
             response_id=str(uuid.uuid4()),

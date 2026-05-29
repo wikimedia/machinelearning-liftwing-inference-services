@@ -243,7 +243,7 @@ class TestPostprocess:
 
     @pytest.mark.asyncio
     async def test_v2_returns_infer_response(self, model):
-        """v2 should return InferResponse with encoded data."""
+        """v2 should return InferResponse with only topics in the encoded data."""
         model._is_v2_protocol = True
         model._is_grpc = False
 
@@ -255,7 +255,6 @@ class TestPostprocess:
         assert response.model_name == "test-model"
         assert len(response.outputs) == 1
 
-        # Check the data is properly encoded JSON string
         output_data = response.outputs[0].data[0]
         parsed = json.loads(output_data)
-        assert parsed == result
+        assert parsed == {"topics": result["topics"]}
