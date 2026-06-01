@@ -167,6 +167,25 @@ pipelines:
             name: '${setup.project}-article-country'
             tags: [stable]
 
+  editing-suggestions:
+    blubberfile: editing_suggestions/blubber.yaml
+    stages:
+      - name: run-test
+        build: test
+        run: true
+      - name: production
+        build: production
+
+  editing-suggestions-publish:
+    blubberfile: editing_suggestions/blubber.yaml
+    stages:
+      - name: publish
+        build: production
+        publish:
+          image:
+            name: '${setup.project}-editing-suggestions'
+            tags: [stable]
+
   edit-check:
     blubberfile: edit_check/blubber.yaml
     stages:

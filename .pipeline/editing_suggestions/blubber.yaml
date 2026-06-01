@@ -1,0 +1,99 @@
+# syntax=docker-registry.wikimedia.org/repos/releng/blubber/buildkit:v0.24.0
+version: v4
+base: docker-registry.wikimedia.org/bookworm:20241006
+runs:
+  insecurely: true
+  environment:
+    PYTHONPATH: /srv/editing_suggestions:/opt/lib/venv/lib/python3.11/site-packages
+
+lives:
+  in: /srv/editing_suggestions
+
+variants:
+  build:
+    python:
+      version: python3
+      use-system-site-packages: false
+      requirements: [src/models/editing_suggestions/requirements.txt, python/requirements.txt]
+    apt:
+      packages:
+        - build-essential
+        - python3-pip
+        - python3-dev
+        - python3-setuptools
+        - python3.11-venv
+
+  production:
+    copies:
+      - from: local
+        source: src/models/editing_suggestions/.
+        destination: .
+      - from: local
+        source: python
+        destination: python/
+      - from: build
+        source: /opt/lib/venv/lib/python3.11/site-packages
+        destination: /opt/lib/venv/lib/python3.11/site-packages
+      - from: local
+        source: model_server_entrypoint.sh
+        destination: entrypoint.sh
+      - from: local
+        source: common_settings.sh
+        destination: common_settings.sh
+    apt:
+      packages:
+        - python3
+        - python3-pip
+        - python3-distutils
+        - python3-setuptools
+        - python3.11-venv
+        - wmf-certificates
+    python:
+      version: python3
+      use-system-site-packages: false
+    entrypoint: ["./entrypoint.sh"]
+
+  test:
+    apt:
+      packages:
+        - python3-pip
+        - python3-setuptools
+        - python3.11-venv
+        - git
+    copies:
+      - from: local
+        source: src/models/editing_suggestions/.
+        destination: src/models/editing_suggestions
+      - from: local
+        source: tox.ini
+        destination: .
+      - from: local
+        source: .pre-commit-config.yaml
+        destination: .
+      - from: local
+        source: ci_entrypoint.sh
+        destination: entrypoint.sh
+      - from: local
+        source: ruff.toml
+        destination: .
+      - from: local
+        source: requirements-test.txt
+        destination: .
+      - from: local
+        source: python
+        destination: python/
+      - from: local
+        source: test/unit/__init__.py
+        destination: test/unit/__init__.py
+      - from: local
+        source: test/unit/editing_suggestions
+        destination: test/unit/editing_suggestions
+      - from: local
+        source: test/unit/python
+        destination: test/unit/python
+    builders:
+      - python:
+          version: python3
+          requirements: [src/models/editing_suggestions/requirements.txt, python/requirements.txt, requirements-test.txt]
+          use-system-site-packages: false
+    entrypoint: ["./entrypoint.sh", "ci-lint", "ci-unit"]

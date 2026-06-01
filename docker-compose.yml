@@ -269,3 +269,17 @@ services:
       WIKI_URL: "https://en.wikipedia.org"
     volumes:
       - ${PATH_TO_ENWIKI_GOODFAITH_MODEL:-/dummy/path}:/mnt/models/
+  editing-suggestions:
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: .pipeline/editing_suggestions/blubber.yaml
+      target: production
+    image: editing-suggestions:prod
+    ports:
+      - "8080:8080"
+    environment:
+      MODEL_NAME: "editing-suggestions"
+      MODEL_PATH: "/mnt/models/suggestions.csv"
+    volumes:
+      - ${PATH_TO_EDITING_SUGGESTIONS_MODEL:-/dummy/path}:/mnt/models/
