@@ -243,11 +243,17 @@ class TestPostprocess:
 
     @pytest.mark.asyncio
     async def test_v2_returns_infer_response(self, model):
-        """v2 should return InferResponse with only topics in the encoded data."""
+        """v2 should return InferResponse encoding the same prediction
+        schema as the v1 REST endpoint."""
         model._is_v2_protocol = True
         model._is_grpc = False
 
-        result = {"topics": [["Culture.Food_and_drink", 0.95]], "lang": "en"}
+        result = {
+            "topics": [["Culture.Food_and_drink", 0.95]],
+            "lang": "en",
+            "page_id": 5355,
+            "page_title": "Douglas_Adams",
+        }
 
         response = await model.postprocess(result)
 
@@ -257,4 +263,9 @@ class TestPostprocess:
 
         output_data = response.outputs[0].data[0]
         parsed = json.loads(output_data)
-        assert parsed == {"topics": result["topics"]}
+        assert parsed == {
+            "prediction": {
+                "article": "https://en.wikipedia.org/wiki/Douglas_Adams",
+                "results": [{"topic": "Culture.Food_and_drink", "score": 0.95}],
+            }
+        }

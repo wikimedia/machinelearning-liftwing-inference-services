@@ -425,27 +425,27 @@ class OutlinksTopicModel(kserve.Model):
     async def postprocess(
         self, result: dict, headers: dict = None, response_headers: dict = None
     ) -> Union[dict, InferResponse]:
+        topics = result["topics"]
+        lang = result["lang"]
+        page_id = result["page_id"]
+        page_title = result["page_title"]
+        if page_title is not None:
+            article_url = f"https://{lang}.wikipedia.org/wiki/{page_title}"
+        else:
+            article_url = f"https://{lang}.wikipedia.org/wiki?curid={page_id}"
+        prediction = {
+            "article": article_url,
+            "results": [{"topic": t[0], "score": t[1]} for t in topics],
+        }
+
         if not self._is_v2_protocol:
-            topics = result["topics"]
-            lang = result["lang"]
-            page_id = result["page_id"]
-            page_title = result["page_title"]
-            if page_title is not None:
-                article_url = f"https://{lang}.wikipedia.org/wiki/{page_title}"
-            else:
-                article_url = f"https://{lang}.wikipedia.org/wiki?curid={page_id}"
-            return {
-                "prediction": {
-                    "article": article_url,
-                    "results": [{"topic": t[0], "score": t[1]} for t in topics],
-                }
-            }
+            return {"prediction": prediction}
 
         output = InferOutput(
             name="output",
             shape=[1],
             datatype="BYTES",
-            data=[json.dumps({"topics": result["topics"]})],
+            data=[json.dumps({"prediction": prediction})],
         )
         return InferResponse(
             response_id=str(uuid.uuid4()),
