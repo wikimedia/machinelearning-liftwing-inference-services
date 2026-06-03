@@ -1,6 +1,8 @@
-# syntax=docker-registry.wikimedia.org/repos/releng/blubber/buildkit:v1.0.1
+# syntax=docker-registry.wikimedia.org/repos/releng/blubber/buildkit:v1.1.0
 version: v4
-base: docker-registry.wikimedia.org/bookworm:20260531
+base: docker-registry.wikimedia.org/httpd:2.4.67-1-20260531
+runs:
+  insecurely: false
 
 lives:
   in: /srv/app
@@ -9,11 +11,15 @@ variants:
   production:
     copies:
       - from: local
-        source: src/models/liftwing_openapi_server/.
-        destination: .
-    python:
-      version: python3
-      use-system-site-packages: true
-      no-deps: false
-    entrypoint: ["python3", "-c", "print('stub')"]
-    # work around to fix: https://gerrit.wikimedia.org/r/c/machinelearning/liftwing/inference-services/+/1296942/comments/f3795845_4c622135
+        source: docs
+        destination: docs
+      - from: local
+        source: src/models/liftwing_openapi_server/httpd.conf
+        destination: apache2.conf
+      - from: local
+        source: src/models/liftwing_openapi_server/liftwingspec.conf
+        destination: liftwingspec.conf
+      - from: local
+        source: src/models/liftwing_openapi_server/entrypoint.sh
+        destination: entrypoint.sh
+    entrypoint: ["./entrypoint.sh"]

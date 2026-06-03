@@ -298,3 +298,12 @@ services:
       MODEL_PATH: "/mnt/models/suggestions.csv"
     volumes:
       - ${PATH_TO_EDITING_SUGGESTIONS_MODEL:-/dummy/path}:/mnt/models/
+  liftwing-openapi-server:
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: .pipeline/liftwing_openapi_server/blubber.yaml
+      target: production
+    image: liftwing-openapi-server:prod
+    ports:
+      - "8081:8080"
