@@ -4,7 +4,7 @@ base: docker-registry.wikimedia.org/ml/amd-vllm014:gfx90agfx942rocm7.0.0pytorch2
 runs:
   insecurely: true
   environment:
-    PYTHONPATH: /srv/venv/lib/python3.11/site-packages:/opt/lib/venv/lib/python3.11/site-packages:/srv/app:/srv/venv/bin/python3
+    PYTHONPATH: /opt/lib/venv/lib/python3.11/site-packages:/srv/venv/lib/python3.11/site-packages:/srv/app:/srv/venv/bin/python3
     PATH: $PATH:/srv/app
     # Overwrite proxy variables with empty strings
     http_proxy:
