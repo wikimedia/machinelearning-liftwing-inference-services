@@ -169,3 +169,71 @@ Notes:
   PyTorch/HIP cannot initialize the GPU even though `rocm-smi` works.
 - `HIP_VISIBLE_DEVICES`: Controls which GPU is visible to the container. Set to
   whichever device has free VRAM (check with `rocm-smi`).
+
+## CoPE-B-A4B
+
+* Paper: https://arxiv.org/abs/2512.18027
+* Model Card: https://huggingface.co/zentropi-ai/cope-b-a4b
+* Model: https://huggingface.co/zentropi-ai/cope-b-a4b
+* Model license: Apache 2.0 License
+
+A Gemma-4-26B-A4B Mixture-of-Experts fine-tune by Zentropi, the 2nd-generation
+CoPE content policy evaluator. Like CoPE-A-9B it takes a natural language policy
+definition and content and outputs a single-token binary classification
+(0 = safe, 1 = violation), but with improved policy steerability and a much
+larger context window (256K tokens).
+
+Unlike CoPE-A-9B, this model is distributed under Apache 2.0 with the LoRA
+adapter already merged into the base, so no merge step is required: it can be
+run directly from the published weights.
+
+> [!NOTE]
+> This model-server uses HuggingFace transformers rather than vLLM. The `Gemma4ForCausalLM` architecture (model_type `gemma4_text`) [requires vLLM >= 0.19.0](https://github.com/vllm-project/vllm/pull/39291), which is newer than the vLLM 0.14 in the current `amd-vllm014` base image.
+>
+> On vLLM 0.14 the model falls back to the generic Transformers-MoE backend and fails to load (it cannot resolve the MoE `top_k` as shown in [P93623](https://phabricator.wikimedia.org/P93623)). Until a vLLM >= 0.19.0 base image is available, this server runs the model using HF transformers (see [P93624](https://phabricator.wikimedia.org/P93624)). This model-server has its own `requirements.txt` (kserve + transformers) rather than sharing `policy_violation/requirements.txt`, so that the two vLLM-based servers above keep their lean kserve-only dependency set.
+
+### How to run locally
+
+Requires at least [~52 GiB of free GPU VRAM](https://huggingface.co/zentropi-ai/cope-b-a4b#system-requirements) (BF16 weights). Preferred host: `ml-lab1002` (AMD Instinct MI210, 64 GiB VRAM).
+
+```bash
+docker run --rm -it \
+  --network host \
+  --device=/dev/kfd --device=/dev/dri \
+  --group-add video --group-add 105 \
+  -e HIP_VISIBLE_DEVICES=0 \
+  -e MODEL_NAME="cope-b-a4b" \
+  -e MODEL_PATH="/mnt/models" \
+  -e TRUST_REMOTE_CODE="True" \
+  -e http_proxy="http://webproxy:8080" \
+  -e https_proxy="http://webproxy:8080" \
+  -v /path/to/cope-b-a4b:/mnt/models \
+  -v $(pwd):/srv/app \
+  docker-registry.wikimedia.org/ml/amd-vllm014:gfx90agfx942rocm7.0.0pytorch2.10.0mori0.1flash-attn2.8.3aiter0.1.7vllm0.14-2 \
+  bash
+```
+
+Inside the container:
+
+```bash
+cd /srv/app/src/models/policy_violation/cope_b_a4b
+pip install -r requirements.txt
+python model.py
+```
+
+Query from another terminal:
+
+```bash
+curl -s localhost:8080/v1/models/cope-b-a4b:predict -X POST \
+  -H "Content-Type: application/json" \
+  -d '{
+    "content": "CLICK HERE TO WIN $10000!!! Visit http://totallylegit.biz NOW!!!",
+    "policy": "Content must not contain spam, phishing attempts, or deceptive links."
+  }'
+```
+
+Expected response:
+
+```json
+{"violation": 1}
+```
