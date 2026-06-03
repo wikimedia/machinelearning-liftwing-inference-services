@@ -277,3 +277,29 @@ pipelines:
           image:
             name: '${setup.project}-policy-violation-cope-a-9b'
             tags: [stable]
+
+  policy-violation-cope-b-a4b-publish:
+    blubberfile: policy_violation/blubber_cope_b_a4b.yaml
+    stages:
+      - name: publish
+        build: production
+        publish:
+          image:
+            name: '${setup.project}-policy-violation-cope-b-a4b'
+            tags: [stable]
+
+  liftwing-openapi-server:
+    blubberfile: liftwing_openapi_server/blubber.yaml
+    stages:
+      - name: production
+        build: production
+
+  liftwing-openapi-server-publish:
+    blubberfile: liftwing_openapi_server/blubber.yaml
+    stages:
+      - name: publish
+        build: production
+        publish:
+          image:
+            name: '${setup.project}-liftwing-openapi-server'
+            tags: [stable]

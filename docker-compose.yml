@@ -234,6 +234,21 @@ services:
       TRUST_REMOTE_CODE: "True"
     volumes:
       - ${PATH_TO_COPE_A_9B_MODEL:-/dummy/path}:/mnt/models/
+  policy-violation-cope-b-a4b:
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: .pipeline/policy_violation/blubber_cope_b_a4b.yaml
+      target: production
+    image: policy-violation-cope-b-a4b:prod
+    ports:
+      - "8081:8080"
+    environment:
+      MODEL_NAME: "cope-b-a4b"
+      MODEL_PATH: "/mnt/models"
+      TRUST_REMOTE_CODE: "True"
+    volumes:
+      - ${PATH_TO_COPE_B_A4B_MODEL:-/dummy/path}:/mnt/models/
   qwen36-27b-cpu:
     build:
       context: .

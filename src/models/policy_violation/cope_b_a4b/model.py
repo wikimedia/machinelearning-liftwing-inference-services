@@ -194,7 +194,7 @@ class CoPEBModel(kserve.Model):
         try:
             generated_text = inputs["generated_text"]
 
-            # CoPE-B outputs "0" or "1"
+            # CoPE-B outputs "0" or "1". If the output is unexpectedly not "0" or "1", log a warning and return None.
             if generated_text in ("0", "1"):
                 violation = int(generated_text)
             else:
