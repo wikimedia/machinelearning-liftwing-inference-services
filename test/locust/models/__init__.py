@@ -2,6 +2,7 @@ from .article_country import *  # noqa
 from .article_descriptions import *  # noqa
 from .articlequality import *  # noqa
 from .articletopic_outlink import *  # noqa
+from .editing_suggestions import *  # noqa
 from .embeddings import *  # noqa
 from .huggingface import *  # noqa
 from .logo_detection import *  # noqa
