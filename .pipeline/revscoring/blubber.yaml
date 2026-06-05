@@ -31,7 +31,6 @@ variants:
         - libxslt-dev
         - wmf-certificates
     builders:
-    builders:
       - custom:
           # install python3.10 as revscoring does not support python3.11 which is the default in bookworm
           command: [ "./revscoring_model/install_python310.sh" ]
