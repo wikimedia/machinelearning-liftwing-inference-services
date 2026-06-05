@@ -63,7 +63,6 @@ from src.models.outlink_topic_model.model_server.model import OutlinksTopicModel
                 "Q5413585",
                 "Q30174080",
                 "Q111043919",
-                "Q565",
                 "Q1107",
                 "Q5489942",
                 "Q17383933",

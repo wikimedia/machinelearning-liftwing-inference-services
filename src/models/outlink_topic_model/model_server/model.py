@@ -10,6 +10,7 @@ import aiohttp
 import fasttext
 import kserve
 import mwapi
+import mwapi.errors
 from fastapi import HTTPException
 from kserve.errors import InferenceError, InvalidInput
 from kserve.protocol.infer_type import InferOutput, InferRequest, InferResponse
@@ -25,6 +26,35 @@ from python.preprocess_utils import (
 )
 
 logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
+
+# MediaWiki API error codes for a permanent, client-side problem e.g. the page or
+# revision does not exist / is not accessible.
+PERMANENT_MW_ERROR_CODES = frozenset(
+    {
+        "nosuchrevid",
+        "missingtitle",
+        "invalidtitle",
+        "nosuchpageid",
+        "permissiondenied",
+    }
+)
+
+
+def _mwapi_api_error_code(exc: BaseException) -> Union[str, None]:
+    """Extract a MediaWiki API error code from an mwapi exception.
+
+    mwapi 0.6.1 re-wraps ``APIError`` as ``RequestError``, dropping ``.code`` but
+    keeping the message ``"<code>: <info> -- <content>"``, so we parse it back out.
+    """
+    code = getattr(exc, "code", None)
+    if code:
+        return code
+    head = str(exc).split(":", 1)[0].strip()
+    # API error codes are short single-token identifiers (e.g. "nosuchrevid");
+    # anything with whitespace is a transport-level message, so treat it as no code.
+    if head and head.replace("-", "").replace("_", "").isalnum():
+        return head
+    return None
 
 
 def load_wiki_languages(path: str) -> dict[str, str]:
@@ -235,14 +265,28 @@ class OutlinksTopicModel(kserve.Model):
         )
         session.headers["Host"] = f"{lang}.wikipedia.org"
 
-        # Step 1: Get links from specific revision via parse API
-        parse_result = await session.get(
-            action="parse",
-            oldid=revision_id,
-            prop="links",
-            format="json",
-            formatversion=2,
-        )
+        # Step 1: Get links from the specific revision via the parse API.
+        # A deleted/suppressed/nonexistent revision returns a permanent API error;
+        # surface it as InvalidInput (HTTP 400) instead of letting it become a 500.
+        try:
+            parse_result = await session.get(
+                action="parse",
+                oldid=revision_id,
+                prop="links",
+                format="json",
+                formatversion=2,
+            )
+        except (mwapi.errors.RequestError, mwapi.errors.APIError) as e:
+            code = _mwapi_api_error_code(e)
+            if code in PERMANENT_MW_ERROR_CODES:
+                raise HTTPException(
+                    status_code=HTTPStatus.BAD_REQUEST,
+                    detail=(
+                        f"Cannot fetch revision {revision_id} on "
+                        f"{lang}.wikipedia.org: MediaWiki API error '{code}'."
+                    ),
+                )
+            raise
         links = parse_result.get("parse", {}).get("links", [])
         # Filter to ns=0 and existing pages
         titles = [
@@ -398,6 +442,10 @@ class OutlinksTopicModel(kserve.Model):
                 else:
                     # Use fast query for current page state
                     outlinks = await self.get_outlinks(page_id=page_id, lang=lang)
+            except HTTPException:
+                # Client-side problem (e.g. a deleted/nonexistent revision_id);
+                # let the HTTP 400 through instead of masking it as a 500.
+                raise
             except Exception:
                 if self.EVENT_KEY in inputs:
                     logging.info("Logging source event: %s", inputs[self.EVENT_KEY])
