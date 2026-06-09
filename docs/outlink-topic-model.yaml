@@ -14,6 +14,8 @@ paths:
         structures. Supports identification by page ID or page title. For more
         information, see the [model card](https://meta.wikimedia.org/wiki/Special:MyLanguage/Machine_learning_models/Production/Language_agnostic_link-based_article_topic).
       operationId: outlinkTopicModelPredict
+      tags:
+        - Topics and descriptions
       requestBody:
         required: true
         content:

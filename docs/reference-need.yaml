@@ -14,6 +14,8 @@ paths:
         content requiring a citation. For more information and for language support,
         see the [model card](https://meta.wikimedia.org/wiki/Special:MyLanguage/Machine_learning_models/Production/Multilingual_reference_need).
       operationId: referenceNeedPredict
+      tags:
+        - Revision quality
       requestBody:
         required: true
         content:

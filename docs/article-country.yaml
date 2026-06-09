@@ -15,6 +15,8 @@ paths:
         breakdown. For more information, see the
         [model card](https://meta.wikimedia.org/wiki/Special:MyLanguage/Machine_learning_models/Production/Article_country).
       operationId: articleCountryPredict
+      tags:
+        - Countries and language
       requestBody:
         required: true
         content:

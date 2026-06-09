@@ -12,6 +12,8 @@ paths:
         Predicts the risk that a reference in a Wikipedia edit will be reverted.
         For more information, see the [model card](https://meta.wikimedia.org/wiki/Special:MyLanguage/Machine_learning_models/Production/Language-agnostic_reference_risk).
       operationId: referenceRiskPredict
+      tags:
+        - Revision quality
       requestBody:
         required: true
         content:

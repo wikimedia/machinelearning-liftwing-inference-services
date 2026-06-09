@@ -12,6 +12,8 @@ paths:
         Identifies the language of a given text using a fastText language
         identification model. For more information, see the [model card](https://meta.wikimedia.org/wiki/Special:MyLanguage/Machine_learning_models/Production/Language_Identification).
       operationId: langidPredict
+      tags:
+        - Countries and language
       requestBody:
         required: true
         content:

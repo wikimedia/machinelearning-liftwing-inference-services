@@ -14,6 +14,8 @@ paths:
         editions. Supports single revision, batch, and event-based inputs. For
         more information, see the [model card](https://meta.wikimedia.org/wiki/Special:MyLanguage/Machine_learning_models/Production/Language-agnostic_revert_risk).
       operationId: revertriskLanguageAgnosticPredict
+      tags:
+        - Revision quality
       requestBody:
         required: true
         content:

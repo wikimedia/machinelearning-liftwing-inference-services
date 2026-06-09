@@ -14,6 +14,8 @@ paths:
         and event-based inputs. For more information and for supported languages,
         see the [model card](https://meta.wikimedia.org/wiki/Special:MyLanguage/Machine_learning_models/Production/Multilingual_revert_risk).
       operationId: revertriskMultilingualPredict
+      tags:
+        - Revision quality
       requestBody:
         required: true
         content:

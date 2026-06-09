@@ -16,6 +16,8 @@ paths:
         of the article in multiple languages. For more information and for supported
         languages, see the [model card](https://meta.wikimedia.org/wiki/Special:MyLanguage/Machine_learning_models/Proposed/Article_descriptions).
       operationId: articleDescriptionsPredict
+      tags:
+        - Topics and descriptions
       requestBody:
         required: true
         content:
