@@ -1,10 +1,12 @@
+import asyncio
 import csv
 import json
 import logging
 import os
 import uuid
+from collections.abc import Awaitable
 from http import HTTPStatus
-from typing import Union
+from typing import Callable, Union
 
 import aiohttp
 import fasttext
@@ -39,6 +41,20 @@ PERMANENT_MW_ERROR_CODES = frozenset(
     }
 )
 
+# MediaWiki API error codes for transient, server-side problems that are
+# worth retrying.
+TRANSIENT_MW_ERROR_CODES = frozenset(
+    {
+        "maxlag",
+        "ratelimited",
+        "readonly",
+    }
+)
+
+# HTTP statuses raised by aiohttp (raise_for_status=True) that indicate a
+# transient server-side problem.
+RETRYABLE_HTTP_STATUS_CODES = frozenset({429, 500, 502, 503, 504})
+
 
 def _mwapi_api_error_code(exc: BaseException) -> Union[str, None]:
     """Extract a MediaWiki API error code from an mwapi exception.
@@ -55,6 +71,29 @@ def _mwapi_api_error_code(exc: BaseException) -> Union[str, None]:
     if head and head.replace("-", "").replace("_", "").isalnum():
         return head
     return None
+
+
+def _is_retryable_mw_error(exc: BaseException) -> bool:
+    """Decide whether a failed MW API call is worth retrying.
+
+    Retryable: timeouts, connection errors, HTTP 429/5xx and transient MW API
+    error codes (e.g. "ratelimited"). Permanent API errors (e.g. "nosuchrevid")
+    and other client-side problems are not.
+    """
+    # Covers mwapi.errors.TimeoutError and mwapi.errors.ConnectionError too,
+    # which subclass these.
+    if isinstance(exc, (asyncio.TimeoutError, aiohttp.ClientConnectionError)):
+        return True
+    # MW API application-level error: retry only known transient codes.
+    code = _mwapi_api_error_code(exc)
+    if code:
+        return code in TRANSIENT_MW_ERROR_CODES or code.startswith("internal_api_error")
+    # mwapi re-wraps aiohttp errors as RequestError, keeping the original
+    # exception as __cause__; HTTP errors from raise_for_status=True end up here.
+    cause = exc if isinstance(exc, aiohttp.ClientResponseError) else exc.__cause__
+    if isinstance(cause, aiohttp.ClientResponseError):
+        return cause.status in RETRYABLE_HTTP_STATUS_CODES
+    return False
 
 
 def load_wiki_languages(path: str) -> dict[str, str]:
@@ -85,6 +124,10 @@ class OutlinksTopicModel(kserve.Model):
         self.TLS_CERT_BUNDLE_PATH = "/etc/ssl/certs/wmf-ca-certificates.crt"
         self.CUSTOM_UA = "WMF ML Team outlink-topic-model svc"
         self.AIOHTTP_CLIENT_TIMEOUT = os.environ.get("AIOHTTP_CLIENT_TIMEOUT", 5)
+        self.MW_API_MAX_RETRIES = int(os.environ.get("MW_API_MAX_RETRIES", 2))
+        self.MW_API_RETRY_BASE_DELAY = float(
+            os.environ.get("MW_API_RETRY_BASE_DELAY", 0.5)
+        )
         self._http_client_session = {}
 
         set_log_level()
@@ -150,6 +193,34 @@ class OutlinksTopicModel(kserve.Model):
             )
         return self._http_client_session[endpoint]
 
+    async def _call_mw_api_with_retries(
+        self, make_call: Callable[[], Awaitable], description: str
+    ):
+        """Run an MW API call, retrying transient failures with exponential backoff.
+
+        Permanent errors (e.g. "nosuchrevid") are raised immediately so callers
+        can map them to client-side HTTP errors.
+        """
+        attempt = 0
+        while True:
+            try:
+                return await make_call()
+            except Exception as e:
+                if attempt >= self.MW_API_MAX_RETRIES or not _is_retryable_mw_error(e):
+                    raise
+                delay = self.MW_API_RETRY_BASE_DELAY * (2**attempt)
+                attempt += 1
+                logging.warning(
+                    "Transient MW API error on %s "
+                    "(attempt %d/%d failed, retrying in %.1fs): %r",
+                    description,
+                    attempt,
+                    self.MW_API_MAX_RETRIES + 1,
+                    delay,
+                    e,
+                )
+                await asyncio.sleep(delay)
+
     async def send_event(self) -> None:
         # Send a topic_prediction event to EventGate, generated from
         # the page_change event passed as input.
@@ -176,37 +247,48 @@ class OutlinksTopicModel(kserve.Model):
             session=self.get_http_client_session("mwapi"),
         )
         session.headers["Host"] = f"{lang}.wikipedia.org"
+
         # generate list of all outlinks (to namespace 0) from
-        # the article and their associated Wikidata IDs
-        result = await session.get(
-            action="query",
-            generator="links",
-            redirects="",
-            prop="pageprops",
-            ppprop="wikibase_item",
-            gplnamespace=0,
-            gpllimit=500,
-            format="json",
-            formatversion=2,
-            continuation=True,
-            pageids=page_id,
+        # the article and their associated Wikidata IDs.
+        # Errors surface while iterating the continuation generator, so the
+        # whole fetch is retried as a unit.
+        async def fetch_outlinks() -> set:
+            result = await session.get(
+                action="query",
+                generator="links",
+                redirects="",
+                prop="pageprops",
+                ppprop="wikibase_item",
+                gplnamespace=0,
+                gpllimit=500,
+                format="json",
+                formatversion=2,
+                continuation=True,
+                pageids=page_id,
+            )
+            outlink_qids = set()
+            try:
+                async for r in result:
+                    for outlink in r["query"]["pages"]:
+                        # namespace 0 and not a red link
+                        if outlink["ns"] == 0 and "missing" not in outlink:
+                            qid = outlink.get("pageprops", {}).get(
+                                "wikibase_item", None
+                            )
+                            if qid is not None:
+                                outlink_qids.add(qid)
+                    if len(outlink_qids) > limit:
+                        break
+            except KeyError as e:
+                logging.warning("%r Page ID: %s Lang: %s", e, str(page_id), lang)
+                logging.warning("MW API returned: %r", r)
+                if hasattr(self, "source_event"):
+                    logging.warning("Logging source event: %s", self.source_event)
+            return outlink_qids
+
+        outlink_qids = await self._call_mw_api_with_retries(
+            fetch_outlinks, f"outlinks query for page_id={page_id} ({lang})"
         )
-        outlink_qids = set()
-        try:
-            async for r in result:
-                for outlink in r["query"]["pages"]:
-                    # namespace 0 and not a red link
-                    if outlink["ns"] == 0 and "missing" not in outlink:
-                        qid = outlink.get("pageprops", {}).get("wikibase_item", None)
-                        if qid is not None:
-                            outlink_qids.add(qid)
-                if len(outlink_qids) > limit:
-                    break
-        except KeyError as e:
-            logging.warning("%r Page ID: %s Lang: %s", e, str(page_id), lang)
-            logging.warning("MW API returned: %r", r)
-            if hasattr(self, "source_event"):
-                logging.warning("Logging source event: %s", self.source_event)
         logging.debug(
             "%s (%s) fetched %d outlinks", str(page_id), lang, len(outlink_qids)
         )
@@ -269,12 +351,15 @@ class OutlinksTopicModel(kserve.Model):
         # A deleted/suppressed/nonexistent revision returns a permanent API error;
         # surface it as InvalidInput (HTTP 400) instead of letting it become a 500.
         try:
-            parse_result = await session.get(
-                action="parse",
-                oldid=revision_id,
-                prop="links",
-                format="json",
-                formatversion=2,
+            parse_result = await self._call_mw_api_with_retries(
+                lambda: session.get(
+                    action="parse",
+                    oldid=revision_id,
+                    prop="links",
+                    format="json",
+                    formatversion=2,
+                ),
+                f"parse query for revision_id={revision_id} ({lang})",
             )
         except (mwapi.errors.RequestError, mwapi.errors.APIError) as e:
             code = _mwapi_api_error_code(e)
@@ -314,13 +399,16 @@ class OutlinksTopicModel(kserve.Model):
 
         outlink_qids = set()
         for batch in batches:
-            result = await session.get(
-                action="query",
-                titles="|".join(batch),
-                prop="pageprops",
-                ppprop="wikibase_item",
-                format="json",
-                formatversion=2,
+            result = await self._call_mw_api_with_retries(
+                lambda batch=batch: session.get(
+                    action="query",
+                    titles="|".join(batch),
+                    prop="pageprops",
+                    ppprop="wikibase_item",
+                    format="json",
+                    formatversion=2,
+                ),
+                f"pageprops query for revision_id={revision_id} ({lang})",
             )
             for page in result.get("query", {}).get("pages", []):
                 qid = page.get("pageprops", {}).get("wikibase_item")
@@ -342,7 +430,10 @@ class OutlinksTopicModel(kserve.Model):
             session=self.get_http_client_session("mwapi"),
         )
         session.headers["Host"] = f"{lang}.wikipedia.org"
-        result = await session.get(action="query", titles=page_title)
+        result = await self._call_mw_api_with_retries(
+            lambda: session.get(action="query", titles=page_title),
+            f"page_id query for page_title='{page_title}' ({lang})",
+        )
         try:
             page_id = list(result["query"]["pages"].keys())[0]
         except KeyError as e:

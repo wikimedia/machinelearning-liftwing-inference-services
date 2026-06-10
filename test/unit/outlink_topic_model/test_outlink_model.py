@@ -1,6 +1,9 @@
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
+import aiohttp
+import mwapi.errors
 import pytest
+from fastapi import HTTPException
 from kserve.errors import InvalidInput
 
 from src.models.outlink_topic_model.model_server.model import OutlinksTopicModel
@@ -237,6 +240,58 @@ def model():
         m = OutlinksTopicModel("test-model")
         m.ready = True
         return m
+
+
+class TestMwApiRetries:
+    @pytest.fixture
+    def fast_model(self, model):
+        model.MW_API_MAX_RETRIES = 2
+        model.MW_API_RETRY_BASE_DELAY = 0
+        return model
+
+    @staticmethod
+    def _http_error(status: int) -> mwapi.errors.RequestError:
+        """Build a RequestError the way mwapi wraps an aiohttp HTTP error."""
+        err = mwapi.errors.RequestError(f"{status}, message='HTTP error'")
+        err.__cause__ = aiohttp.ClientResponseError(None, (), status=status)
+        return err
+
+    @pytest.mark.asyncio
+    async def test_get_outlinks_by_revision_retries_transient_errors(self, fast_model):
+        session = AsyncMock()
+        session.headers = {}
+        session.get.side_effect = [
+            mwapi.errors.TimeoutError("request timed out"),
+            self._http_error(503),
+            {"parse": {"links": [{"title": "Earth", "ns": 0, "exists": True}]}},
+            {"query": {"pages": [{"pageprops": {"wikibase_item": "Q2"}}]}},
+        ]
+        with patch("mwapi.AsyncSession", return_value=session):
+            qids = await fast_model.get_outlinks_by_revision(123, "en")
+        assert qids == {"Q2"}
+        assert session.get.call_count == 4
+
+    @pytest.mark.asyncio
+    async def test_permanent_error_is_not_retried_and_maps_to_400(self, fast_model):
+        session = AsyncMock()
+        session.headers = {}
+        # mwapi 0.6.1 re-wraps APIError as RequestError, keeping
+        # "<code>: <info> -- <content>" as the message.
+        session.get.side_effect = mwapi.errors.RequestError(
+            "nosuchrevid: There is no revision with ID 123 -- ."
+        )
+        with patch("mwapi.AsyncSession", return_value=session):
+            with pytest.raises(HTTPException) as exc_info:
+                await fast_model.get_outlinks_by_revision(123, "en")
+        assert exc_info.value.status_code == 400
+        assert session.get.call_count == 1
+
+    @pytest.mark.asyncio
+    async def test_gives_up_after_max_retries(self, fast_model):
+        make_call = AsyncMock(side_effect=mwapi.errors.TimeoutError("t"))
+        with pytest.raises(mwapi.errors.TimeoutError):
+            await fast_model._call_mw_api_with_retries(make_call, "test call")
+        assert make_call.call_count == 3  # initial attempt + 2 retries
 
 
 class TestPreprocessWikiId:
