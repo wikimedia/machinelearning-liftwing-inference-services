@@ -12,6 +12,8 @@ paths:
         Get a score that predicts the quality of any Wikipedia article for a given revision.
         For more information, see the [model card](https://meta.wikimedia.org/wiki/Machine_learning_models/Production/Language-agnostic_Wikipedia_article_quality).
       operationId: articleQualityLangAgnosticPredict
+      tags:
+        - Revision quality
       requestBody:
         required: true
         content:
@@ -30,12 +32,6 @@ paths:
                   type: integer
                   description: Revision identifier
                   example: 12345
-                extended_output:
-                  type: boolean
-                  description: |
-                    Whether the response should include the extended output of the model,
-                    such as the list of features used
-                  default: false
       responses:
         "200":
           description: Successful prediction

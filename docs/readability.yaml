@@ -31,7 +31,7 @@ paths:
                   example: 123456789
                 lang:
                   type: string
-                  description: Language code of the Wikipedia
+                  description: Language code
                   example: "en"
             example:
               rev_id: 123456789

@@ -16,7 +16,7 @@ paths:
         [model card](https://meta.wikimedia.org/wiki/Special:MyLanguage/Machine_learning_models/Production/Article_country).
       operationId: articleCountryPredict
       tags:
-        - Countries and language
+        - Countries, language, and translation
       requestBody:
         required: true
         content:

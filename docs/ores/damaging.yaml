@@ -14,7 +14,8 @@ paths:
         [model card](https://meta.wikimedia.org/wiki/Machine_learning_models#Revscoring_models).
 
         Warning: This model is [planned for deprecation](https://wikitech.wikimedia.org/wiki/ORES#Model_deprecation).
-        Use the multilingual revert risk or language-agnostic revert risk models instead.
+        Use the [multilingual revert risk](#/Revision%20quality/revertriskMultilingualPredict)
+        or [language-agnostic revert risk](#/Revision%20quality/revertriskLanguageAgnosticPredict) models instead.
       operationId: damagingPredict
       tags:
         - Revscoring (formerly ORES)

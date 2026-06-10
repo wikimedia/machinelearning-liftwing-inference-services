@@ -13,7 +13,7 @@ paths:
         identification model. For more information, see the [model card](https://meta.wikimedia.org/wiki/Special:MyLanguage/Machine_learning_models/Production/Language_Identification).
       operationId: langidPredict
       tags:
-        - Countries and language
+        - Countries, language, and translation
       requestBody:
         required: true
         content:

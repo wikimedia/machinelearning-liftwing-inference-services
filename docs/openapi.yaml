@@ -20,6 +20,11 @@ info:
   termsOfService: https://foundation.wikimedia.org/wiki/Special:MyLanguage/Policy:Terms_of_Use#12._API_Terms
 servers:
   - url: https://api.wikimedia.org
+tags:
+  - name: Revision quality
+  - name: Topics and descriptions
+  - name: Countries, language, and translation
+  - name: Revscoring (formerly ORES)
 paths:
   /service/lw/inference/v1/models/langid:predict:
     $ref: ./langid.yaml#/paths/~1service~1lw~1inference~1v1~1models~1langid:predict
@@ -63,3 +68,5 @@ paths:
     $ref: ./ores/goodfaith.yaml#/paths/~1service~1lw~1inference~1v1~1models~1{wiki}-goodfaith:predict
   /service/lw/inference/v1/models/{wiki}-reverted:predict:
     $ref: ./ores/reverted.yaml#/paths/~1service~1lw~1inference~1v1~1models~1{wiki}-reverted:predict
+  /service/lw/recommendation/api/v1/translation:
+    $ref: ./translation.yaml#/paths/~1service~1lw~1recommendation~1api~1v1~1translation

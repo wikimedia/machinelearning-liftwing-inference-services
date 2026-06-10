@@ -41,7 +41,7 @@ paths:
                     properties:
                       lang:
                         type: string
-                        description: ISO language code
+                        description: Language code
                         example: "en"
                       page_title:
                         type: string
