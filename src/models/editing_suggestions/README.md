@@ -1,6 +1,6 @@
 # Editing Suggestions
 
-The editing-suggestions inference service returns pre-computed editing suggestions for a Wikipedia page, keyed by `wiki_id` and `page_title`. Suggestions are loaded from a CSV model artifact at startup and served via in-memory lookup.
+The editing-suggestions inference service returns pre-computed editing suggestions for a Wikipedia page, keyed by `wiki_id` and `page_id`. Suggestions are loaded from a CSV model artifact at startup and served via in-memory lookup.
 
 * Model: rule-based lookup (no model binary)
 * Data artifact: `s3://wmf-ml-models/editing-suggestions/v1/suggestions.csv`
@@ -14,7 +14,7 @@ The editing-suggestions inference service returns pre-computed editing suggestio
 ```json
 {
   "wiki_id": "enwiki",
-  "page_title": "2025_Myanmar_earthquake"
+  "page_id": 81880701
 }
 ```
 
@@ -23,19 +23,22 @@ The editing-suggestions inference service returns pre-computed editing suggestio
 {
   "suggestions": [
     {
-      "revision_id": "1283418343",
-      "page_title": "2025_Myanmar_earthquake",
-      "title": "MOS:GEO",
-      "description": "...",
-      "target": "...",
-      "suggestion_id": "8a1c83da-4551-403c-bf7a-b8fc6217053d",
-      "wiki_id": "enwiki"
+      "revision_id": 1328789391,
+      "page_title": "2025_Taipei_stabbings",
+      "page_id": 81880701,
+      "suggestion_type": "simplify_language",
+      "description": "Divide the compound sentence into two separate sentences to make the information easier to read.",
+      "target": "A nationwide task force was formed to investigate these cases, and so far, three suspects have been caught and are set to face legal consequences.",
+      "wiki_id": "enwiki",
+      "suggestion_id": "8a8acacf-97c5-4e85-99f6-80d5920e012e",
+      "static_description": "Simplify language by keeping the meaning but making the wording clearer, shorter, or easier to read, such as replacing jargon or complex sentences with plain language",
+      "title": "Simplify language"
     }
   ]
 }
 ```
 
-Returns `{"suggestions": []}` when no suggestions exist for the given wiki/page. `wiki_id` and `page_title` must match the CSV exactly.
+Returns `{"suggestions": []}` when no suggestions exist for the given wiki/page. `wiki_id` and `page_id` must match the CSV exactly.
 
 ## How to run locally
 
@@ -76,7 +79,7 @@ In a second terminal:
 ```console
 curl -s localhost:8080/v1/models/editing-suggestions:predict -X POST \
   -H "Content-Type: application/json" \
-  -d '{"wiki_id": "enwiki", "page_title": "2025_Myanmar_earthquake"}'
+  -d '{"wiki_id": "enwiki", "page_id": 81880701}'
 ```
 
 Example with no matches:
@@ -84,7 +87,7 @@ Example with no matches:
 ```console
 curl -s localhost:8080/v1/models/editing-suggestions:predict -X POST \
   -H "Content-Type: application/json" \
-  -d '{"wiki_id": "enwiki", "page_title": "Nonexistent_Page"}'
+  -d '{"wiki_id": "enwiki", "page_id": 99999999}'
 ```
 
 ### 1.3. Stop
@@ -138,7 +141,7 @@ In a second terminal (use the same port you started the server on):
 ```console
 curl -s localhost:8080/v1/models/editing-suggestions:predict -X POST \
   -H "Content-Type: application/json" \
-  -d '{"wiki_id": "enwiki", "page_title": "2025_Myanmar_earthquake"}'
+  -d '{"wiki_id": "enwiki", "page_id": 81880701}'
 ```
 
 If you used `HTTP_PORT=8082`, change the URL to `localhost:8082`.

@@ -6,8 +6,8 @@ pages = pd.read_csv("data/editing_suggestions_locust.csv")
 
 
 def get_random_sample_from_df_input(df):
-    page_title, wiki_id = df.sample(n=1).squeeze().tolist()
-    return page_title, wiki_id
+    page_id, wiki_id = df.sample(n=1).squeeze().tolist()
+    return page_id, wiki_id
 
 
 class EditingSuggestions(FastHttpUser):
@@ -15,13 +15,13 @@ class EditingSuggestions(FastHttpUser):
 
     @task
     def get_prediction(self):
-        page_title, wiki_id = get_random_sample_from_df_input(pages)
+        page_id, wiki_id = get_random_sample_from_df_input(pages)
         headers = {
             "Content-Type": "application/json",
             "Host": "editing-suggestions.experimental.wikimedia.org",
         }
         self.client.post(
             "/v1/models/editing-suggestions:predict",
-            json={"wiki_id": wiki_id, "page_title": page_title},
+            json={"wiki_id": wiki_id, "page_id": int(page_id)},
             headers=headers,
         )
