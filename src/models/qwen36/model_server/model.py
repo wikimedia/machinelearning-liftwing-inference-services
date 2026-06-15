@@ -3,7 +3,6 @@ import os
 import time
 import uuid
 from collections.abc import AsyncGenerator
-from distutils.util import strtobool
 from typing import Union
 
 import kserve
@@ -21,6 +20,8 @@ from kserve.protocol.rest.openai.types import (
 from vllm import RequestOutput, SamplingParams
 from vllm.engine.arg_utils import AsyncEngineArgs
 from vllm.engine.async_llm_engine import AsyncLLMEngine
+
+from python.type_utils import strtobool
 
 logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
 

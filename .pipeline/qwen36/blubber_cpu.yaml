@@ -1,6 +1,6 @@
 # syntax=docker-registry.wikimedia.org/repos/releng/blubber/buildkit:v1.0.1
 version: v4
-base: vllm/vllm-openai-cpu:v0.16.0
+base: vllm/vllm-openai-cpu:v0.22.1
 runs:
   insecurely: true
   environment:

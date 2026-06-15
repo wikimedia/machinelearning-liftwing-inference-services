@@ -38,10 +38,10 @@ sys.modules["vllm.entrypoints.pooling.embed"] = _make_mock_package(
     "vllm.entrypoints.pooling.embed"
 )
 sys.modules["vllm.entrypoints.pooling.embed.protocol"] = MagicMock()
-sys.modules["vllm.entrypoints.pooling.score"] = _make_mock_package(
-    "vllm.entrypoints.pooling.score"
+sys.modules["vllm.entrypoints.pooling.scoring"] = _make_mock_package(
+    "vllm.entrypoints.pooling.scoring"
 )
-sys.modules["vllm.entrypoints.pooling.score.protocol"] = MagicMock()
+sys.modules["vllm.entrypoints.pooling.scoring.protocol"] = MagicMock()
 sys.modules["vllm.entrypoints.chat_utils"] = MagicMock()
 sys.modules["vllm.outputs"] = MagicMock()
 
