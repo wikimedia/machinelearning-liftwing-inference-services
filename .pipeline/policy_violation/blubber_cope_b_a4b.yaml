@@ -16,17 +16,21 @@ lives:
 
 variants:
   build:
-    python:
-      version: python3
-      requirements: [src/models/policy_violation/cope_b_a4b/requirements.txt, python/requirements.txt]
-      use-system-site-packages: true
-      no-deps: false
     apt:
       packages:
         - build-essential
         - cmake
         - git
         - pkg-config
+    builders:
+      - custom:
+          # fix issue where blubber's default python builder is not using the correct python version (3.12) and venv path
+          requirements: [src/models/policy_violation/cope_b_a4b/requirements.txt]
+          command: [ "/srv/venv/bin/python", "-m", "pip", "install", "-r", "src/models/policy_violation/cope_b_a4b/requirements.txt" ]
+      - custom:
+          # fix issue where blubber's default python builder is not using the correct python version (3.12) and venv path
+          requirements: [python/requirements.txt]
+          command: [ "/srv/venv/bin/python", "-m", "pip", "install", "-r", "python/requirements.txt" ]
 
 
   production:
@@ -46,8 +50,4 @@ variants:
         - wmf-certificates
         - libdrm-amdgpu1
         - g++
-    python:
-      version: python3
-      use-system-site-packages: true
-      no-deps: false
     entrypoint: ["./entrypoint.sh", "model.py"]
