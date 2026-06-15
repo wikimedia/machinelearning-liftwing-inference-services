@@ -40,9 +40,6 @@ variants:
       - from: build
         source: /srv/venv/lib/python3.12/site-packages
         destination: /srv/venv/lib/python3.12/site-packages
-      - from: local
-        source: common_settings.sh
-        destination: common_settings.sh
 
     apt:
       packages:
