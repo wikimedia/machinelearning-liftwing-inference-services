@@ -44,6 +44,12 @@ variants:
       - from: build
         source: /srv/venv/lib/python3.12/site-packages
         destination: /srv/venv/lib/python3.12/site-packages
+      - from: local
+        source: model_server_entrypoint_python312.sh
+        destination: entrypoint.sh
+      - from: local
+        source: common_settings_python312.sh
+        destination: common_settings.sh
 
     apt:
       packages:
