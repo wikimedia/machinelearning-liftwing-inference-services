@@ -111,11 +111,11 @@ class CoPEBModel(kserve.Model):
         # See: https://huggingface.co/zentropi-ai/cope-b-a4b#1-cope-b-uses-the-gemma-4-chat-template
         messages = [{"role": "user", "content": prompt}]
 
-        # Request top-k logprobs so postprocess can derive a confidence score
-        # from the verdict token's probability. Confidence is only meaningful
-        # for a deterministic verdict, i.e. temperature == 0.0 (greedy).
-        # vLLM SamplingParams.logprobs (returns top-k token logprobs per
-        # position): https://docs.vllm.ai/en/latest/api/vllm/sampling_params.html
+        # Request top-k logprobs so postprocess can derive the class
+        # probabilities from the verdict token. These probabilities are only
+        # meaningful for a deterministic verdict, i.e. temperature == 0.0
+        # (greedy). vLLM SamplingParams.logprobs (returns top-k token logprobs
+        # per position): https://docs.vllm.ai/en/latest/api/vllm/sampling_params.html
         sampling_params = SamplingParams(
             max_tokens=max_tokens,
             temperature=temperature,
@@ -149,7 +149,9 @@ class CoPEBModel(kserve.Model):
                 completion.logprobs[0] if completion.logprobs else None
             )
 
-            # Extract the logprob for the "0" and "1" tokens, if present.
+            # Extract the logprob for the "0" and "1" tokens, if present. These
+            # are used internally to compute p_safe / p_violation; the raw
+            # logprobs are not returned in the response.
             logprob_0 = None
             logprob_1 = None
             if first_token_logprobs:
@@ -172,7 +174,7 @@ class CoPEBModel(kserve.Model):
             raise InferenceError(error_message)
 
     def postprocess(self, inputs: dict, headers: dict[str, str] = None) -> dict:
-        """Parse the model output into a binary verdict plus a confidence score."""
+        """Parse the model output into a binary verdict plus class probabilities."""
         try:
             generated_text = inputs["generated_text"]
             logprob_0 = inputs.get("logprob_0")
@@ -191,28 +193,20 @@ class CoPEBModel(kserve.Model):
 
             result = {"violation": violation}
 
-            # Expose the positive-class (violation==1) probability and logprob so
-            # callers can threshold to trade recall for precision. Both are
-            # returned at full precision: CoPE-B is highly peaked, so exp(logprob)
-            # saturates toward 1.0 and loses resolution at extreme confidence,
-            # whereas the raw logprob preserves ordering and is the more robust
-            # signal for thresholding. Thresholds should be calibrated against a
-            # labeled sample of the caller's own traffic. Using the output token
-            # probability/logprob as a confidence signal, and the need to
+            # Expose the per-class probabilities so callers can threshold both
+            # positive and negative cases to trade recall for precision. Both
+            # are returned (rather than just one) because CoPE-B is highly
+            # peaked: at extreme confidence the winning class saturates toward
+            # 1.0 and loses resolution to rounding, while the losing class still
+            # carries usable precision. Probabilities should be calibrated
+            # against a labeled sample of the caller's own traffic; using the
+            # output token probability as a confidence signal, and the need to
             # recalibrate it, are described in the CoPE-B model card:
             # https://huggingface.co/zentropi-ai/cope-b-a4b#2-recalibrate-confidence-thresholds
             if logprob_1 is not None:
                 result["p_violation"] = math.exp(logprob_1)
-                result["logprob_violation"] = logprob_1
             if logprob_0 is not None:
                 result["p_safe"] = math.exp(logprob_0)
-                result["logprob_safe"] = logprob_0
-
-            # Confidence in the verdict actually returned.
-            if violation == 1 and logprob_1 is not None:
-                result["confidence"] = math.exp(logprob_1)
-            elif violation == 0 and logprob_0 is not None:
-                result["confidence"] = math.exp(logprob_0)
 
             return result
 
