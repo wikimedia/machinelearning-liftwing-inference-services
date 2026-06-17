@@ -1,6 +1,6 @@
 # syntax=docker-registry.wikimedia.org/repos/releng/blubber/buildkit:v1.1.0
 version: v4
-base: docker-registry.wikimedia.org/bookworm:20250608
+base: docker-registry.wikimedia.org/bookworm:20260510
 runs:
   insecurely: true
   environment:
