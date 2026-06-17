@@ -19,11 +19,15 @@ lives:
 
 variants:
   build:
-    python:
-      version: python3
-      requirements: [src/models/qwen36/requirements.txt, python/requirements.txt]
-      use-system-site-packages: true
-      no-deps: false
+    builders:
+      - custom:
+          # fix issue where blubber's default python builder is not using the correct python version (3.12) and venv path
+          requirements: [src/models/qwen36/requirements.txt]
+          command: ["/srv/venv/bin/python", "-m", "pip", "install", "-r", "src/models/qwen36/requirements.txt"]
+      - custom:
+          # fix issue where blubber's default python builder is not using the correct python version (3.12) and venv path
+          requirements: [python/requirements.txt]
+          command: ["/srv/venv/bin/python", "-m", "pip", "install", "-r", "python/requirements.txt"]
     apt:
       packages:
         - build-essential
