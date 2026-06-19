@@ -1,15 +1,11 @@
 # syntax=docker-registry.wikimedia.org/repos/releng/blubber/buildkit:v1.0.1
 version: v4
-base: docker-registry.wikimedia.org/ml/amd-vllm022:gfx90agfx942rocm7.2.0pytorch2.10.0flash-attn2.8.3aiter0.1.13vllm0.22.1
+base: docker-registry.wikimedia.org/ml/amd-vllm022:gfx90agfx942rocm7.2.0pytorch2.10.0flash-attn2.8.3aiter0.1.13vllm0.22.1-2
 runs:
   insecurely: true
   environment:
     PYTHONPATH: /srv/venv/lib/python3.12/site-packages:/srv/app
     PATH: $PATH:/srv/app
-    # Overwrite proxy variables with empty strings
-    http_proxy:
-    https_proxy:
-    no_proxy:
 
 lives:
   in: /srv/app
