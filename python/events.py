@@ -146,8 +146,9 @@ def generate_revision_score_event(
 
 def _build_user_entity(user: dict[str, Any]) -> dict[str, Any]:
     """Builds a user entity with only the fields defined in
-    fragment/mediawiki/state/entity/user/1.1.0, preventing extra fields
-    from upstream schema changes leaking into outbound events."""
+    fragment/mediawiki/state/entity/user/1.2.0, preventing extra fields
+    from upstream schema changes leaking into outbound events.
+    Note: user/1.2.0 also allows wiki_id, which we deliberately omit."""
     fields = (
         "edit_count",
         "groups",
@@ -166,9 +167,11 @@ def _build_page_entity(
     page: dict[str, Any], include_redirect_link: bool = True
 ) -> dict[str, Any]:
     """Builds a page entity with only the fields defined in
-    fragment/mediawiki/state/entity/page/2.0.0.
+    fragment/mediawiki/state/entity/page/2.2.0.
     Set include_redirect_link=False for prior_state.page and
-    created_redirect_page, which omit that sub-object in the schema."""
+    created_redirect_page, which omit that sub-object in the schema.
+    Note: page/2.2.0 also allows namespace_is_content, which we
+    deliberately omit."""
     result: dict[str, Any] = {
         "page_id": page["page_id"],
         "page_title": page["page_title"],
@@ -191,7 +194,9 @@ def _build_page_entity(
 
 def _build_revision_entity(revision: dict[str, Any]) -> dict[str, Any]:
     """Builds a revision entity with only the fields defined in
-    fragment/mediawiki/state/entity/revision/1.1.0."""
+    fragment/mediawiki/state/entity/revision/2.0.0.
+    Note: revision/2.0.0 also allows a revert object, which we
+    deliberately omit."""
     result: dict[str, Any] = {
         "rev_id": revision["rev_id"],
         "rev_dt": revision["rev_dt"],
@@ -230,7 +235,7 @@ def generate_prediction_classification_event(
         )
 
     event: dict[str, Any] = {
-        "$schema": "/mediawiki/page/prediction_classification_change/1.2.0",
+        "$schema": "/mediawiki/page/prediction_classification_change/1.3.0",
         "changelog_kind": source_event["changelog_kind"],
         "page_change_kind": source_event["page_change_kind"],
         "dt": source_event["dt"],
