@@ -28,6 +28,7 @@ variants:
           # fix issue where blubber's default python builder is not using the correct python version (3.12) and venv path
           requirements: [python/requirements.txt]
           command: ["/srv/venv/bin/python", "-m", "pip", "install", "-r", "python/requirements.txt"]
+
     apt:
       packages:
         - build-essential
