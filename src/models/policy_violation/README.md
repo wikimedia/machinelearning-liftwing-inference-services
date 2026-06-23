@@ -139,7 +139,7 @@ docker run --rm -it \
   -e https_proxy="http://webproxy:8080" \
   -v /path/to/cope-a-9b-merged:/mnt/models \
   -v $(pwd):/srv/app \
-  docker-registry.wikimedia.org/ml/amd-vllm014:gfx90agfx942rocm7.0.0pytorch2.10.0mori0.1flash-attn2.8.3aiter0.1.7vllm0.14 \
+  docker-registry.wikimedia.org/ml/amd-vllm014:gfx90agfx942rocm7.0.0pytorch2.10.0mori0.1flash-attn2.8.3aiter0.1.7vllm0.14-3 \
   bash
 ```
 
@@ -209,7 +209,7 @@ docker run --rm -it \
   -e https_proxy="http://webproxy:8080" \
   -v /path/to/cope-b-a4b:/mnt/models \
   -v $(pwd):/srv/app \
-  docker-registry.wikimedia.org/ml/amd-vllm014:gfx90agfx942rocm7.0.0pytorch2.10.0mori0.1flash-attn2.8.3aiter0.1.7vllm0.14-2 \
+  docker-registry.wikimedia.org/ml/amd-vllm022:gfx90agfx942rocm7.2.0pytorch2.10.0flash-attn2.8.3aiter0.1.13vllm0.22.1-2 \
   bash
 ```
 
