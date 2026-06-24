@@ -53,6 +53,7 @@ def test_build_user_entity_keeps_known_fields():
         "is_system": False,
         "is_temp": False,
         "registration_dt": "2020-01-01T00:00:00.0Z",
+        "wiki_id": "enwiki",
     }
     assert _build_user_entity(user) == user
 
@@ -74,6 +75,14 @@ def test_build_user_entity_handles_missing_optional_fields():
     assert result == {"user_text": "Alice"}
 
 
+def test_build_user_entity_propagates_wiki_id():
+    # wiki_id is allowed by user/1.2.0 and propagated so consumers can tell
+    # which wiki a (possibly global) account belongs to.
+    user = {"user_text": "Alice", "wiki_id": "commonswiki"}
+    result = _build_user_entity(user)
+    assert result["wiki_id"] == "commonswiki"
+
+
 # _build_page_entity
 
 
@@ -82,6 +91,7 @@ def test_build_page_entity_keeps_known_fields():
         "page_id": 1,
         "page_title": "Example",
         "namespace_id": 0,
+        "namespace_is_content": True,
         "is_redirect": False,
         "revision_count": 5,
     }
@@ -92,11 +102,23 @@ def test_build_page_entity_strips_unknown_fields():
     page = {
         "page_id": 1,
         "page_title": "Example",
-        "namespace_is_content": True,  # allowed by page/2.2.0 but deliberately stripped
+        "new_upstream_field": "should be stripped",
     }
     result = _build_page_entity(page)
-    assert "namespace_is_content" not in result
+    assert "new_upstream_field" not in result
     assert result == {"page_id": 1, "page_title": "Example"}
+
+
+def test_build_page_entity_propagates_namespace_is_content():
+    # namespace_is_content is allowed by page/2.2.0 and propagated so consumers
+    # can filter for content pages without hardcoding per-wiki namespace_ids.
+    page = {
+        "page_id": 1,
+        "page_title": "Example",
+        "namespace_is_content": True,
+    }
+    result = _build_page_entity(page)
+    assert result["namespace_is_content"] is True
 
 
 def test_build_page_entity_includes_redirect_link_by_default():
@@ -226,7 +248,7 @@ def test_generate_prediction_classification_event_strips_extra_nested_fields():
         **MINIMAL_PAGE_CHANGE,
         "page": {
             **MINIMAL_PAGE_CHANGE["page"],
-            "namespace_is_content": True,  # allowed by page/2.2.0 but deliberately stripped
+            "new_page_field": "should be stripped",
         },
         "revision": {
             **MINIMAL_PAGE_CHANGE["revision"],
@@ -234,15 +256,15 @@ def test_generate_prediction_classification_event_strips_extra_nested_fields():
         },
         "performer": {
             "user_text": "Alice",
-            "wiki_id": "enwiki",  # allowed by user/1.2.0 but deliberately stripped
+            "new_user_field": "should be stripped",
         },
     }
     event = generate_prediction_classification_event(
         source, "test.stream", "my_model", "1.0.0", PREDICTION_RESULTS
     )
-    assert "namespace_is_content" not in event["page"]
+    assert "new_page_field" not in event["page"]
     assert "new_revision_field" not in event["revision"]
-    assert "wiki_id" not in event["performer"]
+    assert "new_user_field" not in event["performer"]
 
 
 def test_generate_prediction_classification_event_no_performer():
@@ -270,7 +292,7 @@ def test_generate_prediction_classification_event_with_prior_state():
             "page": {
                 "page_id": 1,
                 "page_title": "Old Title",
-                "namespace_is_content": True,
+                "new_page_field": "should be stripped",
             },
             "revision": {
                 "rev_id": 1,
@@ -282,7 +304,7 @@ def test_generate_prediction_classification_event_with_prior_state():
     event = generate_prediction_classification_event(
         source, "test.stream", "my_model", "1.0.0", PREDICTION_RESULTS
     )
-    assert "namespace_is_content" not in event["prior_state"]["page"]
+    assert "new_page_field" not in event["prior_state"]["page"]
     assert "new_field" not in event["prior_state"]["revision"]
     assert "redirect_page_link" not in event["prior_state"]["page"]
 

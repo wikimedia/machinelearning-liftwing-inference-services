@@ -147,8 +147,7 @@ def generate_revision_score_event(
 def _build_user_entity(user: dict[str, Any]) -> dict[str, Any]:
     """Builds a user entity with only the fields defined in
     fragment/mediawiki/state/entity/user/1.2.0, preventing extra fields
-    from upstream schema changes leaking into outbound events.
-    Note: user/1.2.0 also allows wiki_id, which we deliberately omit."""
+    from upstream schema changes leaking into outbound events."""
     fields = (
         "edit_count",
         "groups",
@@ -159,6 +158,7 @@ def _build_user_entity(user: dict[str, Any]) -> dict[str, Any]:
         "user_central_id",
         "user_id",
         "user_text",
+        "wiki_id",
     )
     return {f: user[f] for f in fields if f in user}
 
@@ -169,14 +169,12 @@ def _build_page_entity(
     """Builds a page entity with only the fields defined in
     fragment/mediawiki/state/entity/page/2.2.0.
     Set include_redirect_link=False for prior_state.page and
-    created_redirect_page, which omit that sub-object in the schema.
-    Note: page/2.2.0 also allows namespace_is_content, which we
-    deliberately omit."""
+    created_redirect_page, which omit that sub-object in the schema."""
     result: dict[str, Any] = {
         "page_id": page["page_id"],
         "page_title": page["page_title"],
     }
-    for f in ("is_redirect", "namespace_id", "revision_count"):
+    for f in ("is_redirect", "namespace_id", "namespace_is_content", "revision_count"):
         if f in page:
             result[f] = page[f]
     if include_redirect_link and "redirect_page_link" in page:
