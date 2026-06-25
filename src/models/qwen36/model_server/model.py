@@ -43,6 +43,8 @@ class Qwen36Model(kserve.Model, OpenAIChatAdapterModel):
         max_model_len: int,
         tensor_parallel_size: int,
         dtype: str,
+        language_model_only_flag: bool,
+        skip_mm_profiling_flag: bool,
         max_num_seqs: int = 128,
         max_num_batched_tokens: int = 32768,
         block_size: int = 64,
@@ -57,6 +59,8 @@ class Qwen36Model(kserve.Model, OpenAIChatAdapterModel):
         self.max_model_len = max_model_len
         self.tensor_parallel_size = tensor_parallel_size
         self.dtype = dtype
+        self.language_model_only_flag = language_model_only_flag
+        self.skip_mm_profiling_flag = skip_mm_profiling_flag
         self.max_num_seqs = max_num_seqs
         self.max_num_batched_tokens = max_num_batched_tokens
         self.block_size = block_size
@@ -81,6 +85,8 @@ class Qwen36Model(kserve.Model, OpenAIChatAdapterModel):
                 tensor_parallel_size=self.tensor_parallel_size,
                 disable_custom_all_reduce=self.disable_custom_all_reduce,
                 dtype=self.dtype,
+                language_model_only=self.language_model_only_flag,
+                skip_mm_profiling=self.skip_mm_profiling_flag,
                 enable_prefix_caching=True,
                 reasoning_parser="qwen3",
             )
@@ -379,6 +385,8 @@ if __name__ == "__main__":
     max_model_len = int(os.environ.get("MAX_MODEL_LEN", "32768"))
     tensor_parallel_size = int(os.environ.get("TENSOR_PARALLEL_SIZE", "2"))
     dtype = os.environ.get("DTYPE", "auto")
+    language_model_only = strtobool(os.environ.get("LANGUAGE_MODEL_ONLY", "True"))
+    skip_mm_profiling = strtobool(os.environ.get("SKIP_MM_PROFILING", "True"))
     max_num_seqs = int(os.environ.get("MAX_NUM_SEQS", "128"))
     max_num_batched_tokens = int(os.environ.get("MAX_NUM_BATCHED_TOKENS", "32768"))
     block_size = int(os.environ.get("BLOCK_SIZE", "64"))
@@ -395,6 +403,8 @@ if __name__ == "__main__":
         max_model_len=max_model_len,
         tensor_parallel_size=tensor_parallel_size,
         dtype=dtype,
+        language_model_only_flag=language_model_only,
+        skip_mm_profiling_flag=skip_mm_profiling,
         max_num_seqs=max_num_seqs,
         max_num_batched_tokens=max_num_batched_tokens,
         block_size=block_size,
