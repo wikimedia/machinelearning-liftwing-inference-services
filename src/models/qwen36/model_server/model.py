@@ -50,6 +50,7 @@ class Qwen36Model(kserve.Model, OpenAIChatAdapterModel):
         block_size: int = 64,
         attention_backend: str = "TRITON_ATTN",
         disable_custom_all_reduce: bool = False,
+        enforce_eager: bool = False,
     ) -> None:
         super().__init__(name)
         self.name = name
@@ -66,6 +67,7 @@ class Qwen36Model(kserve.Model, OpenAIChatAdapterModel):
         self.block_size = block_size
         self.attention_backend = attention_backend
         self.disable_custom_all_reduce = disable_custom_all_reduce
+        self.enforce_eager = enforce_eager
         self.model = None
         self.tokenizer = None
         self.ready = False
@@ -84,6 +86,7 @@ class Qwen36Model(kserve.Model, OpenAIChatAdapterModel):
                 attention_backend=self.attention_backend,
                 tensor_parallel_size=self.tensor_parallel_size,
                 disable_custom_all_reduce=self.disable_custom_all_reduce,
+                enforce_eager=self.enforce_eager,
                 dtype=self.dtype,
                 language_model_only=self.language_model_only_flag,
                 skip_mm_profiling=self.skip_mm_profiling_flag,
@@ -394,6 +397,7 @@ if __name__ == "__main__":
     disable_custom_all_reduce = strtobool(
         os.environ.get("DISABLE_CUSTOM_ALL_REDUCE", "False")
     )
+    enforce_eager = strtobool(os.environ.get("ENFORCE_EAGER", "False"))
 
     model = Qwen36Model(
         name=model_name,
@@ -410,6 +414,7 @@ if __name__ == "__main__":
         block_size=block_size,
         attention_backend=attention_backend,
         disable_custom_all_reduce=disable_custom_all_reduce,
+        enforce_eager=enforce_eager,
     )
 
     model.load()
