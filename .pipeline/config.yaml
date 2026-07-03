@@ -303,3 +303,13 @@ pipelines:
           image:
             name: '${setup.project}-liftwing-openapi-server'
             tags: [stable]
+
+  tts-publish:
+    blubberfile: tts/blubber.yaml
+    stages:
+      - name: publish
+        build: production
+        publish:
+          image:
+            name: '${setup.project}-tts'
+            tags: [stable]

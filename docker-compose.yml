@@ -307,3 +307,16 @@ services:
     image: liftwing-openapi-server:prod
     ports:
       - "8081:8080"
+  tts:
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: .pipeline/tts/blubber.yaml
+      target: production
+    image: tts:prod
+    ports:
+      - "8080:8080"
+    environment:
+      MODEL_NAME: "tts"
+    volumes:
+      - ${PATH_TO_TTS_MODEL:-/dummy/path}:/mnt/models/
