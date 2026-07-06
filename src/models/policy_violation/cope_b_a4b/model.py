@@ -44,6 +44,7 @@ class CoPEBModel(kserve.Model):
         dtype: str,
         quantization: str,
         max_model_len: int,
+        disable_log_stats: bool,
     ) -> None:
         super().__init__(name)
         self.name = name
@@ -52,6 +53,7 @@ class CoPEBModel(kserve.Model):
         self.dtype = dtype
         self.quantization = quantization
         self.max_model_len = max_model_len
+        self.disable_log_stats = disable_log_stats
         self.model = None
         self.ready = False
 
@@ -65,6 +67,8 @@ class CoPEBModel(kserve.Model):
                 dtype=self.dtype,
                 max_model_len=self.max_model_len,
                 quantization=self.quantization,
+                served_model_name=self.name,
+                disable_log_stats=self.disable_log_stats,
             )
 
             self.ready = True
@@ -223,6 +227,7 @@ if __name__ == "__main__":
     dtype = os.environ.get("DTYPE", "bfloat16")
     quantization = os.environ.get("QUANTIZATION", None)
     max_model_len = int(os.environ.get("MAX_MODEL_LEN", 8192))
+    disable_log_stats = strtobool(os.environ.get("DISABLE_LOG_STATS", "False"))
 
     model = CoPEBModel(
         name=model_name,
@@ -231,6 +236,7 @@ if __name__ == "__main__":
         dtype=dtype,
         quantization=quantization,
         max_model_len=max_model_len,
+        disable_log_stats=disable_log_stats,
     )
 
     model.load()
