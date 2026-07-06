@@ -304,6 +304,15 @@ pipelines:
             name: '${setup.project}-liftwing-openapi-server'
             tags: [stable]
 
+  tts:
+    blubberfile: tts/blubber.yaml
+    stages:
+      - name: run-test
+        build: test
+        run: true
+      - name: production
+        build: production
+
   tts-publish:
     blubberfile: tts/blubber.yaml
     stages:
