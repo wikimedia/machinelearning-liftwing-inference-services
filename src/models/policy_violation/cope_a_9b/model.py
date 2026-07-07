@@ -40,6 +40,7 @@ class CoPEModel(kserve.Model):
         dtype: str = "bfloat16",
         quantization: str | None = None,
         max_model_len: int = DEFAULT_MAX_MODEL_LEN,
+        disable_log_stats: bool = False,
     ) -> None:
         super().__init__(name)
         self.name = name
@@ -48,6 +49,7 @@ class CoPEModel(kserve.Model):
         self.dtype = dtype
         self.quantization = quantization
         self.max_model_len = max_model_len
+        self.disable_log_stats = disable_log_stats
         self.model = None
         self.ready = False
 
@@ -61,6 +63,8 @@ class CoPEModel(kserve.Model):
                 dtype=self.dtype,
                 max_model_len=self.max_model_len,
                 quantization=self.quantization,
+                served_model_name=self.name,
+                disable_log_stats=self.disable_log_stats,
             )
 
             self.ready = True
@@ -147,6 +151,7 @@ if __name__ == "__main__":
     dtype = os.environ.get("DTYPE", "bfloat16")
     quantization = os.environ.get("QUANTIZATION", None) or None
     max_model_len = int(os.environ.get("MAX_MODEL_LEN", DEFAULT_MAX_MODEL_LEN))
+    disable_log_stats = strtobool(os.environ.get("DISABLE_LOG_STATS", "False"))
 
     model = CoPEModel(
         name=model_name,
@@ -155,6 +160,7 @@ if __name__ == "__main__":
         dtype=dtype,
         quantization=quantization,
         max_model_len=max_model_len,
+        disable_log_stats=disable_log_stats,
     )
 
     model.load()
