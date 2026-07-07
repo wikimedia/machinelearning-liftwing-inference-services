@@ -36,6 +36,7 @@ class PolicyViolationModel(kserve.Model):
         attention_backend: str,
         tensor_parallel_size: int,
         disable_custom_all_reduce: bool,
+        disable_log_stats: bool,
     ) -> None:
         super().__init__(name)
         self.name = name
@@ -49,6 +50,7 @@ class PolicyViolationModel(kserve.Model):
         self.attention_backend = attention_backend
         self.tensor_parallel_size = tensor_parallel_size
         self.disable_custom_all_reduce = disable_custom_all_reduce
+        self.disable_log_stats = disable_log_stats
         self.model = None
         self.encoding = None
         self.ready = False
@@ -78,6 +80,8 @@ class PolicyViolationModel(kserve.Model):
                 compilation_config={
                     "use_inductor_graph_partition": True,
                 },
+                served_model_name=self.name,
+                disable_log_stats=self.disable_log_stats,
             )
             # Initialize the Async Engine
             self.model = AsyncLLMEngine.from_engine_args(engine_args)
@@ -238,6 +242,7 @@ if __name__ == "__main__":
     disable_custom_all_reduce = strtobool(
         os.environ.get("DISABLE_CUSTOM_ALL_REDUCE", "False")
     )
+    disable_log_stats = strtobool(os.environ.get("DISABLE_LOG_STATS", "False"))
 
     model = PolicyViolationModel(
         name=model_name,
@@ -251,6 +256,7 @@ if __name__ == "__main__":
         attention_backend=attention_backend,
         tensor_parallel_size=tensor_parallel_size,
         disable_custom_all_reduce=disable_custom_all_reduce,
+        disable_log_stats=disable_log_stats,
     )
 
     model.load()
