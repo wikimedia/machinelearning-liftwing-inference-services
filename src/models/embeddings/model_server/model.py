@@ -22,6 +22,7 @@ class EmbeddingModel(kserve.Model):
         gpu_memory_utilization: float,
         max_model_len: int,
         max_num_batched_tokens: int,
+        disable_log_stats: bool,
     ) -> None:
         super().__init__(name)
         self.name = name
@@ -32,6 +33,7 @@ class EmbeddingModel(kserve.Model):
         self.gpu_memory_utilization = gpu_memory_utilization
         self.max_model_len = max_model_len
         self.max_num_batched_tokens = max_num_batched_tokens
+        self.disable_log_stats = disable_log_stats
         self.model = None
         self.ready = False
 
@@ -54,6 +56,8 @@ class EmbeddingModel(kserve.Model):
                 max_num_batched_tokens=self.max_num_batched_tokens,
                 enforce_eager=False,  # Allows CUDA graph capture for performance
                 enable_prefix_caching=False,
+                served_model_name=self.name,
+                disable_log_stats=self.disable_log_stats,
             )
 
             self.ready = True
@@ -142,6 +146,7 @@ if __name__ == "__main__":
     # If not set, vLLM attempts to derive it from config.json
     max_model_len = int(os.environ.get("MAX_MODEL_LEN", 8192))
     max_num_batched_tokens = int(os.environ.get("MAX_NUM_BATCHED_TOKENS", 8192))
+    disable_log_stats = strtobool(os.environ.get("DISABLE_LOG_STATS", "False"))
 
     model = EmbeddingModel(
         name=model_name,
@@ -152,6 +157,7 @@ if __name__ == "__main__":
         gpu_memory_utilization=gpu_memory_utilization,
         max_model_len=max_model_len,
         max_num_batched_tokens=max_num_batched_tokens,
+        disable_log_stats=disable_log_stats,
     )
     model.load()
     kserve.ModelServer().start([model])
