@@ -51,6 +51,7 @@ class Qwen36Model(kserve.Model, OpenAIChatAdapterModel):
         attention_backend: str = "TRITON_ATTN",
         disable_custom_all_reduce: bool = False,
         enforce_eager: bool = False,
+        disable_log_stats: bool = False,
     ) -> None:
         super().__init__(name)
         self.name = name
@@ -68,6 +69,7 @@ class Qwen36Model(kserve.Model, OpenAIChatAdapterModel):
         self.attention_backend = attention_backend
         self.disable_custom_all_reduce = disable_custom_all_reduce
         self.enforce_eager = enforce_eager
+        self.disable_log_stats = disable_log_stats
         self.model = None
         self.tokenizer = None
         self.ready = False
@@ -92,6 +94,8 @@ class Qwen36Model(kserve.Model, OpenAIChatAdapterModel):
                 skip_mm_profiling=self.skip_mm_profiling_flag,
                 enable_prefix_caching=True,
                 reasoning_parser="qwen3",
+                served_model_name=self.name,
+                disable_log_stats=self.disable_log_stats,
             )
             self.model = AsyncLLMEngine.from_engine_args(engine_args)
             self.tokenizer = self.model.tokenizer
@@ -398,6 +402,7 @@ if __name__ == "__main__":
         os.environ.get("DISABLE_CUSTOM_ALL_REDUCE", "False")
     )
     enforce_eager = strtobool(os.environ.get("ENFORCE_EAGER", "False"))
+    disable_log_stats = strtobool(os.environ.get("DISABLE_LOG_STATS", "False"))
 
     model = Qwen36Model(
         name=model_name,
@@ -415,6 +420,7 @@ if __name__ == "__main__":
         attention_backend=attention_backend,
         disable_custom_all_reduce=disable_custom_all_reduce,
         enforce_eager=enforce_eager,
+        disable_log_stats=disable_log_stats,
     )
 
     model.load()
