@@ -12,6 +12,7 @@ https://phabricator.wikimedia.org/T424378#12068767
 import logging
 
 import numpy as np
+import onnxruntime as ort
 from alignment import Aligner
 
 logger = logging.getLogger(__name__)
@@ -28,11 +29,31 @@ class TTSInferencePipeline:
     startup hook).  ``.predict()`` is called per inference request.
     """
 
-    def __init__(self, kokoro_model: str, kokoro_voices: str, wav2vec2_model_dir: str):
+    def __init__(
+        self,
+        kokoro_model: str,
+        kokoro_voices: str,
+        wav2vec2_model_dir: str,
+        kokoro_threads: int = 2,
+    ):
         logger.info("Loading Kokoro ONNX model from %s...", kokoro_model)
         from kokoro_onnx import Kokoro
 
-        self.kokoro = Kokoro(kokoro_model, kokoro_voices)
+        # kokoro-onnx's default constructor leaves intra_op_num_threads at 0,
+        # which makes ONNX Runtime size its thread pool from the HOST's core
+        # count (96 on our k8s nodes), not the pod's cgroup quota (8 CPUs).
+        # ~96 threads contending for 8 CPUs means coordination dominates the
+        # small per-op work: synthesis ran ~10x slower than real-time.
+        # An explicit thread count fixes it (RTF 4.96 -> 0.46 at intra=2 on an
+        # 8-CPU pod). Graph optimization is not a factor: ORT_ENABLE_ALL is
+        # already the onnxruntime default, verified to have no effect.
+        so = ort.SessionOptions()
+        so.intra_op_num_threads = kokoro_threads
+        so.inter_op_num_threads = 1
+        session = ort.InferenceSession(
+            kokoro_model, so, providers=["CPUExecutionProvider"]
+        )
+        self.kokoro = Kokoro.from_session(session, kokoro_voices)
         self.sample_rate = 24000
 
         logger.info("Loading Wav2Vec2 aligner from %s...", wav2vec2_model_dir)

@@ -19,12 +19,14 @@ class TTSModel(kserve.Model):
         kokoro_model: str,
         kokoro_voices: str,
         wav2vec2_model_dir: str,
+        kokoro_threads: int = 2,
     ) -> None:
         super().__init__(name)
         self.name = name
         self.kokoro_model = kokoro_model
         self.kokoro_voices = kokoro_voices
         self.wav2vec2_model_dir = wav2vec2_model_dir
+        self.kokoro_threads = kokoro_threads
         self.pipeline: TTSInferencePipeline | None = None
         self.ready = False
 
@@ -44,6 +46,7 @@ class TTSModel(kserve.Model):
                 self.kokoro_model,
                 self.kokoro_voices,
                 self.wav2vec2_model_dir,
+                kokoro_threads=self.kokoro_threads,
             )
             self.ready = True
             logger.info("Model loaded successfully!")
@@ -196,12 +199,14 @@ if __name__ == "__main__":
     wav2vec2_model_dir = os.environ.get(
         "WAV2VEC2_MODEL_DIR", os.path.join(model_path, "wav2vec2")
     )
+    kokoro_threads = int(os.environ.get("KOKORO_THREADS", "2"))
 
     model = TTSModel(
         name=model_name,
         kokoro_model=kokoro_model,
         kokoro_voices=kokoro_voices,
         wav2vec2_model_dir=wav2vec2_model_dir,
+        kokoro_threads=kokoro_threads,
     )
 
     model.load()
