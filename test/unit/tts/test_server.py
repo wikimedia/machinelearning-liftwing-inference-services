@@ -130,14 +130,22 @@ def test_preprocess_oversized_segment_warns_but_accepts(caplog):
 # ── postprocess encoding ─────────────────────────────────────────────────────
 
 
-def test_postprocess_roundtrip_preserves_audio():
-    """base64-decoding the response must reconstruct the exact float32 PCM."""
+def test_postprocess_roundtrip_preserves_audio_f32():
+    """base64-decoding f32le response reconstructs the exact float32 PCM."""
     m = _model()
     audio = np.array([0.0, 0.5, -0.5, 1.0, -1.0], dtype=np.float32)
-    out = m.postprocess({"audio": audio, "sample_rate": SAMPLE_RATE, "timestamps": []})
+    out = m.postprocess(
+        {
+            "audio": audio,
+            "sample_rate": SAMPLE_RATE,
+            "timestamps": [],
+            "encoding": "pcm_f32le",
+        }
+    )
 
     decoded = np.frombuffer(base64.b64decode(out["audio_b64"]), dtype=np.float32)
     assert np.array_equal(decoded, audio)
+    assert out["encoding"] == "pcm_f32le"
 
 
 def test_postprocess_reports_correct_duration():
@@ -170,6 +178,73 @@ def test_postprocess_passes_timestamps_through():
     assert out["sample_rate"] == SAMPLE_RATE
 
 
+def test_postprocess_int16_is_the_default():
+    """When no encoding is given, postprocess defaults to int16 and the
+    base64-decoded roundtrip is within 16-bit quantization error."""
+    m = _model()
+    audio = np.array([0.0, 0.5, -0.5, 1.0, -1.0], dtype=np.float32)
+    out = m.postprocess({"audio": audio, "sample_rate": SAMPLE_RATE, "timestamps": []})
+
+    assert out["encoding"] == "pcm_s16le"
+    decoded_i16 = np.frombuffer(base64.b64decode(out["audio_b64"]), dtype=np.int16)
+    decoded_f32 = decoded_i16.astype(np.float32) / 32767.0
+    # 16-bit quantization error: max absolute error ≤ 1.53e-05 (1 / 2^15 / 2)
+    max_err = np.max(np.abs(decoded_f32 - audio))
+    assert max_err <= 1.53e-05
+
+
+def test_postprocess_f32le_roundtrip():
+    """Explicit pcm_f32le preserves float32 exactly."""
+    m = _model()
+    audio = np.array([0.0, 0.5, -0.5, 1.0, -1.0], dtype=np.float32)
+    out = m.postprocess(
+        {
+            "audio": audio,
+            "sample_rate": SAMPLE_RATE,
+            "timestamps": [],
+            "encoding": "pcm_f32le",
+        }
+    )
+    assert out["encoding"] == "pcm_f32le"
+    decoded = np.frombuffer(base64.b64decode(out["audio_b64"]), dtype=np.float32)
+    assert np.array_equal(decoded, audio)
+
+
+def test_postprocess_clips_out_of_range_samples():
+    """Samples outside [-1, 1] are clipped before int16 scaling to prevent
+    integer-wrapping clicks."""
+    m = _model()
+    audio = np.array([-1.2, 0.0, 1.5], dtype=np.float32)
+    out = m.postprocess({"audio": audio, "sample_rate": SAMPLE_RATE, "timestamps": []})
+    decoded = np.frombuffer(base64.b64decode(out["audio_b64"]), dtype=np.int16)
+    # -1.2 → -32767, 0.0 → 0, 1.5 → 32767
+    assert decoded[0] == -32767
+    assert decoded[1] == 0
+    assert decoded[2] == 32767
+
+
+# ── preprocess encoding validation ────────────────────────────────────────────
+
+
+def test_preprocess_encoding_default():
+    m = _model()
+    out = m.preprocess({"segments": [{"text": "hi"}]})
+    assert out["encoding"] == "pcm_s16le"
+
+
+def test_preprocess_rejects_invalid_encoding():
+    m = _model()
+    with pytest.raises(InvalidInput, match="encoding"):
+        m.preprocess({"segments": [{"text": "hi"}], "encoding": "pcm_u8"})
+
+
+def test_preprocess_accepts_valid_encodings():
+    m = _model()
+    for enc in ("pcm_s16le", "pcm_f32le"):
+        out = m.preprocess({"segments": [{"text": "hi"}], "encoding": enc})
+        assert out["encoding"] == enc
+
+
 # ── async predict offload ────────────────────────────────────────────────────
 
 
@@ -190,6 +265,7 @@ def test_predict_awaits_and_returns_pipeline_result():
         "default_voice": "af_heart",
         "default_speed": 1.0,
         "default_lang": "en-us",
+        "encoding": "pcm_s16le",
     }
     result = asyncio.run(m.predict(inputs))
     assert result["sample_rate"] == SAMPLE_RATE
@@ -240,6 +316,7 @@ def test_predict_runs_off_the_event_loop_thread():
         "default_voice": "af_heart",
         "default_speed": 1.0,
         "default_lang": "en-us",
+        "encoding": "pcm_s16le",
     }
 
     async def runner():

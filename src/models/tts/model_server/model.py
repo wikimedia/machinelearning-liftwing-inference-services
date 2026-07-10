@@ -76,12 +76,14 @@ class TTSModel(kserve.Model):
             payload: The raw JSON body from the KServe request.  Must contain a
                 non-empty ``segments`` list; each segment requires a non-empty
                 ``text`` field.  Optional top-level keys ``default_voice``,
-                ``default_speed``, and ``default_lang`` override the built-in
-                defaults.
+                ``default_speed``, ``default_lang``, and ``encoding`` override
+                the built-in defaults.  ``encoding`` selects the response PCM
+                format: ``pcm_s16le`` (16-bit int, default) or ``pcm_f32le``
+                (32-bit float).
 
         Returns:
             A dict with keys ``segments``, ``default_voice``, ``default_speed``,
-            and ``default_lang``, ready to pass to :meth:`predict`.
+            ``default_lang``, and ``encoding``, ready to pass to :meth:`predict`.
 
         Raises:
             InvalidInput: If ``segments`` is missing, empty, or contains a
@@ -115,11 +117,18 @@ class TTSModel(kserve.Model):
             # MIN_TEXT_LENGTH filtering (v0's 50-char gate) is the
             # orchestrator's responsibility since it owns text cleaning.
 
+        encoding = payload.get("encoding", "pcm_s16le")
+        if encoding not in ("pcm_s16le", "pcm_f32le"):
+            raise InvalidInput(
+                f"`encoding` must be 'pcm_s16le' or 'pcm_f32le', got {encoding!r}."
+            )
+
         return {
             "segments": segments,
             "default_voice": payload.get("default_voice", "af_heart"),
             "default_speed": float(payload.get("default_speed", 1.0)),
             "default_lang": payload.get("default_lang", "en-us"),
+            "encoding": encoding,
         }
 
     async def predict(self, inputs: dict, headers: dict[str, str] = None) -> dict:
@@ -156,6 +165,7 @@ class TTSModel(kserve.Model):
                     default_lang=inputs["default_lang"],
                 ),
             )
+            result["encoding"] = inputs["encoding"]
             return result
 
         except Exception as e:
@@ -173,7 +183,7 @@ class TTSModel(kserve.Model):
                 (list[dict]).
 
         Returns:
-            ``{"audio_b64": str, "sample_rate": int, "duration_ms": float, "timestamps": list[dict]}``
+            ``{"audio_b64": str, "encoding": str, "sample_rate": int, "duration_ms": float, "timestamps": list[dict]}``
 
         Raises:
             InferenceError: If base64 encoding fails.
@@ -182,12 +192,24 @@ class TTSModel(kserve.Model):
             audio: np.ndarray = inputs["audio"]
             sample_rate: int = inputs["sample_rate"]
             timestamps: list[dict] = inputs["timestamps"]
+            encoding: str = inputs.get("encoding", "pcm_s16le")
 
-            audio_bytes = audio.tobytes()
+            if encoding == "pcm_s16le":
+                # Kokoro emits float32 nominally in [-1, 1] but with rare
+                # over-range peaks (observed: one sample at 1.0462 in a 403k-
+                # sample section). Clip before scaling so those flat-top
+                # inaudibly instead of integer-wrapping into loud clicks.
+                # Speech is transparent at 16-bit depth; halves the payload.
+                pcm = (np.clip(audio, -1.0, 1.0) * 32767.0).astype(np.int16)
+            else:  # pcm_f32le
+                pcm = audio
+
+            audio_bytes = pcm.tobytes()
             duration_ms = (len(audio) / sample_rate) * 1000
 
             return {
                 "audio_b64": base64.b64encode(audio_bytes).decode("ascii"),
+                "encoding": encoding,
                 "sample_rate": sample_rate,
                 "duration_ms": round(duration_ms, 1),
                 "timestamps": timestamps,

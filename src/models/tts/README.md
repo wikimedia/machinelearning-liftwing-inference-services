@@ -45,7 +45,8 @@ curl -s -X POST http://localhost:8080/v1/models/tts:predict \
 Expected response:
 ```console
 {
-    "audio_b64": "<base64-encoded float32 PCM, 24 kHz mono>",
+    "audio_b64": "<base64-encoded PCM audio, 24 kHz mono; int16 by default>",
+    "encoding": "pcm_s16le",
     "sample_rate": 24000,
     "duration_ms": 1045.3,
     "timestamps": [
@@ -70,6 +71,17 @@ If you would like to remove the setup run:
 docker compose down -v --rmi all
 ```
 </details>
+
+### Request parameters
+
+Optional top-level fields alongside `segments`:
+
+- `encoding` — response PCM format: `pcm_s16le` (16-bit int, default) or
+  `pcm_f32le` (32-bit float). int16 halves the payload and is transparent
+  for speech.
+- `default_voice`, `default_speed`, `default_lang` — defaults applied to
+  segments that don't specify their own.
+
 <details>
 <summary>2. Manual setup</summary>
 
@@ -127,7 +139,8 @@ curl -s -X POST http://localhost:8080/v1/models/tts:predict \
 Expected response:
 ```console
 {
-    "audio_b64": "<base64-encoded float32 PCM, 24 kHz mono>",
+    "audio_b64": "<base64-encoded PCM audio, 24 kHz mono; int16 by default>",
+    "encoding": "pcm_s16le",
     "sample_rate": 24000,
     "duration_ms": 1045.3,
     "timestamps": [
