@@ -245,6 +245,42 @@ def test_preprocess_accepts_valid_encodings():
         assert out["encoding"] == enc
 
 
+# ── preprocess timestamps_mode validation ─────────────────────────────────────
+
+
+def test_preprocess_timestamps_mode_default():
+    m = _model()
+    out = m.preprocess({"segments": [{"text": "hi"}]})
+    assert out["timestamps_mode"] == "full"
+
+
+def test_preprocess_rejects_invalid_timestamps_mode():
+    m = _model()
+    with pytest.raises(InvalidInput, match="timestamps"):
+        m.preprocess({"segments": [{"text": "hi"}], "timestamps": "bogus"})
+
+
+def test_preprocess_accepts_valid_timestamps_modes():
+    m = _model()
+    for mode in ("full", "proportional", "none"):
+        out = m.preprocess({"segments": [{"text": "hi"}], "timestamps": mode})
+        assert out["timestamps_mode"] == mode
+
+
+def test_postprocess_echoes_timestamps_mode():
+    m = _model()
+    for mode in ("full", "proportional", "none"):
+        out = m.postprocess(
+            {
+                "audio": np.zeros(10, dtype=np.float32),
+                "sample_rate": SAMPLE_RATE,
+                "timestamps": [],
+                "timestamps_mode": mode,
+            }
+        )
+        assert out["timestamps_mode"] == mode
+
+
 # ── async predict offload ────────────────────────────────────────────────────
 
 
@@ -252,7 +288,14 @@ def test_predict_awaits_and_returns_pipeline_result():
     m = _model()
 
     class FakePipeline:
-        def predict(self, segments, default_voice, default_speed, default_lang):
+        def predict(
+            self,
+            segments,
+            default_voice,
+            default_speed,
+            default_lang,
+            timestamps_mode,
+        ):
             return {
                 "audio": np.zeros(3, dtype=np.float32),
                 "sample_rate": SAMPLE_RATE,
@@ -266,6 +309,7 @@ def test_predict_awaits_and_returns_pipeline_result():
         "default_speed": 1.0,
         "default_lang": "en-us",
         "encoding": "pcm_s16le",
+        "timestamps_mode": "full",
     }
     result = asyncio.run(m.predict(inputs))
     assert result["sample_rate"] == SAMPLE_RATE
@@ -317,6 +361,7 @@ def test_predict_runs_off_the_event_loop_thread():
         "default_speed": 1.0,
         "default_lang": "en-us",
         "encoding": "pcm_s16le",
+        "timestamps_mode": "full",
     }
 
     async def runner():

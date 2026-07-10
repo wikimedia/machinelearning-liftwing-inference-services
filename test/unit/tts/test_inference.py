@@ -399,6 +399,62 @@ def test_overlap_preserves_timestamp_offsets():
     assert len(result["audio"]) == n_segs * L - (n_segs - 1) * FADE_LEN
 
 
+# ── Timestamps modes ─────────────────────────────────────────────────────────
+
+
+def test_proportional_mode_produces_timestamps():
+    """proportional mode generates char-count-weighted timestamps
+    covering the full audio duration, with no CTC model call."""
+    L = 1000
+    pipe = _make_pipeline({"hello": L})
+    result = pipe.predict([{"text": "hello"}], timestamps_mode="proportional")
+
+    assert len(result["timestamps"]) == 1
+    assert result["timestamps"][0]["word"] == "hello"
+    assert result["timestamps"][0]["start_ms"] == 0.0
+    assert result["timestamps"][0]["end_ms"] == pytest.approx(_ms(L))
+
+
+def test_none_mode_produces_no_timestamps():
+    """none mode skips timestamps entirely; audio is still generated."""
+    L = 1000
+    pipe = _make_pipeline({"hello": L})
+    result = pipe.predict([{"text": "hello"}], timestamps_mode="none")
+
+    assert result["timestamps"] == []
+    assert len(result["audio"]) == L
+
+
+def test_full_mode_still_uses_aligner():
+    """full mode (default) dispatches to the CTC aligner via the pool.
+    With a single segment in a fake pipeline, the aligner result arrives
+    after the loop via the gather block."""
+    L = 1000
+    pipe = _make_pipeline(
+        {"hello": L},
+        {"hello": [{"word": "hello", "start_ms": 0.0, "end_ms": 40.0}]},
+    )
+    result = pipe.predict([{"text": "hello"}], timestamps_mode="full")
+
+    assert result["timestamps"] == [{"word": "hello", "start_ms": 0.0, "end_ms": 40.0}]
+
+
+def test_proportional_multi_segment_offsets_are_correct():
+    """Proportional timestamps across multiple segments must be offset
+    by each preceding chunk's contributed audio, same as full mode."""
+    L = 1000
+    pipe = _make_pipeline({"a": L, "b": L})
+    result = pipe.predict(
+        [{"text": "a"}, {"text": "b"}], timestamps_mode="proportional"
+    )
+
+    assert len(result["timestamps"]) == 2
+    # First chunk contributes L - FADE_LEN samples; its timestamp at 0.
+    assert result["timestamps"][0]["start_ms"] == 0.0
+    # Second chunk offset by first chunk's contribution.
+    assert result["timestamps"][1]["start_ms"] == pytest.approx(_ms(L - FADE_LEN))
+
+
 # ── Constants sanity ─────────────────────────────────────────────────────────
 
 

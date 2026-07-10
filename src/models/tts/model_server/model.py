@@ -76,10 +76,13 @@ class TTSModel(kserve.Model):
             payload: The raw JSON body from the KServe request.  Must contain a
                 non-empty ``segments`` list; each segment requires a non-empty
                 ``text`` field.  Optional top-level keys ``default_voice``,
-                ``default_speed``, ``default_lang``, and ``encoding`` override
-                the built-in defaults.  ``encoding`` selects the response PCM
-                format: ``pcm_s16le`` (16-bit int, default) or ``pcm_f32le``
-                (32-bit float).
+                ``default_speed``, ``default_lang``, ``encoding``, and
+                ``timestamps`` override the built-in defaults.  ``encoding``
+                selects the response PCM format: ``pcm_s16le`` (16-bit int,
+                default) or ``pcm_f32le`` (32-bit float).  ``timestamps``
+                selects word-timestamp generation: ``full`` (CTC forced
+                alignment, default), ``proportional`` (char-count-weighted
+                approximation, near-zero cost), or ``none``.
 
         Returns:
             A dict with keys ``segments``, ``default_voice``, ``default_speed``,
@@ -123,12 +126,20 @@ class TTSModel(kserve.Model):
                 f"`encoding` must be 'pcm_s16le' or 'pcm_f32le', got {encoding!r}."
             )
 
+        timestamps_mode = payload.get("timestamps", "full")
+        if timestamps_mode not in ("full", "proportional", "none"):
+            raise InvalidInput(
+                f"`timestamps` must be 'full', 'proportional', or 'none', "
+                f"got {timestamps_mode!r}."
+            )
+
         return {
             "segments": segments,
             "default_voice": payload.get("default_voice", "af_heart"),
             "default_speed": float(payload.get("default_speed", 1.0)),
             "default_lang": payload.get("default_lang", "en-us"),
             "encoding": encoding,
+            "timestamps_mode": timestamps_mode,
         }
 
     async def predict(self, inputs: dict, headers: dict[str, str] = None) -> dict:
@@ -163,9 +174,11 @@ class TTSModel(kserve.Model):
                     default_voice=inputs["default_voice"],
                     default_speed=inputs["default_speed"],
                     default_lang=inputs["default_lang"],
+                    timestamps_mode=inputs["timestamps_mode"],
                 ),
             )
             result["encoding"] = inputs["encoding"]
+            result["timestamps_mode"] = inputs["timestamps_mode"]
             return result
 
         except Exception as e:
@@ -183,7 +196,7 @@ class TTSModel(kserve.Model):
                 (list[dict]).
 
         Returns:
-            ``{"audio_b64": str, "encoding": str, "sample_rate": int, "duration_ms": float, "timestamps": list[dict]}``
+            ``{"audio_b64": str, "encoding": str, "timestamps_mode": str, "sample_rate": int, "duration_ms": float, "timestamps": list[dict]}``
 
         Raises:
             InferenceError: If base64 encoding fails.
@@ -210,6 +223,7 @@ class TTSModel(kserve.Model):
             return {
                 "audio_b64": base64.b64encode(audio_bytes).decode("ascii"),
                 "encoding": encoding,
+                "timestamps_mode": inputs.get("timestamps_mode", "full"),
                 "sample_rate": sample_rate,
                 "duration_ms": round(duration_ms, 1),
                 "timestamps": timestamps,

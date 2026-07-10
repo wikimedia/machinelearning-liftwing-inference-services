@@ -16,7 +16,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 import numpy as np
 import onnxruntime as ort
-from alignment import Aligner
+from alignment import Aligner, _proportional_timestamps
 
 logger = logging.getLogger(__name__)
 
@@ -77,6 +77,7 @@ class TTSInferencePipeline:
         default_voice: str = "af_heart",
         default_speed: float = 1.0,
         default_lang: str = "en-us",
+        timestamps_mode: str = "full",
     ) -> dict:
         """
         Serialized entry point for the inference pipeline.
@@ -91,6 +92,7 @@ class TTSInferencePipeline:
                 default_voice=default_voice,
                 default_speed=default_speed,
                 default_lang=default_lang,
+                timestamps_mode=timestamps_mode,
             )
 
     def _predict_impl(
@@ -99,6 +101,7 @@ class TTSInferencePipeline:
         default_voice: str = "af_heart",
         default_speed: float = 1.0,
         default_lang: str = "en-us",
+        timestamps_mode: str = "full",
     ) -> dict:
         """
         Generate concatenated audio + word timestamps for a sequence of text segments.
@@ -124,6 +127,9 @@ class TTSInferencePipeline:
             default_voice: Voice to use for segments that don't specify one.
             default_speed: Speaking rate (1.0 = normal).
             default_lang: Language code passed to Kokoro.
+            timestamps_mode: "full" (CTC forced alignment, default),
+                "proportional" (char-count-weighted timing, near-zero
+                cost), or "none" (skip timestamps entirely).
 
         Returns:
             ``{"audio": np.ndarray (float32), "sample_rate": int, "timestamps": list[dict]}``
@@ -147,7 +153,9 @@ class TTSInferencePipeline:
         # exposed synthesis time is not): swept kokoro/w2v2 8/4=RTF 0.34,
         # 8/2=0.32, 6/2=0.34 on a 6-segment request. W2V2_THREADS=2 is set
         # in the deployment config.
-        align_pool = ThreadPoolExecutor(max_workers=1)
+        align_pool = (
+            ThreadPoolExecutor(max_workers=1) if timestamps_mode == "full" else None
+        )
         pending: list[tuple] = []  # (future, offset_ms) in segment order
 
         def _timed_align(a: np.ndarray, sr: int, txt: str):
@@ -174,18 +182,33 @@ class TTSInferencePipeline:
             # or read-only array, in-place crossfade ops must own the memory.
             chunk_audio = np.array(chunk_audio, dtype=np.float32, copy=True)
 
-            # Word-level alignment: dispatch on a snapshot of the raw chunk
-            # (the crossfade below mutates chunk_audio in place) with the
-            # timestamp offset captured NOW, before the clock advances.
-            # Results are gathered in segment order after the loop.
-            pending.append(
-                (
-                    align_pool.submit(
-                        _timed_align, chunk_audio.copy(), self.sample_rate, text
-                    ),
-                    current_time_ms,
+            # Word-level timestamps, per requested mode:
+            #   full         — CTC forced alignment on a snapshot of the raw
+            #                  chunk (the crossfade below mutates chunk_audio
+            #                  in place), dispatched to the background worker
+            #                  so it overlaps the next chunk's synthesis.
+            #   proportional — char-count-weighted timing, computed inline
+            #                  (microseconds; no model call).
+            #   none         — skip entirely; audio-only batch generation
+            #                  pays synthesis cost alone.
+            # The timestamp offset is captured NOW in all modes, before the
+            # clock advances.
+            if timestamps_mode == "full":
+                pending.append(
+                    (
+                        align_pool.submit(
+                            _timed_align, chunk_audio.copy(), self.sample_rate, text
+                        ),
+                        current_time_ms,
+                    )
                 )
-            )
+            elif timestamps_mode == "proportional":
+                chunk_ms = (len(chunk_audio) / self.sample_rate) * 1000
+                for t in _proportional_timestamps(text, chunk_ms):
+                    t["start_ms"] += current_time_ms
+                    t["end_ms"] += current_time_ms
+                    all_timestamps.append(t)
+            # "none": nothing to do
 
             # Crossfade between consecutive chunks.
             # Chunks shorter than FADE_LEN (~5 ms) skip crossfade as they're
@@ -223,15 +246,17 @@ class TTSInferencePipeline:
 
         # Gather alignments in segment order and apply per-chunk offsets.
         # fut.result() re-raises any alignment exception on this thread, so
-        # the caller's error handling is unchanged.
-        for fut, offset_ms in pending:
-            chunk_ts, spent = fut.result()
-            align_s += spent
-            for t in chunk_ts:
-                t["start_ms"] += offset_ms
-                t["end_ms"] += offset_ms
-                all_timestamps.append(t)
-        align_pool.shutdown(wait=False)
+        # the caller's error handling is unchanged. (Non-"full" modes have
+        # no pool and produced their timestamps inline; align_s stays 0.)
+        if align_pool is not None:
+            for fut, offset_ms in pending:
+                chunk_ts, spent = fut.result()
+                align_s += spent
+                for t in chunk_ts:
+                    t["start_ms"] += offset_ms
+                    t["end_ms"] += offset_ms
+                    all_timestamps.append(t)
+            align_pool.shutdown(wait=False)
 
         audio = (
             np.concatenate(audio_chunks)

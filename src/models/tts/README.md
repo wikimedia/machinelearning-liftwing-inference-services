@@ -47,6 +47,7 @@ Expected response:
 {
     "audio_b64": "<base64-encoded PCM audio, 24 kHz mono; int16 by default>",
     "encoding": "pcm_s16le",
+    "timestamps_mode": "full",
     "sample_rate": 24000,
     "duration_ms": 1045.3,
     "timestamps": [
@@ -79,6 +80,9 @@ Optional top-level fields alongside `segments`:
 - `encoding` — response PCM format: `pcm_s16le` (16-bit int, default) or
   `pcm_f32le` (32-bit float). int16 halves the payload and is transparent
   for speech.
+- `timestamps` — word-timestamp generation: `full` (CTC forced alignment,
+  default), `proportional` (character-count-weighted approximation,
+  near-zero cost), or `none` (no timestamps; fastest — audio-only).
 - `default_voice`, `default_speed`, `default_lang` — defaults applied to
   segments that don't specify their own.
 
@@ -141,6 +145,7 @@ Expected response:
 {
     "audio_b64": "<base64-encoded PCM audio, 24 kHz mono; int16 by default>",
     "encoding": "pcm_s16le",
+    "timestamps_mode": "full",
     "sample_rate": 24000,
     "duration_ms": 1045.3,
     "timestamps": [
