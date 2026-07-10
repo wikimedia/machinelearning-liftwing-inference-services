@@ -32,9 +32,13 @@ class Aligner:
     Args:
         model_dir: Path to a directory containing ``model.onnx`` and a
             ``processor/`` subdirectory with Wav2Vec2 tokenizer config files.
+        w2v2_threads: intra_op_num_threads for the ONNX session. Kept
+            explicit for the same reason as Kokoro's (T430536): the ORT
+            default (0) sizes the thread pool from the host's cores, not
+            the pod's cgroup quota.
     """
 
-    def __init__(self, model_dir: str):
+    def __init__(self, model_dir: str, w2v2_threads: int = 1):
         self.model_path = Path(model_dir) / "model.onnx"
         self.processor_path = Path(model_dir) / "processor"
 
@@ -43,9 +47,12 @@ class Aligner:
                 f"Wav2Vec2 model or processor not found at {model_dir}"
             )
 
-        logger.info("Loading Wav2Vec2-CTC ONNX session...")
+        logger.info(
+            "Loading Wav2Vec2-CTC ONNX session (intra_op_num_threads=%d)...",
+            w2v2_threads,
+        )
         sess_options = ort.SessionOptions()
-        sess_options.intra_op_num_threads = 1
+        sess_options.intra_op_num_threads = w2v2_threads
         sess_options.inter_op_num_threads = 1
         sess_options.enable_cpu_mem_arena = False
         self.session = ort.InferenceSession(str(self.model_path), sess_options)

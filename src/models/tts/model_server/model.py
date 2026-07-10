@@ -21,6 +21,7 @@ class TTSModel(kserve.Model):
         kokoro_voices: str,
         wav2vec2_model_dir: str,
         kokoro_threads: int = 2,
+        w2v2_threads: int = 1,
     ) -> None:
         super().__init__(name)
         self.name = name
@@ -28,6 +29,7 @@ class TTSModel(kserve.Model):
         self.kokoro_voices = kokoro_voices
         self.wav2vec2_model_dir = wav2vec2_model_dir
         self.kokoro_threads = kokoro_threads
+        self.w2v2_threads = w2v2_threads
         self.pipeline: TTSInferencePipeline | None = None
         self.ready = False
 
@@ -48,6 +50,7 @@ class TTSModel(kserve.Model):
                 self.kokoro_voices,
                 self.wav2vec2_model_dir,
                 kokoro_threads=self.kokoro_threads,
+                w2v2_threads=self.w2v2_threads,
             )
             # Warm-up: the first synthesis pays one-time costs (espeak/G2P
             # init, ONNX first-inference). Pay them at startup so the first
@@ -210,6 +213,7 @@ if __name__ == "__main__":
         "WAV2VEC2_MODEL_DIR", os.path.join(model_path, "wav2vec2")
     )
     kokoro_threads = int(os.environ.get("KOKORO_THREADS", "2"))
+    w2v2_threads = int(os.environ.get("W2V2_THREADS", "1"))
 
     model = TTSModel(
         name=model_name,
@@ -217,6 +221,7 @@ if __name__ == "__main__":
         kokoro_voices=kokoro_voices,
         wav2vec2_model_dir=wav2vec2_model_dir,
         kokoro_threads=kokoro_threads,
+        w2v2_threads=w2v2_threads,
     )
 
     model.load()

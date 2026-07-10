@@ -36,6 +36,7 @@ class TTSInferencePipeline:
         kokoro_voices: str,
         wav2vec2_model_dir: str,
         kokoro_threads: int = 2,
+        w2v2_threads: int = 1,
     ):
         logger.info("Loading Kokoro ONNX model from %s...", kokoro_model)
         from kokoro_onnx import Kokoro
@@ -58,7 +59,7 @@ class TTSInferencePipeline:
         self.sample_rate = 24000
 
         logger.info("Loading Wav2Vec2 aligner from %s...", wav2vec2_model_dir)
-        self.aligner = Aligner(wav2vec2_model_dir)
+        self.aligner = Aligner(wav2vec2_model_dir, w2v2_threads=w2v2_threads)
 
     def predict(
         self,
