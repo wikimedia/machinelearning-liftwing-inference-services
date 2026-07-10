@@ -2,6 +2,7 @@ import asyncio
 import base64
 import logging
 import os
+import time
 
 import kserve
 import numpy as np
@@ -48,6 +49,15 @@ class TTSModel(kserve.Model):
                 self.wav2vec2_model_dir,
                 kokoro_threads=self.kokoro_threads,
             )
+            # Warm-up: the first synthesis pays one-time costs (espeak/G2P
+            # init, ONNX first-inference). Pay them at startup so the first
+            # real request doesn't. A warm-up failure fails load()
+            # intentionally: a server that cannot synthesize should not go
+            # ready.
+            logger.info("Warming up TTS pipeline...")
+            _t = time.perf_counter()
+            self.pipeline.predict([{"text": "Warm up."}])
+            logger.info("Warm-up complete in %.2fs", time.perf_counter() - _t)
             self.ready = True
             logger.info("Model loaded successfully!")
         except Exception as e:

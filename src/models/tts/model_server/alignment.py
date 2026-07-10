@@ -9,6 +9,7 @@ https://phabricator.wikimedia.org/T424378#12068767
 """
 
 import logging
+import time
 from pathlib import Path
 
 import numpy as np
@@ -73,8 +74,11 @@ class Aligner:
         if not text.strip():
             return []
 
+        _t = time.perf_counter()
         audio_16k = _resample(audio, sample_rate, ALIGNER_SR)
+        logger.debug("align.resample: %.3fs", time.perf_counter() - _t)
 
+        _t = time.perf_counter()
         inputs = self.processor(
             audio_16k,
             sampling_rate=ALIGNER_SR,
@@ -83,8 +87,12 @@ class Aligner:
         )
 
         logits = self.session.run(None, {"input_values": inputs.input_values})[0]
+        logger.debug("align.w2v2_onnx: %.3fs", time.perf_counter() - _t)
 
-        return _ctc_word_alignment(logits, text, self.processor)
+        _t = time.perf_counter()
+        result = _ctc_word_alignment(logits, text, self.processor)
+        logger.debug("align.ctc_decode: %.3fs", time.perf_counter() - _t)
+        return result
 
 
 # ── Resampling ──────────────────────────────────────────────────────────────

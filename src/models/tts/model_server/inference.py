@@ -10,6 +10,7 @@ https://phabricator.wikimedia.org/T424378#12068767
 """
 
 import logging
+import time
 
 import numpy as np
 import onnxruntime as ort
@@ -89,6 +90,9 @@ class TTSInferencePipeline:
         audio_chunks: list[np.ndarray] = []
         all_timestamps: list[dict] = []
         current_time_ms = 0.0
+        kokoro_s = 0.0
+        align_s = 0.0
+        t_request = time.perf_counter()
 
         fade_out = np.linspace(1, 0, FADE_LEN, dtype=np.float32)
         fade_in = np.linspace(0, 1, FADE_LEN, dtype=np.float32)
@@ -100,15 +104,19 @@ class TTSInferencePipeline:
             speed = seg.get("speed", default_speed)
             lang = seg.get("lang", default_lang)
 
+            _t = time.perf_counter()
             chunk_audio, _ = self.kokoro.create(
                 text, voice=voice, speed=speed, lang=lang
             )
+            kokoro_s += time.perf_counter() - _t
             # Defensive copy: kokoro.create() may return a view, cached buffer,
             # or read-only array, in-place crossfade ops must own the memory.
             chunk_audio = np.array(chunk_audio, dtype=np.float32, copy=True)
 
             # Word-level alignment
+            _t = time.perf_counter()
             chunk_ts = self.aligner.align(chunk_audio, self.sample_rate, text)
+            align_s += time.perf_counter() - _t
             for t in chunk_ts:
                 t["start_ms"] += current_time_ms
                 t["end_ms"] += current_time_ms
@@ -152,6 +160,19 @@ class TTSInferencePipeline:
             np.concatenate(audio_chunks)
             if audio_chunks
             else np.array([], dtype=np.float32)
+        )
+
+        total_s = time.perf_counter() - t_request
+        audio_s = len(audio) / self.sample_rate if len(audio) else 0.0
+        logger.info(
+            "predict: %d segments -> %.2fs audio in %.2fs "
+            "(kokoro %.2fs, align %.2fs, RTF %.2f)",
+            len(segments),
+            audio_s,
+            total_s,
+            kokoro_s,
+            align_s,
+            (total_s / audio_s) if audio_s else -1.0,
         )
 
         return {
