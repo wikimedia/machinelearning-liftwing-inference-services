@@ -49,6 +49,7 @@ class Qwen36Model(kserve.Model, OpenAIChatAdapterModel):
         max_num_batched_tokens: int = 32768,
         block_size: int = 64,
         attention_backend: str = "TRITON_ATTN",
+        kv_cache_dtype: str = "auto",
         disable_custom_all_reduce: bool = False,
         enforce_eager: bool = False,
         disable_log_stats: bool = False,
@@ -67,6 +68,7 @@ class Qwen36Model(kserve.Model, OpenAIChatAdapterModel):
         self.max_num_batched_tokens = max_num_batched_tokens
         self.block_size = block_size
         self.attention_backend = attention_backend
+        self.kv_cache_dtype = kv_cache_dtype
         self.disable_custom_all_reduce = disable_custom_all_reduce
         self.enforce_eager = enforce_eager
         self.disable_log_stats = disable_log_stats
@@ -86,6 +88,12 @@ class Qwen36Model(kserve.Model, OpenAIChatAdapterModel):
                 max_num_seqs=self.max_num_seqs,
                 block_size=self.block_size,
                 attention_backend=self.attention_backend,
+                # KV cache dtype for the 16 gated-attention layers ("auto" = model
+                # dtype, i.e. bf16; "fp8" = e4m3 with static scale 1.0). Do NOT add
+                # calculate_kv_scales: on GDN+attention hybrids the warmup pass runs
+                # with uninitialized recurrent state and produces corrupted scales
+                # (https://github.com/vllm-project/vllm/issues/37554).
+                kv_cache_dtype=self.kv_cache_dtype,
                 tensor_parallel_size=self.tensor_parallel_size,
                 disable_custom_all_reduce=self.disable_custom_all_reduce,
                 enforce_eager=self.enforce_eager,
@@ -398,6 +406,7 @@ if __name__ == "__main__":
     max_num_batched_tokens = int(os.environ.get("MAX_NUM_BATCHED_TOKENS", "32768"))
     block_size = int(os.environ.get("BLOCK_SIZE", "64"))
     attention_backend = os.environ.get("ATTENTION_BACKEND", "TRITON_ATTN")
+    kv_cache_dtype = os.environ.get("KV_CACHE_DTYPE", "auto")
     disable_custom_all_reduce = strtobool(
         os.environ.get("DISABLE_CUSTOM_ALL_REDUCE", "False")
     )
@@ -418,6 +427,7 @@ if __name__ == "__main__":
         max_num_batched_tokens=max_num_batched_tokens,
         block_size=block_size,
         attention_backend=attention_backend,
+        kv_cache_dtype=kv_cache_dtype,
         disable_custom_all_reduce=disable_custom_all_reduce,
         enforce_eager=enforce_eager,
         disable_log_stats=disable_log_stats,

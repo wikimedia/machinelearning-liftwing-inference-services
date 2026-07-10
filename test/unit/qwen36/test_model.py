@@ -59,6 +59,35 @@ def model():
         yield m
 
 
+class TestLoad:
+    def _make_model(self, **overrides):
+        kwargs = dict(
+            name="qwen36-27b",
+            model_path="/mnt/models",
+            trust_remote_code=True,
+            gpu_memory_utilization=0.85,
+            max_model_len=32768,
+            tensor_parallel_size=1,
+            dtype="auto",
+            language_model_only_flag=True,
+            skip_mm_profiling_flag=True,
+        )
+        kwargs.update(overrides)
+        return Qwen36Model(**kwargs)
+
+    def test_kv_cache_dtype_defaults_to_auto(self):
+        from src.models.qwen36.model_server.model import AsyncEngineArgs
+
+        self._make_model().load()
+        assert AsyncEngineArgs.call_args.kwargs["kv_cache_dtype"] == "auto"
+
+    def test_kv_cache_dtype_passed_to_engine_args(self):
+        from src.models.qwen36.model_server.model import AsyncEngineArgs
+
+        self._make_model(kv_cache_dtype="fp8").load()
+        assert AsyncEngineArgs.call_args.kwargs["kv_cache_dtype"] == "fp8"
+
+
 class TestBuildMessages:
     def test_builds_messages_with_system_and_user(self, model):
         messages = model._build_messages("Hello", system="You are helpful.")
