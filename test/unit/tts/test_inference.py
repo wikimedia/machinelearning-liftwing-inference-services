@@ -369,6 +369,36 @@ def test_segment_level_voice_passed_through():
     assert captured["y"]["voice"] == "af_heart"
 
 
+# ── Overlap correctness ──────────────────────────────────────────────────────
+
+
+def test_overlap_preserves_timestamp_offsets():
+    """Overlapped alignment must reproduce serial-accumulation offsets
+    exactly: each chunk's timestamps are offset by the audio contributed
+    before it (post-crossfade), regardless of when alignment completes."""
+    L = 1000
+    n_segs = 4
+    segs = [{"text": f"seg{i}"} for i in range(n_segs)]
+    lengths = {f"seg{i}": L for i in range(n_segs)}
+    ts = {
+        f"seg{i}": [{"word": f"w{i}", "start_ms": 0.0, "end_ms": 10.0}]
+        for i in range(n_segs)
+    }
+
+    pipe = _make_pipeline(lengths, ts)
+    result = pipe.predict(segs)
+
+    # chunk 0..n-2 each contribute L - FADE_LEN; last chunk contributes L
+    contribution = _ms(L - FADE_LEN)
+    for i, t in enumerate(result["timestamps"]):
+        expected_offset = i * contribution
+        assert t["start_ms"] == pytest.approx(expected_offset)
+        assert t["end_ms"] == pytest.approx(expected_offset + 10.0)
+
+    # Total audio length matches serial expectation: n*L - (n-1)*FADE_LEN
+    assert len(result["audio"]) == n_segs * L - (n_segs - 1) * FADE_LEN
+
+
 # ── Constants sanity ─────────────────────────────────────────────────────────
 
 

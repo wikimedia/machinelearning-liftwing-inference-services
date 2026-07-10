@@ -12,6 +12,7 @@ https://phabricator.wikimedia.org/T424378#12068767
 import logging
 import threading
 import time
+from concurrent.futures import ThreadPoolExecutor
 
 import numpy as np
 import onnxruntime as ort
@@ -106,6 +107,14 @@ class TTSInferencePipeline:
         Timestamps are accumulated so they refer to positions in the final
         concatenated audio.
 
+        Alignment of chunk i runs in a single background worker while this
+        thread synthesizes chunk i+1, hiding most alignment time on
+        multi-segment requests. Crossfade bookkeeping and the timestamp
+        clock stay on this thread in segment order; each chunk's timestamp
+        offset is captured at dispatch time, and alignment runs on a
+        snapshot of the raw chunk audio (the crossfade mutates the original
+        in place afterwards).
+
         Each segment's ``text`` should be pre-chunked by the caller (e.g. via
         ``_split_text``) to stay under ~800 characters, the practical input
         limit for Kokoro.  Longer text may be silently truncated by the model.
@@ -126,6 +135,26 @@ class TTSInferencePipeline:
         align_s = 0.0
         t_request = time.perf_counter()
 
+        # Overlap: alignment of chunk i runs in a single background worker
+        # while the main thread synthesizes chunk i+1. Safe because the
+        # thread-safety corruption is confined to kokoro's synthesis path
+        # (verified: 4x concurrent align during locked synth -> uniform
+        # output, T430536); synthesis itself stays on this thread only.
+        # max_workers=1: align-vs-align concurrency is untested; one worker
+        # also keeps completion order deterministic.
+        # Thread budget: overlapped stages contend for the pod's CPUs, so
+        # fewer aligner threads can be net-faster (hidden time is cheap,
+        # exposed synthesis time is not): swept kokoro/w2v2 8/4=RTF 0.34,
+        # 8/2=0.32, 6/2=0.34 on a 6-segment request. W2V2_THREADS=2 is set
+        # in the deployment config.
+        align_pool = ThreadPoolExecutor(max_workers=1)
+        pending: list[tuple] = []  # (future, offset_ms) in segment order
+
+        def _timed_align(a: np.ndarray, sr: int, txt: str):
+            t0 = time.perf_counter()
+            ts = self.aligner.align(a, sr, txt)
+            return ts, time.perf_counter() - t0
+
         fade_out = np.linspace(1, 0, FADE_LEN, dtype=np.float32)
         fade_in = np.linspace(0, 1, FADE_LEN, dtype=np.float32)
         prev_tail: np.ndarray | None = None
@@ -145,14 +174,18 @@ class TTSInferencePipeline:
             # or read-only array, in-place crossfade ops must own the memory.
             chunk_audio = np.array(chunk_audio, dtype=np.float32, copy=True)
 
-            # Word-level alignment
-            _t = time.perf_counter()
-            chunk_ts = self.aligner.align(chunk_audio, self.sample_rate, text)
-            align_s += time.perf_counter() - _t
-            for t in chunk_ts:
-                t["start_ms"] += current_time_ms
-                t["end_ms"] += current_time_ms
-                all_timestamps.append(t)
+            # Word-level alignment: dispatch on a snapshot of the raw chunk
+            # (the crossfade below mutates chunk_audio in place) with the
+            # timestamp offset captured NOW, before the clock advances.
+            # Results are gathered in segment order after the loop.
+            pending.append(
+                (
+                    align_pool.submit(
+                        _timed_align, chunk_audio.copy(), self.sample_rate, text
+                    ),
+                    current_time_ms,
+                )
+            )
 
             # Crossfade between consecutive chunks.
             # Chunks shorter than FADE_LEN (~5 ms) skip crossfade as they're
@@ -187,6 +220,18 @@ class TTSInferencePipeline:
             # Advance the timestamp clock by what was actually contributed
             # to the output (post-crossfade), not the full chunk length.
             current_time_ms += (contributed_samples / self.sample_rate) * 1000
+
+        # Gather alignments in segment order and apply per-chunk offsets.
+        # fut.result() re-raises any alignment exception on this thread, so
+        # the caller's error handling is unchanged.
+        for fut, offset_ms in pending:
+            chunk_ts, spent = fut.result()
+            align_s += spent
+            for t in chunk_ts:
+                t["start_ms"] += offset_ms
+                t["end_ms"] += offset_ms
+                all_timestamps.append(t)
+        align_pool.shutdown(wait=False)
 
         audio = (
             np.concatenate(audio_chunks)
