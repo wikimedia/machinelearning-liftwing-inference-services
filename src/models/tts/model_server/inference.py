@@ -10,6 +10,7 @@ https://phabricator.wikimedia.org/T424378#12068767
 """
 
 import logging
+import threading
 import time
 
 import numpy as np
@@ -58,10 +59,40 @@ class TTSInferencePipeline:
         self.kokoro = Kokoro.from_session(session, kokoro_voices)
         self.sample_rate = 24000
 
+        # Concurrent predict() calls corrupt synthesis output: four
+        # concurrent requests with identical input produced 14.49-26.28s
+        # of audio; the same four serialized produced exactly 16.81s each.
+        # Suspected shared mutable state in kokoro-onnx's espeak phonemizer
+        # (espeak-ng is not thread-safe). Serialize the pipeline until
+        # root-caused. See T430536.
+        self._synth_lock = threading.Lock()
+
         logger.info("Loading Wav2Vec2 aligner from %s...", wav2vec2_model_dir)
         self.aligner = Aligner(wav2vec2_model_dir, w2v2_threads=w2v2_threads)
 
     def predict(
+        self,
+        segments: list[dict],
+        default_voice: str = "af_heart",
+        default_speed: float = 1.0,
+        default_lang: str = "en-us",
+    ) -> dict:
+        """
+        Serialized entry point for the inference pipeline.
+
+        Concurrent execution corrupts synthesis output (see the
+        ``_synth_lock`` comment in ``__init__``), so requests are
+        processed one at a time; concurrent callers queue on the lock.
+        """
+        with self._synth_lock:
+            return self._predict_impl(
+                segments,
+                default_voice=default_voice,
+                default_speed=default_speed,
+                default_lang=default_lang,
+            )
+
+    def _predict_impl(
         self,
         segments: list[dict],
         default_voice: str = "af_heart",

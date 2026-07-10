@@ -13,6 +13,7 @@ it.
 """
 
 import sys
+import threading
 import types
 
 import numpy as np
@@ -119,6 +120,7 @@ def _make_pipeline(lengths, timestamps=None):
     pipe.kokoro = FakeKokoro(lengths)
     pipe.aligner = FakeAligner(timestamps)
     pipe.sample_rate = SAMPLE_RATE
+    pipe._synth_lock = threading.Lock()
     return pipe
 
 
@@ -328,6 +330,7 @@ def test_kokoro_output_is_not_mutated_in_place():
     pipe.kokoro = ReadOnlyKokoro({"a": n1, "b": n2})
     pipe.aligner = FakeAligner()
     pipe.sample_rate = SAMPLE_RATE
+    pipe._synth_lock = threading.Lock()
 
     # Should not raise despite read-only source arrays.
     result = pipe.predict([{"text": "a"}, {"text": "b"}])
@@ -349,6 +352,7 @@ def test_segment_level_voice_passed_through():
     pipe.kokoro = CapturingKokoro({"x": 500, "y": 500})
     pipe.aligner = FakeAligner()
     pipe.sample_rate = SAMPLE_RATE
+    pipe._synth_lock = threading.Lock()
 
     pipe.predict(
         [{"text": "x", "voice": "af_bella"}, {"text": "y"}],
