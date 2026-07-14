@@ -1,0 +1,222 @@
+openapi: 3.0.3
+info:
+  title: TTS Section Generator
+  version: 0.1.0
+  description: >
+    ML-owned compute function for the Wikipedia TTS Audio Archive
+    (T430536 successor work). Takes a (wiki, page, revision, section)
+    address and produces the audio artifact family for that exact pinned
+    revision. Stateless: a pure function of its inputs plus
+    generation_version, so retries are always safe.
+
+
+    Error contract: every non-2xx body carries a machine-readable `code`.
+    4xx codes are DETERMINISTIC (the same request always produces the same
+    outcome; record, never retry). 5xx codes are transient (retry with
+    backoff).
+
+paths:
+  /sections:
+    get:
+      summary: Enumerate valid, generatable sections of a pinned revision
+      description: >
+        The DE pipeline diffs this against the artifact index to decide
+        what to generate. Section validity (blocklist, minimum length) is
+        TTS business logic and is applied here: blocklisted sections are
+        absent from the response entirely; too-short sections appear with
+        `generatable: false` so "skipped" is distinguishable from "failed".
+      parameters:
+        - {name: wiki_id, in: query, required: true, schema: {type: string}, example: enwiki}
+        - {name: page_id, in: query, required: true, schema: {type: integer}, example: 9228}
+        - {name: rev_id, in: query, required: true, schema: {type: integer}}
+      responses:
+        "200":
+          description: Sections in document order.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/SectionsResponse"}
+        "400": {$ref: "#/components/responses/Error"}
+        "404": {$ref: "#/components/responses/Error"}
+        "409": {$ref: "#/components/responses/Error"}
+        "502": {$ref: "#/components/responses/Error"}
+
+  /generate-section:
+    post:
+      summary: Generate the artifact family for one section of one pinned revision
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/GenerateRequest"}
+      responses:
+        "200":
+          description: Requested artifacts, each carrying full index-record fields.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/GenerateResponse"}
+        "400": {$ref: "#/components/responses/Error"}
+        "404": {$ref: "#/components/responses/Error"}
+        "409": {$ref: "#/components/responses/Error"}
+        "422": {$ref: "#/components/responses/Error"}
+        "502": {$ref: "#/components/responses/Error"}
+
+components:
+  responses:
+    Error:
+      description: Error with machine-readable code.
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/Error"}
+
+  schemas:
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          description: >
+            Deterministic (never retry): revision_not_found,
+            revision_page_mismatch, section_not_found_at_revision,
+            text_below_minimum, artifact_type_not_available,
+            unsupported_wiki. Transient (retry): upstream_fetch_error,
+            synthesis_error.
+          enum:
+            - revision_not_found
+            - revision_page_mismatch
+            - section_not_found_at_revision
+            - text_below_minimum
+            - artifact_type_not_available
+            - unsupported_wiki
+            - upstream_fetch_error
+            - synthesis_error
+        message: {type: string}
+
+    SectionsResponse:
+      type: object
+      required: [wiki_id, page_id, rev_id, generation_version, sections]
+      properties:
+        wiki_id: {type: string}
+        page_id: {type: integer}
+        rev_id: {type: integer}
+        revision_timestamp: {type: string, format: date-time}
+        generation_version:
+          type: string
+          description: >
+            The version this service would stamp on artifacts generated
+            now (model+voice+normalizer identity). The pipeline compares
+            index records against this to find outdated artifacts.
+          example: kokoro-v1.0+af_heart+norm-2026.07-nemo-3f9a1c2b
+        sections:
+          type: array
+          items: {$ref: "#/components/schemas/SectionInfo"}
+
+    SectionInfo:
+      type: object
+      required: [section_id, title, level, generatable, char_count]
+      properties:
+        section_id:
+          type: string
+          description: >
+            Lowercase heading slug, "-N" ordinal for duplicate headings,
+            "lead" for the lead. Deterministic from heading text and
+            document order; a renamed heading is a new section_id.
+          example: atmosphere
+        title: {type: string, example: Atmosphere}
+        level: {type: integer, description: "1 = lead, 2..6 = heading level"}
+        generatable: {type: boolean}
+        skip_reason:
+          type: string
+          enum: [text_below_minimum]
+          description: Present iff generatable is false.
+        char_count:
+          type: integer
+          description: Length of the cleaned (normalized) text.
+        content_sha256:
+          type: string
+          description: >
+            SHA-256 of the NORMALIZED text (what the voice speaks), so
+            revisions whose raw markup differs but normalize identically
+            share artifacts. Only comparable within one
+            generation_version. Present iff generatable.
+
+    GenerationConfig:
+      type: object
+      properties:
+        voice: {type: string, default: af_heart}
+        lang: {type: string, default: en-us}
+        timestamps:
+          type: string
+          enum: [full, proportional, none]
+          default: full
+          description: >
+            Word-timestamp fidelity for timestamps_json / captions_vtt.
+            full = CTC forced alignment; proportional = char-weighted
+            (near-zero cost); ignored when neither timing artifact is
+            requested (audio-only rides the isvc's cheapest path).
+        artifacts:
+          type: array
+          items:
+            type: string
+            enum: [audio_pcm_s16le, timestamps_json, audio_opus, captions_vtt]
+          default: [audio_pcm_s16le, timestamps_json]
+          description: >
+            audio_opus and captions_vtt are declared now and return
+            artifact_type_not_available until Phase 2 (transcode + VTT).
+
+    GenerateRequest:
+      type: object
+      required: [wiki_id, page_id, rev_id, section_id]
+      properties:
+        wiki_id: {type: string, example: enwiki}
+        page_id: {type: integer, example: 9228}
+        rev_id: {type: integer}
+        section_id: {type: string, example: atmosphere}
+        generation_config: {$ref: "#/components/schemas/GenerationConfig"}
+
+    Artifact:
+      type: object
+      description: >
+        One artifact plus every field its index record needs
+        (snake_case, deterministic, per T428760 schema conventions).
+      required:
+        [wiki_id, page_id, rev_id, section_id, generation_version,
+         content_sha256, duration_ms, artifact_type]
+      properties:
+        wiki_id: {type: string}
+        page_id: {type: integer}
+        rev_id: {type: integer}
+        section_id: {type: string}
+        generation_version: {type: string}
+        content_sha256: {type: string}
+        duration_ms: {type: number}
+        artifact_type:
+          type: string
+          enum: [audio_pcm_s16le, timestamps_json, audio_opus, captions_vtt]
+        bytes_b64:
+          type: string
+          description: >
+            Present for binary artifacts in return-bytes mode. Phase 3
+            adds an alternative write-to-blob-store mode returning
+            blob_uri instead (open design question with Data Persistence).
+        sample_rate: {type: integer, example: 24000}
+        encoding: {type: string, example: pcm_s16le}
+        timestamps_mode: {type: string, enum: [full, proportional, none]}
+        timestamps:
+          type: array
+          items:
+            type: object
+            required: [word, start_ms, end_ms]
+            properties:
+              word: {type: string}
+              start_ms: {type: number}
+              end_ms: {type: number}
+
+    GenerateResponse:
+      type: object
+      required: [artifacts, segment_count]
+      properties:
+        artifacts:
+          type: array
+          items: {$ref: "#/components/schemas/Artifact"}
+        segment_count: {type: integer}

@@ -1,0 +1,13 @@
+# Service
+fastapi==0.136.1
+uvicorn==0.46.0
+pydantic>=2.5
+
+# Fetch + parsing
+requests==2.32.5
+lxml>=5.0
+
+# Text normalization (heavy; optional in dev, required in the prod image.
+# Without it clean_spoken_text falls back to the regex path, and
+# generation_version reflects that via the "regex" engine tag.)
+# nemo_text_processing==1.1.0
