@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: TTS Section Generator
-  version: 0.1.0
+  version: 0.2.0
   description: >
     ML-owned compute function for the Wikipedia TTS Audio Archive
     (T430536 successor work). Takes a (wiki, page, revision, section)
@@ -90,6 +90,7 @@ components:
             - unsupported_wiki
             - upstream_fetch_error
             - synthesis_error
+            - transcode_error
         message: {type: string}
 
     SectionsResponse:
@@ -158,11 +159,14 @@ components:
           type: array
           items:
             type: string
-            enum: [audio_pcm_s16le, timestamps_json, audio_opus, captions_vtt]
-          default: [audio_pcm_s16le, timestamps_json]
+            enum: [audio_opus, audio_mp3, captions_vtt, timestamps_json, audio_pcm_s16le]
+          default: [audio_opus, captions_vtt, timestamps_json]
           description: >
-            audio_opus and captions_vtt are declared now and return
-            artifact_type_not_available until Phase 2 (transcode + VTT).
+            audio_opus is the recommended delivery codec; audio_mp3 is the
+            supported alternative pending the Apps codec decision;
+            audio_pcm_s16le is raw isvc passthrough (debugging). Requests
+            with no timing artifact (captions_vtt / timestamps_json) ride
+            the isvc's alignment-free path.
 
     GenerateRequest:
       type: object
@@ -190,9 +194,16 @@ components:
         generation_version: {type: string}
         content_sha256: {type: string}
         duration_ms: {type: number}
+        media_type:
+          type: string
+          description: >
+            IANA media type for the artifact bytes, for the storage and
+            serving layers (e.g. "audio/ogg; codecs=opus", "audio/mpeg",
+            "text/vtt", "application/json").
+          example: audio/ogg; codecs=opus
         artifact_type:
           type: string
-          enum: [audio_pcm_s16le, timestamps_json, audio_opus, captions_vtt]
+          enum: [audio_opus, audio_mp3, captions_vtt, timestamps_json, audio_pcm_s16le]
         bytes_b64:
           type: string
           description: >

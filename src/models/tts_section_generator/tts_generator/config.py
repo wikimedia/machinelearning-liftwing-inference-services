@@ -29,6 +29,18 @@ ISVC_HOST_HEADER = os.environ.get("TTS_ISVC_HOST", "tts.experimental.wikimedia.o
 # lowering this.
 ISVC_TIMEOUT_S = float(os.environ.get("TTS_ISVC_TIMEOUT_S", "300"))
 ISVC_VERIFY_TLS = os.environ.get("TTS_ISVC_VERIFY_TLS", "true").lower() == "true"
+# Retries apply ONLY to transport failures and 5xx (the isvc is stateless
+# and deterministic, so retries are always safe); 4xx never retries.
+ISVC_RETRIES = int(os.environ.get("TTS_ISVC_RETRIES", "2"))
+ISVC_BACKOFF_S = float(os.environ.get("TTS_ISVC_BACKOFF_S", "2.0"))
+
+# ── Transcode (Phase 2) ─────────────────────────────────────────────────────
+FFMPEG_PATH = os.environ.get("TTS_GEN_FFMPEG", "ffmpeg")
+# Opus at 24-32 kbps mono is transparent for speech; "voip" tunes the
+# encoder for speech intelligibility at low bitrates.
+OPUS_BITRATE = os.environ.get("TTS_GEN_OPUS_BITRATE", "32k")
+OPUS_APPLICATION = os.environ.get("TTS_GEN_OPUS_APPLICATION", "voip")
+MP3_BITRATE = os.environ.get("TTS_GEN_MP3_BITRATE", "48k")
 
 # ── Text processing ─────────────────────────────────────────────────────────
 # v0's gate: cleaned section text at or below this length is skipped

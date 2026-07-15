@@ -14,12 +14,14 @@ are DETERMINISTIC. The same request will always produce the same skip, so
 the pipeline records them and never retries. 5xx codes are transient and
 retryable. This split is a contract promise the DE retry logic depends on.
 
-Phase 1 artifact scope: ``audio_pcm_s16le`` (raw isvc PCM passthrough) and
-``timestamps_json``. ``audio_opus`` and ``captions_vtt`` land in Phase 2
-(transcode + VTT formatting) and are declared in the spec now so the
-contract does not change shape later.
+Artifact set (Phase 2 complete): audio_opus (recommended), audio_mp3
+(config-free alternative pending the Apps codec decision), captions_vtt,
+timestamps_json, audio_pcm_s16le (raw passthrough, mostly for debugging).
+Artifact choice drives isvc request shaping: requests with no timing
+artifact ride the isvc's alignment-free path (RTF ~0.22 vs ~0.27).
 """
 
+import base64
 import logging
 import time
 
@@ -37,14 +39,30 @@ from tts_generator.config import (
 from tts_generator.fetch import FetchError, fetch_revision_html, fetch_revision_meta
 from tts_generator.sections import extract_sections, find_section
 from tts_generator.text import clean_spoken_text, init_nemo
+from tts_generator.transcode import TranscodeError, pcm_to_mp3, pcm_to_opus
 from tts_generator.version import content_sha256, generation_version
+from tts_generator.vtt import timestamps_to_vtt
 
 logger = logging.getLogger(__name__)
 
-PHASE1_ARTIFACTS = {"audio_pcm_s16le", "timestamps_json"}
-PHASE2_ARTIFACTS = {"audio_opus", "captions_vtt"}
+SUPPORTED_ARTIFACTS = {
+    "audio_opus",
+    "audio_mp3",
+    "captions_vtt",
+    "timestamps_json",
+    "audio_pcm_s16le",
+}
+TIMING_ARTIFACTS = {"captions_vtt", "timestamps_json"}
 
-app = FastAPI(title="TTS Section Generator", version="0.1.0")
+MEDIA_TYPES = {
+    "audio_opus": "audio/ogg; codecs=opus",
+    "audio_mp3": "audio/mpeg",
+    "captions_vtt": "text/vtt",
+    "timestamps_json": "application/json",
+    "audio_pcm_s16le": "audio/L16; rate=24000; channels=1",
+}
+
+app = FastAPI(title="TTS Section Generator", version="0.2.0")
 
 
 @app.on_event("startup")
@@ -61,22 +79,15 @@ def _error(status: int, code: str, message: str) -> JSONResponse:
     return JSONResponse(status_code=status, content={"code": code, "message": message})
 
 
-# Deterministic (never retried): section_not_found_at_revision,
-# section_blocklisted (implicit: blocklisted sections are absent from
-# /sections), text_below_minimum, revision_page_mismatch,
-# artifact_type_not_available, unsupported_wiki.
-# Transient (retryable): upstream_fetch_error, synthesis_error.
+# Deterministic (never retried): revision_not_found, revision_page_mismatch,
+# section_not_found_at_revision (blocklisted sections are never addressable),
+# text_below_minimum, artifact_type_not_available, unsupported_wiki.
+# Transient (retryable): upstream_fetch_error, synthesis_error,
+# transcode_error.
 
 
-# ── /sections ───────────────────────────────────────────────────────────────
-
-
-@app.get("/sections")
-def get_sections(
-    wiki_id: str = Query(...),
-    page_id: int = Query(...),
-    rev_id: int = Query(...),
-):
+def _fetch_and_verify(wiki_id: str, page_id: int, rev_id: int):
+    """Shared fetch + integrity path. Returns (meta, html) or JSONResponse."""
     try:
         meta = fetch_revision_meta(wiki_id, rev_id)
     except FetchError as e:
@@ -99,6 +110,22 @@ def get_sections(
         html = fetch_revision_html(wiki_id, rev_id)
     except FetchError as e:
         return _error(502, "upstream_fetch_error", str(e))
+    return meta, html
+
+
+# ── /sections ───────────────────────────────────────────────────────────────
+
+
+@app.get("/sections")
+def get_sections(
+    wiki_id: str = Query(...),
+    page_id: int = Query(...),
+    rev_id: int = Query(...),
+):
+    result = _fetch_and_verify(wiki_id, page_id, rev_id)
+    if isinstance(result, JSONResponse):
+        return result
+    meta, html = result
 
     out = []
     for s in extract_sections(html):
@@ -134,7 +161,7 @@ class GenerationConfig(BaseModel):
     voice: str = DEFAULT_VOICE
     lang: str = DEFAULT_LANG
     timestamps: str = Field(default="full", pattern="^(full|proportional|none)$")
-    artifacts: list[str] = ["audio_pcm_s16le", "timestamps_json"]
+    artifacts: list[str] = ["audio_opus", "captions_vtt", "timestamps_json"]
 
 
 class GenerateRequest(BaseModel):
@@ -149,42 +176,20 @@ class GenerateRequest(BaseModel):
 def generate_section(req: GenerateRequest):
     cfg = req.generation_config
 
-    unknown = set(cfg.artifacts) - PHASE1_ARTIFACTS - PHASE2_ARTIFACTS
+    unknown = set(cfg.artifacts) - SUPPORTED_ARTIFACTS
     if unknown:
         return _error(
             400,
             "artifact_type_not_available",
             f"Unknown artifact types: {sorted(unknown)}",
         )
-    not_yet = set(cfg.artifacts) & PHASE2_ARTIFACTS
-    if not_yet:
-        return _error(
-            400,
-            "artifact_type_not_available",
-            f"{sorted(not_yet)} land in Phase 2 (transcode + VTT)",
-        )
+    if not cfg.artifacts:
+        return _error(400, "artifact_type_not_available", "No artifacts requested")
 
-    try:
-        meta = fetch_revision_meta(req.wiki_id, req.rev_id)
-    except FetchError as e:
-        if e.status == 404:
-            return _error(404, "revision_not_found", str(e))
-        if e.status == 400:
-            return _error(400, "unsupported_wiki", str(e))
-        return _error(502, "upstream_fetch_error", str(e))
-
-    actual_page_id = (meta.get("page") or {}).get("id")
-    if actual_page_id != req.page_id:
-        return _error(
-            409,
-            "revision_page_mismatch",
-            f"rev_id {req.rev_id} belongs to page_id {actual_page_id}, not {req.page_id}",
-        )
-
-    try:
-        html = fetch_revision_html(req.wiki_id, req.rev_id)
-    except FetchError as e:
-        return _error(502, "upstream_fetch_error", str(e))
+    result = _fetch_and_verify(req.wiki_id, req.page_id, req.rev_id)
+    if isinstance(result, JSONResponse):
+        return result
+    _meta, html = result
 
     section = find_section(extract_sections(html), req.section_id)
     if section is None:
@@ -207,29 +212,27 @@ def generate_section(req: GenerateRequest):
     sha = content_sha256(cleaned)
     gv = generation_version(cfg.voice)
 
-    # Audio-only requests skip alignment cost entirely (isvc rides the
-    # RTF-0.22 path); timestamps_json forces the requested timestamps mode.
-    ts_mode = cfg.timestamps if "timestamps_json" in cfg.artifacts else "none"
+    # Request shaping: timing artifacts force the requested timestamps mode;
+    # audio-only requests ride the isvc's alignment-free path (RTF ~0.22).
+    ts_mode = cfg.timestamps if (set(cfg.artifacts) & TIMING_ARTIFACTS) else "none"
 
     t0 = time.perf_counter()
     try:
         isvc = isvc_client.synthesize(
             segments, voice=cfg.voice, lang=cfg.lang, timestamps=ts_mode
         )
+    except isvc_client.SynthesisRejected as e:
+        # A 4xx from the isvc means WE built a bad request: a generator bug,
+        # not load. Surfaced as transient so the pipeline flags it, and
+        # logged loudly for us.
+        logger.error("isvc rejected generator-built request: %s", e)
+        return _error(502, "synthesis_error", f"internal request rejected: {e}")
     except isvc_client.SynthesisError as e:
         return _error(502, "synthesis_error", str(e))
     synth_s = time.perf_counter() - t0
 
-    logger.info(
-        "generated %s/%s/%s/%s: %d segments, %.1fms audio in %.2fs",
-        req.wiki_id,
-        req.page_id,
-        req.rev_id,
-        req.section_id,
-        len(segments),
-        isvc["duration_ms"],
-        synth_s,
-    )
+    pcm = base64.b64decode(isvc["audio_b64"])
+    sample_rate = isvc["sample_rate"]
 
     common = {
         "wiki_id": req.wiki_id,
@@ -240,26 +243,54 @@ def generate_section(req: GenerateRequest):
         "content_sha256": sha,
         "duration_ms": isvc["duration_ms"],
     }
+
     artifacts = []
-    if "audio_pcm_s16le" in cfg.artifacts:
-        artifacts.append(
-            {
-                **common,
-                "artifact_type": "audio_pcm_s16le",
-                "bytes_b64": isvc["audio_b64"],
-                "sample_rate": isvc["sample_rate"],
-                "encoding": isvc["encoding"],
-            }
-        )
-    if "timestamps_json" in cfg.artifacts:
-        artifacts.append(
-            {
-                **common,
-                "artifact_type": "timestamps_json",
-                "timestamps_mode": isvc["timestamps_mode"],
-                "timestamps": isvc["timestamps"],
-            }
-        )
+    transcode_s = 0.0
+    try:
+        for kind in cfg.artifacts:
+            entry = {**common, "artifact_type": kind, "media_type": MEDIA_TYPES[kind]}
+            if kind == "audio_opus":
+                _t = time.perf_counter()
+                entry["bytes_b64"] = base64.b64encode(
+                    pcm_to_opus(pcm, sample_rate)
+                ).decode("ascii")
+                transcode_s += time.perf_counter() - _t
+            elif kind == "audio_mp3":
+                _t = time.perf_counter()
+                entry["bytes_b64"] = base64.b64encode(
+                    pcm_to_mp3(pcm, sample_rate)
+                ).decode("ascii")
+                transcode_s += time.perf_counter() - _t
+            elif kind == "captions_vtt":
+                vtt_text = timestamps_to_vtt(isvc["timestamps"])
+                entry["bytes_b64"] = base64.b64encode(vtt_text.encode("utf-8")).decode(
+                    "ascii"
+                )
+                entry["timestamps_mode"] = isvc["timestamps_mode"]
+            elif kind == "timestamps_json":
+                entry["timestamps"] = isvc["timestamps"]
+                entry["timestamps_mode"] = isvc["timestamps_mode"]
+            elif kind == "audio_pcm_s16le":
+                entry["bytes_b64"] = isvc["audio_b64"]
+                entry["sample_rate"] = sample_rate
+                entry["encoding"] = isvc["encoding"]
+            artifacts.append(entry)
+    except TranscodeError as e:
+        return _error(502, "transcode_error", str(e))
+
+    logger.info(
+        "generated %s/%s/%s/%s: %d segments, %.1fms audio "
+        "(synth %.2fs, transcode %.2fs, ts=%s)",
+        req.wiki_id,
+        req.page_id,
+        req.rev_id,
+        req.section_id,
+        len(segments),
+        isvc["duration_ms"],
+        synth_s,
+        transcode_s,
+        ts_mode,
+    )
 
     return {"artifacts": artifacts, "segment_count": len(segments)}
 

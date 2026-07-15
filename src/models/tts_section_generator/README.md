@@ -62,14 +62,22 @@ fetcher with page/rev integrity check; section extraction from Parsoid HTML
 (blocklist, noise stripping, section_id scheme); normalization (v0 port, NeMo
 + regex fallback); chunking (v0 behavior, reimplemented to its test suite);
 `generation_version` / `content_sha256`; both endpoints wired; artifacts
-limited to `audio_pcm_s16le` + `timestamps_json` (raw isvc passthrough).
+limited at the time to `audio_pcm_s16le` + `timestamps_json`.
 Validated: 25 unit tests green; live run against Earth pinned at two
 revisions showed 32/34 sections hash-identical across revisions (the
 content-reuse property) and only genuinely edited sections differing.
 
-**Phase 2 -- artifacts + error taxonomy hardening.** Opus/MP3 transcode
-(ffmpeg), `captions_vtt` formatting (v0 port), isvc client retries/backoff,
-golden-artifact regression tests (Kokoro is deterministic for fixed input).
+**Phase 2 (this) -- artifacts + error taxonomy hardening.** Opus transcode
+(ffmpeg, `-bitexact` + pinned Ogg serial for byte-deterministic output) with
+MP3 as a supported alternative artifact type pending the Apps codec decision;
+`captions_vtt` formatting (v0 port with its tests); `media_type` on every
+artifact for the storage layer; isvc client retries with linear backoff
+(transient 5xx/transport only; 4xx from the isvc means a generator bug and
+raises loudly); artifact-driven request shaping (no timing artifact ->
+isvc `timestamps=none`, the RTF-0.22 path); `transcode_error` added to the
+taxonomy. Tests: 43 green, including empirical transcode determinism and
+round-trip duration preservation; `scripts/validate_phase2.py` runs the true
+golden test (same pinned input twice -> byte-identical artifacts) in-pod.
 
 **Phase 3 -- deployment + de-risking spikes.** Container with NeMo grammar
 cache baked at image build; staging deploy; the timeout-ceiling spike
