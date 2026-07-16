@@ -12,9 +12,7 @@ import struct
 
 import pytest
 from fastapi.testclient import TestClient
-from tts_generator import fetch as fetch_mod
-
-from src.models.tts_section_generator.tts_generator import isvc_client, service
+from tts_generator import fetch as fetch_mod, isvc_client, service
 
 SR = 24000
 

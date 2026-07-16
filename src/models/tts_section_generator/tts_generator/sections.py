@@ -28,7 +28,26 @@ from lxml import html as lxml_html
 
 logger = logging.getLogger(__name__)
 
-BLOCKLIST = {"see also", "references", "external links", "further reading", "notes"}
+BLOCKLIST = {
+    "see also",
+    "references",
+    "external links",
+    "further reading",
+    "notes",
+    # Unambiguous bibliography-style variants observed across Featured
+    # Articles by the Phase 3 corpus scan. Deliberately NOT including bare
+    # "sources" (a river article's "Sources" could be content); those are
+    # handled structurally by the refbegin/reflist strip below, which
+    # empties them into the min-length skip.
+    "bibliography",
+    "citations",
+    "footnotes",
+    "works cited",
+    "endnotes",
+    "notes and references",
+    "references and sources",
+    "cited sources",
+}
 
 # Elements that must never reach the TTS voice. Tag-level strips first,
 # then class-token strips (Parsoid and skin classes).
@@ -46,6 +65,17 @@ _STRIP_CLASS_TOKENS = {
     "mw-ref",  # Parsoid inline citation markers [1]
     "reference",
     "mw-references-wrap",
+    "reflist",  # footnote list containers
+    "citation",  # rendered {{cite *}} templates (<cite
+    # class="citation">): the universal marker for
+    # bibliography entries, catching them in ANY
+    # container (refbegin, div-col, bare lists)
+    "refbegin",  # FA bibliography/works-cited containers: the
+    # Phase 3 corpus scan found 10-20k-char
+    # "Bibliography"/"Sources" sections that are
+    # pure citation lists; stripping the container
+    # empties them into the min-length skip
+    # regardless of the section's title
     "mw-editsection",
     "infobox",
     "navbox",

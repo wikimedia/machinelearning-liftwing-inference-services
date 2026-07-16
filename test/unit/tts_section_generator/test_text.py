@@ -82,3 +82,16 @@ def test_nemo_currency_normalization():
     pytest.importorskip("nemo_text_processing")
     init_nemo()
     assert "dollars" in clean_spoken_text("It costs $99.99.")
+
+
+def test_int_to_words_handles_huge_numbers_without_crashing():
+    """Regression: v0's fallback crashed (IndexError) on numbers beyond
+    'billion'; found by the Phase 3 corpus scan on real FA text."""
+    from src.models.tts_section_generator.tts_generator.text import _int_to_words
+
+    assert "trillion" in _int_to_words(1_400_000_000_000)
+    assert "quadrillion" in _int_to_words(2 * 10**15)
+    huge = _int_to_words(10**18)  # beyond named scales: digit-by-digit
+    assert huge.startswith("one zero zero")
+    out = clean_spoken_text("The estimate was 1400000000000 units.")
+    assert len(out) > 0  # did not crash on number beyond named scales

@@ -10,4 +10,4 @@ lxml>=5.0
 # Text normalization (heavy; optional in dev, required in the prod image.
 # Without it clean_spoken_text falls back to the regex path, and
 # generation_version reflects that via the "regex" engine tag.)
-# nemo_text_processing==1.1.0
+nemo_text_processing==1.1.0

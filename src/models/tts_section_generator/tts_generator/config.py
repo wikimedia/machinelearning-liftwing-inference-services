@@ -69,3 +69,12 @@ NEMO_GRAMMAR_CACHE = os.environ.get(
     "TTS_GEN_NEMO_CACHE",
     "/tmp/tts-gen-nemo-grammars",  # noqa: S108
 )
+
+# ── Artifact sink (Phase 3, Spike 2: blob-write mode) ──────────────────────
+# inline: artifacts return as bytes_b64 (default; LAC-native, storage-free)
+# file:   artifacts written under BLOB_SINK_DIR, response carries blob_uri
+# s3:     object-storage mode; wiring lands with the Data Persistence bucket
+BLOB_SINK = os.environ.get("TTS_GEN_BLOB_SINK", "inline")
+BLOB_SINK_DIR = os.environ.get("TTS_GEN_BLOB_SINK_DIR", "/tmp/tts-artifacts")  # noqa: S108
+S3_ENDPOINT = os.environ.get("TTS_GEN_S3_ENDPOINT", "")
+S3_BUCKET = os.environ.get("TTS_GEN_S3_BUCKET", "")

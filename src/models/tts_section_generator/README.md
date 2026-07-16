@@ -52,6 +52,10 @@ python3 scripts/validate_phase1.py     # live pinning proof against en.wikipedia
 python3 -m tts_generator.service       # serves on :8081
 ```
 
+cd ../..                                    # back to repo root
+docker compose build tts-section-generator
+docker compose up tts-section-generator       # serves on :8080
+
 Configuration is env-driven; see `tts_generator/config.py` (isvc URL/Host
 header, timeouts, chunk size, min text length, versions).
 
@@ -79,10 +83,24 @@ taxonomy. Tests: 43 green, including empirical transcode determinism and
 round-trip duration preservation; `scripts/validate_phase2.py` runs the true
 golden test (same pinned input twice -> byte-identical artifacts) in-pod.
 
-**Phase 3 -- deployment + de-risking spikes.** Container with NeMo grammar
-cache baked at image build; staging deploy; the timeout-ceiling spike
-(longest-section synthesis vs gateway limits); blob-write mode behind the
-artifact interface (`bytes_b64` now, `blob_uri` when storage exists).
+**Phase 3 (this) -- deployment + de-risking spikes.** Dockerfile with the
+NeMo grammar cache baked at image build (a broken normalization stack now
+fails the image build, not the deploy; kills v0's 60s-cold-start /
+CrashLoopBackOff mode) + compose for local dev; lifespan-API migration;
+artifact sinks behind one interface (`inline` bytes_b64 default / `file`
+with atomic writes + canonical `{wiki}/{page}/{rev}/{section}.{ext}` keys /
+`s3` stub that fails loudly at startup until the Data Persistence bucket
+exists) closing intake open question #3 as "both supported, your call";
+and the timeout spike: a live 100-article corpus scan (see
+SPIKE_ANSWERS.md) measured the section-length distribution (p50 ~40s /
+p99 ~126s / max ~231s estimated isvc wall; zero sections above a 300s
+ceiling in-sample), provisionally answering open question #7 as "600s
+ceiling, no splitting" pending the in-pod worst-case measurement
+(scripts/spike_timeout.py) and the infra config lookup. The scan also
+caught and fixed two real content bugs (fallback-normalizer crash on
+13-digit numbers; bibliography sections reaching the voice through
+blocklist title variants, fixed structurally via refbegin/reflist/citation
+stripping), both regression-tested.
 
 **Phase 4 -- 50-article pilot run.** Produces the measured numbers pack for
 the DE intake meeting: real artifact sizes, latency distribution, skip/failure

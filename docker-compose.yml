@@ -320,3 +320,12 @@ services:
       MODEL_NAME: "tts"
     volumes:
       - ${PATH_TO_TTS_MODEL:-/dummy/path}:/mnt/models/
+  tts-section-generator:
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: .pipeline/tts_section_generator/blubber.yaml
+      target: production
+    image: tts:prod
+    ports:
+      - "8080:8080"

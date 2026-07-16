@@ -20,7 +20,7 @@ _WORDS = (
 
 _TENS = "twenty thirty forty fifty sixty seventy eighty ninety".split()
 
-_SCALES = ["", "thousand", "million", "billion"]
+_SCALES = ["", "thousand", "million", "billion", "trillion", "quadrillion"]
 
 # ── Unit abbreviation expansion ────────────────────────────────────────────
 
@@ -118,9 +118,17 @@ def _norm_nemo(text: str) -> str:
 
 
 def _int_to_words(n: int) -> str:
-    """Convert an integer (0 - 999 999 999 999) to English words."""
+    """Convert a non-negative integer to English words.
+
+    Numbers beyond the named scales (>= 10**18) are read digit by digit:
+    a FALLBACK normalizer must degrade, never crash. (The original v0
+    port raised IndexError past "billion"; found by the Phase 3 corpus
+    scan on real Featured Article text.)
+    """
     if n == 0:
         return "zero"
+    if n >= 10 ** (3 * len(_SCALES)):
+        return " ".join(_WORDS[int(d)] for d in str(n))
 
     def _hundreds(n: int) -> str:
         if n == 0:

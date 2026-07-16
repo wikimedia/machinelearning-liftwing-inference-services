@@ -24,6 +24,7 @@ artifact ride the isvc's alignment-free path (RTF ~0.22 vs ~0.27).
 import base64
 import logging
 import time
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Query
 from fastapi.responses import JSONResponse
@@ -38,6 +39,7 @@ from tts_generator.config import (
 )
 from tts_generator.fetch import FetchError, fetch_revision_html, fetch_revision_meta
 from tts_generator.sections import extract_sections, find_section
+from tts_generator.sinks import InlineSink, artifact_key, build_sink
 from tts_generator.text import clean_spoken_text, init_nemo
 from tts_generator.transcode import TranscodeError, pcm_to_mp3, pcm_to_opus
 from tts_generator.version import content_sha256, generation_version
@@ -62,14 +64,25 @@ MEDIA_TYPES = {
     "audio_pcm_s16le": "audio/L16; rate=24000; channels=1",
 }
 
-app = FastAPI(title="TTS Section Generator", version="0.2.0")
+# Safe default so the service functions even under runners that skip the
+# lifespan (some test harnesses); startup replaces it with the configured
+# sink, and a MISCONFIGURED sink still fails the deploy there.
+_sink = InlineSink()
 
 
-@app.on_event("startup")
-def _startup() -> None:
+@asynccontextmanager
+async def _lifespan(app: FastAPI):
+    global _sink
+    # Sink first: a misconfigured sink must fail the deploy, not request #1.
+    _sink = build_sink()
+    logger.info("Artifact sink: %s", _sink.mode)
     # NeMo grammar compilation takes 60+ seconds cold; the deployment image
-    # bakes the cache at build time (Phase 3) so this is fast in prod.
+    # bakes the cache at image build (see Dockerfile) so this is fast in prod.
     init_nemo()
+    yield
+
+
+app = FastAPI(title="TTS Section Generator", version="0.3.0", lifespan=_lifespan)
 
 
 # ── Error helper ────────────────────────────────────────────────────────────
@@ -244,6 +257,18 @@ def generate_section(req: GenerateRequest):
         "duration_ms": isvc["duration_ms"],
     }
 
+    def _emit(entry: dict, data: bytes) -> None:
+        # Binary bytes go through the configured sink: inline -> bytes_b64
+        # in the response; file/s3 -> written out, response carries blob_uri.
+        key = artifact_key(
+            req.wiki_id,
+            req.page_id,
+            req.rev_id,
+            req.section_id,
+            entry["artifact_type"],
+        )
+        entry.update(_sink.store(key, data, entry["media_type"]))
+
     artifacts = []
     transcode_s = 0.0
     try:
@@ -251,29 +276,22 @@ def generate_section(req: GenerateRequest):
             entry = {**common, "artifact_type": kind, "media_type": MEDIA_TYPES[kind]}
             if kind == "audio_opus":
                 _t = time.perf_counter()
-                entry["bytes_b64"] = base64.b64encode(
-                    pcm_to_opus(pcm, sample_rate)
-                ).decode("ascii")
+                _emit(entry, pcm_to_opus(pcm, sample_rate))
                 transcode_s += time.perf_counter() - _t
             elif kind == "audio_mp3":
                 _t = time.perf_counter()
-                entry["bytes_b64"] = base64.b64encode(
-                    pcm_to_mp3(pcm, sample_rate)
-                ).decode("ascii")
+                _emit(entry, pcm_to_mp3(pcm, sample_rate))
                 transcode_s += time.perf_counter() - _t
             elif kind == "captions_vtt":
-                vtt_text = timestamps_to_vtt(isvc["timestamps"])
-                entry["bytes_b64"] = base64.b64encode(vtt_text.encode("utf-8")).decode(
-                    "ascii"
-                )
                 entry["timestamps_mode"] = isvc["timestamps_mode"]
+                _emit(entry, timestamps_to_vtt(isvc["timestamps"]).encode("utf-8"))
             elif kind == "timestamps_json":
                 entry["timestamps"] = isvc["timestamps"]
                 entry["timestamps_mode"] = isvc["timestamps_mode"]
             elif kind == "audio_pcm_s16le":
-                entry["bytes_b64"] = isvc["audio_b64"]
                 entry["sample_rate"] = sample_rate
                 entry["encoding"] = isvc["encoding"]
+                _emit(entry, pcm)
             artifacts.append(entry)
     except TranscodeError as e:
         return _error(502, "transcode_error", str(e))

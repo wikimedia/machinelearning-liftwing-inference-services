@@ -93,3 +93,42 @@ def test_tables_and_editsection_stripped():
     assert "tabular noise" not in culture.raw_text
     refs_absent = find_section(extract_sections(FIXTURE), "references")
     assert refs_absent is None
+
+
+REFBEGIN_FIXTURE = """
+<html><body>
+<section data-mw-section-id="0"><p>Lead text long enough to pass the gate,
+padded with more words to comfortably exceed the fifty character minimum.</p></section>
+<section data-mw-section-id="1">
+  <h2>Sources</h2>
+  <div class="refbegin">
+    <ul><li>Author, A. (1990). A Very Long Book Title. Publisher.</li>
+    <li>Writer, B. (2001). Another Citation. Press.</li></ul>
+  </div>
+</section>
+<section data-mw-section-id="2">
+  <h2>Bibliography</h2>
+  <p>Should never appear regardless of content: title is blocklisted.</p>
+</section>
+<section data-mw-section-id="3">
+  <h2>Selected works</h2>
+  <div class="div-col">
+    <cite class="citation book">Composer, C. (1886). The Carnival of the
+    Animals. Paris: Editions.</cite>
+    <cite class="citation book">Composer, C. (1921). Another Work. Press.</cite>
+  </div>
+</section>
+</body></html>
+"""
+
+
+def test_refbegin_bibliography_content_is_stripped_structurally():
+    """Regression from the Phase 3 corpus scan: 10-20k-char 'Sources' /
+    'Bibliography' citation lists were the longest 'generatable' sections.
+    refbegin containers are stripped, so such sections empty out and fall
+    under the min-length gate without any title heuristics."""
+    secs = {s.section_id: s for s in extract_sections(REFBEGIN_FIXTURE)}
+    assert "bibliography" not in secs  # title blocklist
+    assert secs["sources"].raw_text == ""  # structural strip emptied it
+    # citation-class strip works in ANY container (here div-col, no refbegin)
+    assert secs["selected-works"].raw_text == ""

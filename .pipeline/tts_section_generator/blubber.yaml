@@ -1,0 +1,102 @@
+# syntax=docker-registry.wikimedia.org/repos/releng/blubber/buildkit:v1.5.1
+version: v4
+base: docker-registry.wikimedia.org/bookworm:20260628
+runs:
+  insecurely: true
+  environment:
+    PYTHONPATH: /srv/tts_section_generator:/srv/tts_section_generator/src/models/tts_section_generator:/opt/lib/venv/lib/python3.11/site-packages
+    # see: https://phabricator.wikimedia.org/P94867
+    TTS_GEN_NEMO_CACHE: /home/somebody/nemo-grammars
+
+lives:
+  in: /srv/tts_section_generator
+
+variants:
+  build:
+    apt:
+      packages:
+        - build-essential
+        - python3-pip
+        - python3-dev
+        - python3-setuptools
+        - python3-venv
+        - ffmpeg
+    builders:
+      - python:
+          version: python3
+          # step 1: install TTS section generator dependencies including nemo_text_processing
+          requirements: ["src/models/tts_section_generator/requirements.txt"]
+      - custom:
+          # step 2: compile nemo grammars against the whitelist ONLY (config + whitelist copied first, so app-code edits don't invalidate this expensive layer). The cache lands at a fixed path (/home/somebody/nemo-grammars) that all image variants point at using the TTS_GEN_NEMO_CACHE env.
+          requirements: ["src/models/tts_section_generator/tts_generator/__init__.py", "src/models/tts_section_generator/tts_generator/config.py", "src/models/tts_section_generator/tts_generator/text.py", "src/models/tts_section_generator/tts_generator/nemo_whitelist.tsv"]
+          command: [ "/usr/bin/python3", "-c", "from src.models.tts_section_generator.tts_generator.text import init_nemo, nemo_available; init_nemo(); assert nemo_available(), 'NeMo bake failed: refusing to build an image that would silently fall back to regex normalization'" ]
+
+  production:
+    copies:
+      - from: local
+        source: src/models/tts_section_generator/.
+        destination: .
+      - from: build
+        source: /opt/lib/venv/lib/python3.11/site-packages
+        destination: /opt/lib/venv/lib/python3.11/site-packages
+      - from: build
+        source: /home/somebody/nemo-grammars
+        destination: /home/somebody/nemo-grammars
+    apt:
+      packages:
+        - python3
+        - python3-distutils
+        - python3-setuptools
+        - python3-venv
+        - wmf-certificates
+    python:
+      version: python3
+      use-system-site-packages: false
+    entrypoint: ["./entrypoint.sh"]
+
+  test:
+    copies:
+      - from: build
+        source: /opt/lib/venv/lib/python3.11/site-packages
+        destination: /opt/lib/venv/lib/python3.11/site-packages
+      - from: local
+        source: src/models/tts_section_generator
+        destination: src/models/tts_section_generator/
+      - from: local
+        source: test/unit/__init__.py
+        destination: test/unit/__init__.py
+      - from: local
+        source: test/unit/tts_section_generator
+        destination: test/unit/tts_section_generator/
+      - from: local
+        source: python
+        destination: python/
+      - from: local
+        source: requirements-test.txt
+        destination: .
+      - from: local
+        source: tox.ini
+        destination: .
+      - from: local
+        source: ruff.toml
+        destination: .
+      - from: local
+        source: .pre-commit-config.yaml
+        destination: .
+      - from: local
+        source: ci_entrypoint.sh
+        destination: entrypoint.sh
+    apt:
+      packages:
+        - python3
+        - python3-distutils
+        - python3-setuptools
+        - python3-venv
+        - wmf-certificates
+        - git
+        - ffmpeg
+    python:
+      version: python3
+      use-system-site-packages: false
+      requirements: [requirements-test.txt]
+    entrypoint: ["./entrypoint.sh", "ci-lint", "ci-unit"]
