@@ -339,5 +339,5 @@ pipelines:
         build: production
         publish:
           image:
-            name: '${setup.project}-tts'
+            name: '${setup.project}-tts-section-generator'
             tags: [stable]
