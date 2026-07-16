@@ -322,3 +322,22 @@ pipelines:
           image:
             name: '${setup.project}-tts'
             tags: [stable]
+
+  tts-section-generator:
+    blubberfile: tts_section_generator/blubber.yaml
+    stages:
+      - name: run-test
+        build: test
+        run: true
+      - name: production
+        build: production
+
+  tts-section-generator-publish:
+    blubberfile: tts_section_generator/blubber.yaml
+    stages:
+      - name: publish
+        build: production
+        publish:
+          image:
+            name: '${setup.project}-tts'
+            tags: [stable]
