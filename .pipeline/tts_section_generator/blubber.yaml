@@ -49,6 +49,7 @@ variants:
         - python3-setuptools
         - python3-venv
         - wmf-certificates
+        - ffmpeg
     python:
       version: python3
       use-system-site-packages: false
