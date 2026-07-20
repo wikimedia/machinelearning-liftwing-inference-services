@@ -244,7 +244,7 @@ def generate_section(req: GenerateRequest):
         return _error(502, "synthesis_error", str(e))
     synth_s = time.perf_counter() - t0
 
-    pcm = base64.b64decode(isvc["audio_b64"])
+    pcm = base64.b64decode(isvc.pop("audio_b64"))
     sample_rate = isvc["sample_rate"]
 
     common = {

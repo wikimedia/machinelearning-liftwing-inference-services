@@ -4,14 +4,15 @@ Status: measured on a 100-article seeded sample (seed 43) of the 6,959
 Featured Articles, 2026-07-12. Slots marked `[in-pod]` need the staging
 isvc; slots marked `[infra]` need a config lookup.
 
-## Spike 1: the request-timeout ceiling (intake open question #7)
+## Spike 1: the request-timeout ceiling
 
 **Question.** The generator makes one synchronous isvc call per section.
 Does the longest real section fit under the gateway/revision timeout, or
 do we need to split oversized sections across multiple isvc calls?
 
-**Measured demand side** (scripts/scan_corpus.py; estimates calibrated on
-T430536: ~15 chars/audio-second, RTF 0.27 full alignment):
+**Measured demand side** (scripts/scan_corpus.py, 100-article seeded
+sample of the 6,959 FAs; estimates calibrated on T430536: ~15
+chars/audio-second, RTF 0.27):
 
 | Percentile | Cleaned chars | Est. audio | Est. isvc wall |
 | --- | --- | --- | --- |
@@ -21,40 +22,49 @@ T430536: ~15 chars/audio-second, RTF 0.27 full alignment):
 | p99 | 7,000 | ~467 s | ~126 s |
 | sample max | 12,843 | ~856 s | ~231 s |
 
-Sections exceeding candidate ceilings (estimated): >60s: 23.2%; >120s:
-1.4%; **>300s: 0**; >600s: 0. Mean 12.2 generatable sections/article
-(consistent with the intake's ~140k-section corpus estimate at 7k
-articles). The sample max is a genuine prose section (Lockheed C-130,
-"Post-Vietnam tasks"), not a data artifact: bibliography-type sections
-that initially dominated the tail were content bugs and are now stripped
-(see "collateral findings").
+**Measured supply side** (scripts/spike_timeout.py, staging generator +
+staging isvc, top-5 sections, full-alignment artifact family, 2026-07-20):
 
-**Caveats.** A 100-of-6,959 sample under-observes the extreme tail; the
-true corpus max plausibly exceeds the sample max by 1.5-2x (call it
-~350-450 s estimated). Run `scan_corpus.py --all` once (slow, ~1-2 h
-polite) to replace this guess with the true max: `[full-scan]`.
+| Section | Chars | Audio | Wall | RTF |
+| --- | --- | --- | --- | --- |
+| Lockheed C-130 :: post-vietnam-tasks | 12,843 | 753 s | **242.2 s** | 0.322 |
+| Æthelred :: early-rule | 9,280 | 552 s | 178.5 s | 0.323 |
+| SMS Grosser Kurfürst :: battle-of-jutland | 8,338 | 496 s | 116.1 s | 0.234 |
+| Belle Vue Zoological Gardens :: zoo | 8,190 | 478 s | 150.5 s | 0.315 |
+| Texas Revolution :: background | 8,188 | 496 s | 116.0 s | 0.234 |
 
-**Provisional answer.** A **600 s ceiling** covers the sampled max with
-~2.6x headroom and the extrapolated true max with ~1.5x; a 300 s ceiling
-is tight against the extrapolated tail. Recommendation: provision the
-generator-to-isvc path (and any gateway in front of the generator) at
-**600 s**, and do NOT build section splitting now: the sections that
-would need it are 0% of the sample, and splitting complicates the
-generator (crossfade/timestamp stitching across isvc calls) for a tail
-that a config value covers. If the `[infra]` lookup finds a hard ceiling
-below 600 s that cannot be raised, revisit; splitting at paragraph
-boundaries with a silence gap is the designed fallback, and only then.
+Recalibration: real prose speaks at **16.9 chars/audio-s** (assumed 15;
+estimates were ~11% conservative on audio length). Effective end-to-end
+RTF **0.286 mean, 0.32 worst** (isvc 0.27 + fetch/normalize/transcode).
+The per-request RTF spread (0.234-0.323) matches the ~20% cross-pod
+variance documented on the isvc in T430536; not a new effect. Estimate
+vs measurement on the worst section: 231 s estimated, 242 s measured
+(the two calibration errors nearly cancel).
 
-Remaining slots:
-- `[in-pod]` scripts/spike_timeout.py on the scan's top-5: worst measured
-  wall = ___ s; measured chars/audio-s = ___; effective RTF = ___.
-- `[infra]` actual LiftWing/Knative values on the path: isvc revision
-  timeoutSeconds = ___; gateway/Envoy route timeout = ___; anything in
-  front of the generator = ___.
+**Answer: provision 600 s end to end; build no splitting.** The measured
+sample max (242 s) is TIGHT against 300 s (<20% headroom); the
+extrapolated corpus true max (1.5-2x sample chars, at measured
+calibration) is **~365-490 s, which EXCEEDS 300 s and fits 600 s** with
+1.2-1.6x headroom. Oversized-section splitting (paragraph-boundary joins
+with a silence gap) remains the designed fallback if the full-corpus scan
+finds a tail beyond ~800 s of wall; do not build it before then.
 
-**For DE:** at p50 ~40 s per section, batch pipeline task-level timeouts
-of 10 min/section with retry are comfortable; the per-request ceiling
-above is the constraint that matters.
+Config actions:
+- `TTS_ISVC_TIMEOUT_S: "600"` in the generator values (the default 300 s
+  was the tightest ceiling on the path and would be exceeded by the
+  extrapolated corpus max).
+- `[infra]` remaining lookups: generator inbound mesh route timeout
+  (empirical check: the Lockheed section through
+  tts-section-generator...:31443 must survive its 242 s), isvc Knative
+  revision timeoutSeconds, istio gateway route timeout on
+  inference-staging. The minimum of these must be >= 600 s.
+- `[full-scan]` optional: scan_corpus.py --all replaces the extrapolated
+  max with the true one (requires an internet-connected host or the
+  MW_API_PROXY patch; the pod has no general egress).
+
+**For DE:** at p50 ~40 s per section, batch task-level timeouts of 10
+min/section with retry are comfortable; the 600 s per-request ceiling is
+the constraint that matters.
 
 ## Spike 2: blob-write mode (intake open question #3)
 
@@ -89,3 +99,16 @@ field regardless of the eventual decision.
    min-length gate in ANY container under ANY heading; unambiguous title
    variants also added to the blocklist. Regression tests pin both. The
    scan's tail went from 19,725-char bibliographies to genuine prose.
+
+3. **The corpus tail sizes the memory envelope, not the median.** The
+   staging pod (1Gi limit) served normal-section traffic for 2 hours,
+   then was OOMKilled by the FIRST corpus-tail request: measured
+   `memory.peak` during worst-section generation is **1.13 GiB** (753 s
+   of audio means a ~43 MB PCM decode plus a ~58 MB base64 response
+   transiently stacked with NeMo FST paging and encoder buffers; the
+   in-cgroup spike script added its own response copy). Limit raised to
+   3Gi (2.6x measured peak); the Phase 4 pilot, with its external
+   driver, will set the permanent value from a cleaner peak. Mitigation
+   landed: the isvc base64 string is dropped immediately after decode.
+   Both ceilings this spike exists to find (time and memory) are tail
+   properties invisible to median-workload testing.
