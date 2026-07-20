@@ -18,7 +18,12 @@ import re
 
 import requests
 from requests.adapters import HTTPAdapter
-from tts_generator.config import FETCH_RETRIES, FETCH_TIMEOUT_S, USER_AGENT
+from tts_generator.config import (
+    FETCH_RETRIES,
+    FETCH_TIMEOUT_S,
+    MW_API_PROXY,
+    USER_AGENT,
+)
 from urllib3.util.retry import Retry
 
 logger = logging.getLogger(__name__)
@@ -40,11 +45,26 @@ def rest_base(wiki_id: str) -> str:
     Only the ``{lang}wiki`` -> ``{lang}.wikipedia.org`` family is supported
     in Phase 1; extending to sister projects means extending this map, not
     the callers.
+
+    When TTS_GEN_MW_API_PROXY is set, the URL points at the envoy
+    services-proxy (e.g. ``http://localhost:6500``) instead of hitting
+    Wikipedia directly, and callers must also set the Host header via
+    :func:`wiki_host`.
     """
     m = _WIKI_ID_RE.match(wiki_id)
     if not m:
         raise FetchError(f"Unsupported wiki_id {wiki_id!r}", status=400)
+    if MW_API_PROXY:
+        return f"{MW_API_PROXY}/w/rest.php/v1"
     return f"https://{m.group(1)}.wikipedia.org/w/rest.php/v1"
+
+
+def wiki_host(wiki_id: str) -> str:
+    """Host header the MW API proxy uses to route to the correct wiki."""
+    m = _WIKI_ID_RE.match(wiki_id)
+    if not m:
+        raise FetchError(f"Unsupported wiki_id {wiki_id!r}", status=400)
+    return f"{m.group(1)}.wikipedia.org"
 
 
 def _session() -> requests.Session:
@@ -56,8 +76,17 @@ def _session() -> requests.Session:
         status_forcelist=(429, 500, 502, 503, 504),
         allowed_methods=("GET",),
     )
-    s.mount("https://", HTTPAdapter(max_retries=retry))
+    adapter = HTTPAdapter(max_retries=retry)
+    s.mount("https://", adapter)
+    s.mount("http://", adapter)
     return s
+
+
+def _headers(wiki_id: str) -> dict | None:
+    """Return extra headers for requests through the envoy services-proxy."""
+    if MW_API_PROXY:
+        return {"Host": wiki_host(wiki_id)}
+    return None
 
 
 _shared_session = _session()
@@ -73,7 +102,7 @@ def fetch_revision_meta(wiki_id: str, rev_id: int) -> dict:
     Returns the parsed JSON, which includes ``page.id`` and ``timestamp``.
     """
     url = f"{rest_base(wiki_id)}/revision/{rev_id}/bare"
-    resp = _shared_session.get(url, timeout=FETCH_TIMEOUT_S)
+    resp = _shared_session.get(url, timeout=FETCH_TIMEOUT_S, headers=_headers(wiki_id))
     if resp.status_code == 404:
         raise FetchError(f"Revision {rev_id} not found on {wiki_id}", status=404)
     if not resp.ok:
@@ -86,7 +115,7 @@ def fetch_revision_meta(wiki_id: str, rev_id: int) -> dict:
 def fetch_revision_html(wiki_id: str, rev_id: int) -> str:
     """Fetch Parsoid HTML for an exact revision (``/revision/{id}/html``)."""
     url = f"{rest_base(wiki_id)}/revision/{rev_id}/html"
-    resp = _shared_session.get(url, timeout=FETCH_TIMEOUT_S)
+    resp = _shared_session.get(url, timeout=FETCH_TIMEOUT_S, headers=_headers(wiki_id))
     if resp.status_code == 404:
         raise FetchError(f"Revision {rev_id} not found on {wiki_id}", status=404)
     if not resp.ok:

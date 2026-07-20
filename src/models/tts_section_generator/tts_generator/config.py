@@ -17,6 +17,10 @@ USER_AGENT = os.environ.get(
 # ── MediaWiki fetch ─────────────────────────────────────────────────────────
 FETCH_TIMEOUT_S = float(os.environ.get("TTS_GEN_FETCH_TIMEOUT_S", "30"))
 FETCH_RETRIES = int(os.environ.get("TTS_GEN_FETCH_RETRIES", "3"))
+# In the LiftWing cluster, Wikipedia API requests go through the envoy services-proxy at
+# localhost:6500 (see https://phabricator.wikimedia.org/T348607) so that the pod never needs
+# direct internet access.  Local development can override this to "" to hit en.wikipedia.org directly.
+MW_API_PROXY = os.environ.get("TTS_GEN_MW_API_PROXY", "http://localhost:6500")
 
 # ── TTS inference service ───────────────────────────────────────────────────
 ISVC_URL = os.environ.get(
