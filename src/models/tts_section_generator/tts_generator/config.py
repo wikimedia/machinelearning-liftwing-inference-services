@@ -38,7 +38,7 @@ ISVC_VERIFY_TLS = os.environ.get("TTS_ISVC_VERIFY_TLS", "true").lower() == "true
 # certifi's bundle (used by requests when verify=True) only trusts public CAs
 # and cannot verify the LiftWing-internal isvc TLS certificate.
 ISVC_TLS_CA_BUNDLE = os.environ.get(
-    "TTS_ISVC_TLS_CA_BUNDLE", "/etc/ssl/certs/wmf-ca-certificates.crt"
+    "TTS_ISVC_TLS_CA_BUNDLE", "/etc/ssl/certs/ca-certificates.crt"
 )
 # Retries apply ONLY to transport failures and 5xx (the isvc is stateless
 # and deterministic, so retries are always safe); 4xx never retries.
