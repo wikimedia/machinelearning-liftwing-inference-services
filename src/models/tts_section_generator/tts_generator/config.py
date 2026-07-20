@@ -33,6 +33,13 @@ ISVC_HOST_HEADER = os.environ.get("TTS_ISVC_HOST", "tts.experimental.wikimedia.o
 # lowering this.
 ISVC_TIMEOUT_S = float(os.environ.get("TTS_ISVC_TIMEOUT_S", "300"))
 ISVC_VERIFY_TLS = os.environ.get("TTS_ISVC_VERIFY_TLS", "true").lower() == "true"
+# Path to the CA bundle used when ISVC_VERIFY_TLS is true.  The default is the
+# Wikimedia CA certificate bundle installed by the wmf-certificates apt package.
+# certifi's bundle (used by requests when verify=True) only trusts public CAs
+# and cannot verify the LiftWing-internal isvc TLS certificate.
+ISVC_TLS_CA_BUNDLE = os.environ.get(
+    "TTS_ISVC_TLS_CA_BUNDLE", "/etc/ssl/certs/wmf-ca-certificates.crt"
+)
 # Retries apply ONLY to transport failures and 5xx (the isvc is stateless
 # and deterministic, so retries are always safe); 4xx never retries.
 ISVC_RETRIES = int(os.environ.get("TTS_ISVC_RETRIES", "2"))

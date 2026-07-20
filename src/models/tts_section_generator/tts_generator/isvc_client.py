@@ -26,6 +26,7 @@ from tts_generator.config import (
     ISVC_HOST_HEADER,
     ISVC_RETRIES,
     ISVC_TIMEOUT_S,
+    ISVC_TLS_CA_BUNDLE,
     ISVC_URL,
     ISVC_VERIFY_TLS,
     USER_AGENT,
@@ -89,7 +90,7 @@ def synthesize(
                 json=payload,
                 headers={"Host": ISVC_HOST_HEADER, "User-Agent": USER_AGENT},
                 timeout=ISVC_TIMEOUT_S,
-                verify=ISVC_VERIFY_TLS,
+                verify=ISVC_TLS_CA_BUNDLE if ISVC_VERIFY_TLS else False,
             )
         except requests.RequestException as e:
             last_error = e
