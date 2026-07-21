@@ -90,6 +90,32 @@ _STRIP_CLASS_TOKENS = {
 
 _SLUG_RE = re.compile(r"[^a-z0-9]+")
 
+# Superscript/subscript digit translation (T426756 carry-over): lxml's
+# text_content() flattens <sup>2</sup> to "2", silently recreating the
+# plain-text API's formatting loss that v1's HTML fetch exists to avoid.
+# Digit-only sup/sub content is translated to Unicode super/subscripts
+# BEFORE flattening, so normalization (text.py) can speak them ("m²" ->
+# "square meters", "10²⁴" -> power of ten, "H₂O" -> "H2O"). Non-digit
+# content (e.g. 4<sup>th</sup>) flattens as before, which reads correctly.
+_SUP_TRANS = str.maketrans("0123456789", "⁰¹²³⁴⁵⁶⁷⁸⁹")
+_SUB_TRANS = str.maketrans("0123456789", "₀₁₂₃₄₅₆₇₈₉")
+
+
+def _translate_supsub(el) -> None:
+    for tag, table in (("sup", _SUP_TRANS), ("sub", _SUB_TRANS)):
+        for node in el.findall(f".//{tag}"):
+            txt = node.text_content()
+            if not txt.isdigit():
+                continue
+            repl = txt.translate(table) + (node.tail or "")
+            parent = node.getparent()
+            prev = node.getprevious()
+            if prev is not None:
+                prev.tail = (prev.tail or "") + repl
+            else:
+                parent.text = (parent.text or "") + repl
+            parent.remove(node)
+
 
 @dataclass
 class Section:
@@ -143,6 +169,7 @@ def _own_text(section_el) -> str:
             continue
         if _should_strip(node):
             node.drop_tree()
+    _translate_supsub(el)
     text = el.text_content()
     return re.sub(r"\s+", " ", text).strip()
 

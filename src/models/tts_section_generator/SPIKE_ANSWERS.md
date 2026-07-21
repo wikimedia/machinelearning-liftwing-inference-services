@@ -49,15 +49,20 @@ calibration) is **~365-490 s, which EXCEEDS 300 s and fits 600 s** with
 with a silence gap) remains the designed fallback if the full-corpus scan
 finds a tail beyond ~800 s of wall; do not build it before then.
 
-Config actions:
+Config actions (all verified 2026-07-20):
 - `TTS_ISVC_TIMEOUT_S: "600"` in the generator values (the default 300 s
   was the tightest ceiling on the path and would be exceeded by the
-  extrapolated corpus max).
-- `[infra]` remaining lookups: generator inbound mesh route timeout
-  (empirical check: the Lockheed section through
-  tts-section-generator...:31443 must survive its 242 s), isvc Knative
-  revision timeoutSeconds, istio gateway route timeout on
-  inference-staging. The minimum of these must be >= 600 s.
+  extrapolated corpus max). **DONE.**
+- `mesh.upstream_timeout: "600s"` in the generator values (envoy sidecar
+  inbound timeout). **DONE;** empirically validated: the Lockheed C-130
+  section (242.2 s wall) survived through
+  tts-section-generator.k8s-ml-staging.discovery.wmnet:31443.
+- **isvc Knative revision `timeoutSeconds`**: **DONE.** Raised from 300 s to
+  600 s on `tts-predictor-00007` via `predictor.config.timeout: 600` in the
+  experimental values-ml-staging-codfw.yaml. This completes the timeout chain.
+- **Istio virtualservices** on the TTS isvc (`tts`, `tts-predictor-ingress`,
+  `tts-predictor-mesh` in namespace `experimental`): no explicit timeout
+  is set, so they inherit from Knative's revision timeout. No action needed.
 - `[full-scan]` optional: scan_corpus.py --all replaces the extrapolated
   max with the true one (requires an internet-connected host or the
   MW_API_PROXY patch; the pod has no general egress).

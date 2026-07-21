@@ -62,6 +62,9 @@ _COMPOUND_UNIT_SUBS: list[tuple[re.Pattern, str]] = [
     (re.compile(r"(\d+(?:\.\d+)?)\s*mph\b"), r"\1 miles per hour"),
 ]
 
+_SUP_TO_DIGIT = str.maketrans("⁰¹²³⁴⁵⁶⁷⁸⁹", "0123456789")
+_SUB_TO_DIGIT = str.maketrans("₀₁₂₃₄₅₆₇₈₉", "0123456789")
+
 
 def _norm_units(text: str) -> str:
     """Expand measurement unit abbreviations following numeric values."""
@@ -202,7 +205,20 @@ def clean_spoken_text(text: str) -> str:
     # ── 3. Compound unit expansion (units NeMo doesn't handle natively) ────
     text = _norm_compound_units(text)
 
-    # Remaining superscripts (after unit expansion so km²/m²/m/s² match first)
+    # Scientific notation and superscript runs (must precede the single
+    # ²/³ replacements, or 10²⁴ would read as "10 squared 4").
+    text = text.replace("×", " times ")
+    text = re.sub(
+        r"[⁰¹²³⁴⁵⁶⁷⁸⁹]{2,}",
+        lambda m: " to the power of " + m.group(0).translate(_SUP_TO_DIGIT),
+        text,
+    )
+    # Subscript digits read correctly as plain digits (H₂O -> "H2O",
+    # the v0-validated behavior), now applied consistently.
+    text = text.translate(_SUB_TO_DIGIT)
+
+    # Remaining single superscripts (after unit expansion so km²/m²/m/s²
+    # match first)
     text = text.replace("²", " squared")
     text = text.replace("³", " cubed")
 
