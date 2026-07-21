@@ -1,4 +1,5 @@
 # syntax=docker-registry.wikimedia.org/repos/releng/blubber/buildkit:v0.24.0
+# Test to trigger a rebuild - T428022
 version: v4
 base: docker-registry.wikimedia.org/bookworm:20260621
 runs:
