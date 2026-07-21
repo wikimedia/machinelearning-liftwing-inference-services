@@ -33,8 +33,14 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from tts_generator.config import MIN_TEXT_LENGTH
-from tts_generator.fetch import FetchError, _shared_session, fetch_revision_html
+from tts_generator.config import MIN_TEXT_LENGTH, MW_API_PROXY
+from tts_generator.fetch import (
+    FetchError,
+    _headers,
+    _shared_session,
+    fetch_revision_html,
+    rest_base,
+)
 from tts_generator.sections import extract_sections
 from tts_generator.text import clean_spoken_text, init_nemo
 
@@ -42,7 +48,13 @@ CHARS_PER_AUDIO_SECOND = 15.0
 RTF_FULL = 0.27
 CEILINGS_S = [60, 120, 300, 600]
 
-API = "https://en.wikipedia.org/w/api.php"
+# Action API (categorymembers) through the envoy services-proxy when
+# configured (in-pod: no general egress), direct otherwise (dev hosts).
+API = (
+    f"{MW_API_PROXY}/w/api.php"
+    if MW_API_PROXY
+    else "https://en.wikipedia.org/w/api.php"
+)
 
 
 def fetch_fa_titles() -> list[str]:
@@ -60,7 +72,7 @@ def fetch_fa_titles() -> list[str]:
         if cont:
             params["cmcontinue"] = cont
         url = f"{API}?{urllib.parse.urlencode(params)}"
-        data = _shared_session.get(url, timeout=30).json()
+        data = _shared_session.get(url, timeout=30, headers=_headers("enwiki")).json()
         titles += [m["title"] for m in data["query"]["categorymembers"]]
         cont = data.get("continue", {}).get("cmcontinue")
         if not cont:
@@ -70,7 +82,9 @@ def fetch_fa_titles() -> list[str]:
 def resolve(title: str) -> tuple[int, int]:
     enc = urllib.parse.quote(title.replace(" ", "_"), safe="")
     bare = _shared_session.get(
-        f"https://en.wikipedia.org/w/rest.php/v1/page/{enc}/bare", timeout=30
+        f"{rest_base('enwiki')}/page/{enc}/bare",
+        timeout=30,
+        headers=_headers("enwiki"),
     ).json()
     return bare["id"], bare["latest"]["id"]
 
