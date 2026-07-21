@@ -1,10 +1,12 @@
 # syntax=docker-registry.wikimedia.org/repos/releng/blubber/buildkit:v1.0.1
 version: v4
-base: docker-registry.wikimedia.org/ml/amd-vllm014:gfx90agfx942rocm7.0.0pytorch2.10.0mori0.1flash-attn2.8.3aiter0.1.7vllm0.14-3
+base: docker-registry.wikimedia.org/ml/amd-vllm022:gfx90agfx942rocm7.2.0pytorch2.10.0flash-attn2.8.3aiter0.1.13vllm0.22.1-3
 runs:
   insecurely: true
   environment:
-    PYTHONPATH: /srv/venv/lib/python3.11/site-packages:/opt/lib/venv/lib/python3.11/site-packages:/srv/app:/srv/venv/bin/python3
+    # amd-vllm022 ships a py3.12 venv at /srv/venv; install there instead of
+    # blubber's default /opt/lib/venv (which would be the wrong python version).
+    PYTHONPATH: /srv/venv/lib/python3.12/site-packages:/srv/app
     PATH: $PATH:/srv/app
     # Overwrite proxy variables with empty strings
     http_proxy:
@@ -16,17 +18,21 @@ lives:
 
 variants:
   build:
-    python:
-      version: python3
-      requirements: [src/models/embeddings/requirements.txt, python/requirements.txt]
-      use-system-site-packages: true
-      no-deps: false
     apt:
       packages:
         - build-essential
         - cmake
         - git
         - pkg-config
+    builders:
+      - custom:
+          # fix issue where blubber's default python builder is not using the correct python version (3.12) and venv path
+          requirements: [src/models/embeddings/requirements.txt]
+          command: ["/srv/venv/bin/python", "-m", "pip", "install", "-r", "src/models/embeddings/requirements.txt"]
+      - custom:
+          # fix issue where blubber's default python builder is not using the correct python version (3.12) and venv path
+          requirements: [python/requirements.txt]
+          command: ["/srv/venv/bin/python", "-m", "pip", "install", "-r", "python/requirements.txt"]
 
 
   production:
@@ -38,17 +44,18 @@ variants:
         source: python
         destination: python
       - from: build
-        source: /opt/lib/venv/lib/python3.11/site-packages/
-        destination: /opt/lib/venv/lib/python3.11/site-packages/
+        source: /srv/venv/lib/python3.12/site-packages
+        destination: /srv/venv/lib/python3.12/site-packages
       - from: local
-        source: model_server_entrypoint.sh
+        source: model_server_entrypoint_python312.sh
         destination: entrypoint.sh
       - from: local
-        source: common_settings.sh
+        source: common_settings_python312.sh
         destination: common_settings.sh
 
-    python:
-      version: python3
-      use-system-site-packages: true
-      no-deps: false
+    apt:
+      packages:
+        - wmf-certificates
+        - libdrm-amdgpu1
+        - g++
     entrypoint: ["./entrypoint.sh"]

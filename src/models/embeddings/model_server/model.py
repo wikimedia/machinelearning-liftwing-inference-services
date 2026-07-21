@@ -23,6 +23,8 @@ class EmbeddingModel(kserve.Model):
         max_model_len: int,
         max_num_batched_tokens: int,
         disable_log_stats: bool,
+        vllm_runner: str = "",
+        pooling_type: str = "",
     ) -> None:
         super().__init__(name)
         self.name = name
@@ -34,6 +36,8 @@ class EmbeddingModel(kserve.Model):
         self.max_model_len = max_model_len
         self.max_num_batched_tokens = max_num_batched_tokens
         self.disable_log_stats = disable_log_stats
+        self.vllm_runner = vllm_runner
+        self.pooling_type = pooling_type
         self.model = None
         self.ready = False
 
@@ -47,18 +51,36 @@ class EmbeddingModel(kserve.Model):
             # Initialize vLLM without task="embed" as this was causing a crash due to our ROCm-specific setup.
             # Instead, we will call embed() directly in predict() which works without the task argument.
             # Unlike the previous transformers-based isvc, vLLM handles tokenizer, attention implementation, and pooling internally.
-            self.model = LLM(
-                model=self.model_path,
-                dtype=self.dtype,
-                trust_remote_code=self.trust_remote_code,
-                gpu_memory_utilization=self.gpu_memory_utilization,
-                max_model_len=self.max_model_len,
-                max_num_batched_tokens=self.max_num_batched_tokens,
-                enforce_eager=False,  # Allows CUDA graph capture for performance
-                enable_prefix_caching=False,
-                served_model_name=self.name,
-                disable_log_stats=self.disable_log_stats,
-            )
+            llm_kwargs = {
+                "model": self.model_path,
+                "dtype": self.dtype,
+                "trust_remote_code": self.trust_remote_code,
+                "gpu_memory_utilization": self.gpu_memory_utilization,
+                "max_model_len": self.max_model_len,
+                "max_num_batched_tokens": self.max_num_batched_tokens,
+                "enforce_eager": False,  # Allows CUDA graph capture for performance
+                "enable_prefix_caching": False,
+                "served_model_name": self.name,
+                "disable_log_stats": self.disable_log_stats,
+            }
+
+            # Jina (and similar pooling models) need runner="pooling" + last-token pooler.
+            # Leave unset for Qwen3 so existing behavior is unchanged.
+            if self.vllm_runner:
+                llm_kwargs["runner"] = self.vllm_runner
+                logging.info(f"Using vLLM runner={self.vllm_runner}")
+
+            if self.pooling_type:
+                from vllm.config.pooler import PoolerConfig
+
+                llm_kwargs["pooler_config"] = PoolerConfig(
+                    seq_pooling_type=self.pooling_type,
+                )
+                logging.info(
+                    f"Using pooler_config seq_pooling_type={self.pooling_type}"
+                )
+
+            self.model = LLM(**llm_kwargs)
 
             self.ready = True
             logging.info("vLLM model loaded successfully!")
@@ -93,18 +115,26 @@ class EmbeddingModel(kserve.Model):
         try:
             logging.info("Performing inference...")
 
-            # vLLM inference
-            # model.embed returns a list of RequestOutput objects
-            outputs = self.model.embed(inputs)
+            # Pooling runner (e.g. Jina) may require encode(); prefer embed() otherwise.
+            if self.vllm_runner == "pooling" and hasattr(self.model, "encode"):
+                outputs = self.model.encode(inputs, pooling_task="embed")
+                # encode() returns torch.Tensor in PoolingOutput.data
+                tensor_embeddings = torch.stack(
+                    [
+                        output.outputs.data.float().cpu().reshape(-1)
+                        for output in outputs
+                    ]
+                )
+            else:
+                outputs = self.model.embed(inputs)
+                # Extract embeddings from vLLM output
+                # Each output has an `outputs` attribute which contains the `embedding`
+                raw_embeddings = [output.outputs.embedding for output in outputs]
 
-            # Extract embeddings from vLLM output
-            # Each output has an `outputs` attribute which contains the `embedding`
-            raw_embeddings = [output.outputs.embedding for output in outputs]
-
-            # Convert to tensor for normalization
-            # We use the device of the first embedding (likely CPU return from vLLM)
-            # or force to CPU for F.normalize calculation
-            tensor_embeddings = torch.tensor(raw_embeddings)
+                # Convert to tensor for normalization
+                # We use the device of the first embedding (likely CPU return from vLLM)
+                # or force to CPU for F.normalize calculation
+                tensor_embeddings = torch.tensor(raw_embeddings)
 
             # Normalize embeddings (Important for cosine similarity)
             # vLLM returns raw embeddings, so normalization is still required manually
@@ -148,6 +178,9 @@ if __name__ == "__main__":
     max_num_batched_tokens = int(os.environ.get("MAX_NUM_BATCHED_TOKENS", 8192))
     disable_log_stats = strtobool(os.environ.get("DISABLE_LOG_STATS", "False"))
 
+    vllm_runner = os.environ.get("VLLM_RUNNER", "").strip()
+    pooling_type = os.environ.get("POOLING_TYPE", "").strip()
+
     model = EmbeddingModel(
         name=model_name,
         model_path=model_path,
@@ -158,6 +191,8 @@ if __name__ == "__main__":
         max_model_len=max_model_len,
         max_num_batched_tokens=max_num_batched_tokens,
         disable_log_stats=disable_log_stats,
+        vllm_runner=vllm_runner,
+        pooling_type=pooling_type,
     )
     model.load()
     kserve.ModelServer().start([model])
