@@ -69,7 +69,7 @@ DEFAULT_LANG = os.environ.get("TTS_GEN_DEFAULT_LANG", "en-us")
 # Bump manually whenever cleaning/normalization RULES change in a way that
 # alters output text for identical input (regex fixes, blocklist changes,
 # whitelist edits are covered separately by the whitelist hash).
-NORMALIZATION_RULESET = os.environ.get("TTS_GEN_NORM_RULESET", "2026.07.20")
+NORMALIZATION_RULESET = os.environ.get("TTS_GEN_NORM_RULESET", "2026.07.23")
 
 # ── NeMo ────────────────────────────────────────────────────────────────────
 _PKG_DIR = Path(__file__).resolve().parent

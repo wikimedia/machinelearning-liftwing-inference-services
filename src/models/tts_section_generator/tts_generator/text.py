@@ -65,6 +65,56 @@ _COMPOUND_UNIT_SUBS: list[tuple[re.Pattern, str]] = [
 _SUP_TO_DIGIT = str.maketrans("⁰¹²³⁴⁵⁶⁷⁸⁹", "0123456789")
 _SUB_TO_DIGIT = str.maketrans("₀₁₂₃₄₅₆₇₈₉", "0123456789")
 
+# ── Pre-NeMo token normalization tables (listening-pass ruleset) ──────────────
+# Hoisted to module level so they are not rebuilt every call.
+
+# Slash units NeMo's measure lexicon misses (mg/kg works; these don't).
+# Whitelist, not generic: unit expansion must be deliberate.
+_SLASH_UNITS = {
+    "km/s": "kilometers per second",
+    "m/s": "meters per second",
+    "km/h": "kilometers per hour",
+    "mg/L": "milligrams per liter",
+    "g/L": "grams per liter",
+    "mg/day": "milligrams per day",
+    "g/day": "grams per day",
+    "mL/day": "milliliters per day",
+}
+
+# Currency prefixes NeMo's money grammar can't parse.
+_CURRENCY_PREFIX = {
+    "A$": "Australian dollars",
+    "NZ$": "New Zealand dollars",
+    "US$": "US dollars",
+    "C$": "Canadian dollars",
+    "HK$": "Hong Kong dollars",
+}
+
+# Non-Latin script ranges stripped from English audio. Deliberately NOT
+# Greek (α/β in astronomy names are directly pronounceable). This is v1's
+# explicit stance: non-Latin content is omitted pending multilingual
+# model-servers, per the README architecture separation.
+_NON_LATIN_RE = re.compile(
+    "["
+    "֐-׿"  # Hebrew
+    "؀-ۿ"  # Arabic
+    "ऀ-ॿ"  # Devanagari
+    "฀-๿"  # Thai
+    "ᄀ-ᇿ"  # Hangul jamo
+    "\u3000-\u303f"  # CJK symbols & punctuation (、。「」 + ideographic space)
+    "぀-ゟ゠-ヿ"  # hiragana, katakana
+    "㄰-㆏ㇰ-ㇿ"  # Hangul compat jamo, katakana phonetic ext
+    "㈀-㏿"  # CJK enclosed / compatibility
+    "㐀-䶿一-鿿"  # CJK ext A, CJK unified ideographs
+    "가-힯"  # Hangul syllables
+    "豈-﫿"  # CJK compatibility ideographs
+    "＀-￯"  # fullwidth / halfwidth forms (includes fullwidth
+    #   Latin letters and digits: deliberate, they
+    #   appear almost exclusively inside CJK glosses)
+    "\U00020000-\U0002ffff"  # CJK ext B+
+    "]+"
+)
+
 
 def _norm_units(text: str) -> str:
     """Expand measurement unit abbreviations following numeric values."""
@@ -225,6 +275,37 @@ def clean_spoken_text(text: str) -> str:
     # match first)
     text = text.replace("²", " squared")
     text = text.replace("³", " cubed")
+
+    # ── 3.5. Pre-NeMo token normalisation (listening-pass ruleset) ─────────
+    # NeMo's deterministic mode classifies whole tokens; any token its
+    # grammars can't fully classify degrades to symbol-by-symbol reading.
+    # These rules reshape tokens so NeMo's number/measure/money grammars
+    # recognise them.
+
+    # Unicode minus and ± break NeMo's number tokenization
+    text = text.replace("−", "minus ")
+    text = re.sub(r"\s*±\s*", " plus or minus ", text)
+
+    # Slash units NeMo's measure lexicon misses
+    for u, spoken in _SLASH_UNITS.items():
+        text = re.sub(rf"(?<=\d)\s*{re.escape(u)}\b", f" {spoken}", text)
+
+    # Currency prefixes NeMo's money grammar can't parse
+    for sym, words in _CURRENCY_PREFIX.items():
+        text = re.sub(
+            rf"{re.escape(sym)}([\d][\d,]*(?:\.\d+)?)"
+            rf"(\s*(?:thousand|million|billion|trillion))?",
+            rf"\1\2 {words}",
+            text,
+        )
+
+    # Non-Latin script runs: strip, keep romanization
+    text = _NON_LATIN_RE.sub("", text)
+    # Collapse damage left by script removal: ": ," -> ": ";
+    # a gloss with nothing left ("(Japanese: )") -> removed.
+    text = re.sub(r":\s*,\s*", ": ", text)
+    text = re.sub(r"\(\s*[A-Za-z][A-Za-z ]*:\s*\)", "", text)
+    text = re.sub(r"\s+,\s*", ", ", text)
 
     # ── 4. NeMo full normalisation ──────────────────────────────────────────
     text = _norm_nemo(text)

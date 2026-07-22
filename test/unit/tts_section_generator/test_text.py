@@ -139,3 +139,87 @@ def test_pathological_old_norse_transliteration_degraded_not_crashed():
     # Should not crash, regardless of content length or character set.
     # The result may be non-empty (NeMo processes what it can), but must
     # not contain the word "times" from a × glyph that isn't present.
+
+
+# ── Listening-pass regression guards (ruleset 2026.07.23) ────────────────────
+
+
+def test_km_s_spoken_as_kilometers_per_second():
+    result = clean_spoken_text("The star moves at 90 km/s.")
+    assert "kilometers per second" in result
+
+
+def test_ms_spoken_as_meters_per_second():
+    result = clean_spoken_text("Velocity of 15 m/s was recorded.")
+    assert "meters per second" in result
+
+
+def test_unicode_minus_is_normalised():
+    """U+2212 minus sign breaks NeMo number tokenization; normalise to
+    ASCII 'minus' so the number is classifiable."""
+    result = clean_spoken_text("The value is −110 km/s.")
+    assert "minus" in result
+    assert "kilometers per second" in result
+
+
+def test_plus_minus_is_detached():
+    """± glues numbers into one unclassifiable token (142.6±0.2).
+    Detaching it lets NeMo classify both halves."""
+    result = clean_spoken_text("of 142.6±0.2 km/s")
+    assert "plus or minus" in result
+
+
+def test_plus_minus_in_sentence_preserves_surrounding_text():
+    """± normalization must not corrupt the sentence around it.
+    Engine-agnostic: passes with or without NeMo."""
+    result = clean_spoken_text("The measurement was 142.6±0.2 km/s.")
+    assert "plus or minus" in result
+    assert "kilometers per second" in result
+
+
+def test_plus_minus_both_numbers_spoken_as_words():
+    """With NeMo, both numbers around ± must be spoken, not digit-by-digit.
+    NeMo-only strong form: without the ± detach, NeMo sees '142.6±0.2' as
+    one unclassifiable token and reads it symbol-by-symbol."""
+    pytest.importorskip("nemo_text_processing")
+    init_nemo()
+    result = clean_spoken_text("of 142.6±0.2 km/s")
+    assert "one hundred" in result
+    assert "point" in result
+    assert "plus or minus" in result
+
+
+def test_mg_per_l_spoken_correctly():
+    result = clean_spoken_text("fluoride level of 1.5 mg/L is recommended.")
+    assert "milligrams per liter" in result
+
+
+def test_mg_per_day_spoken_correctly():
+    result = clean_spoken_text("The dose is 6 mg/day.")
+    assert "milligrams per day" in result
+
+
+def test_mg_per_kg_still_works():
+    """mg/kg is in NeMo's measure lexicon; must not be broken by the
+    slash-unit whitelist. NeMo-only: the fallback path doesn't expand
+    mg/kg, so skip when NeMo is absent."""
+    pytest.importorskip("nemo_text_processing")
+    init_nemo()
+    result = clean_spoken_text("0.05 mg/kg is safe.")
+    assert "milligrams per kilogram" in result
+
+
+def test_aud_currency_prefix_expanded():
+    """Post-normalization, '1.1' becomes 'one point one'; assert the
+    currency expansion and that the $ symbol is gone."""
+    result = clean_spoken_text("The project cost A$1.1 million to build.")
+    assert "Australian dollars" in result
+    assert "$" not in result
+
+
+def test_non_latin_cjk_is_stripped_romanization_kept():
+    result = clean_spoken_text("Lightning (Japanese: ライトニング, Raitoningu)")
+    assert "Raitoningu" in result
+    assert "ライトニング" not in result
+    # Must not leave dangling ": ," from the script strip
+    assert ": ," not in result
