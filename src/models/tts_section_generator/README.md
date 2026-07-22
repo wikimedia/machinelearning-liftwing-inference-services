@@ -16,6 +16,24 @@ DE pipelines ──▶ THIS SERVICE ──▶ TTS isvc (Kokoro + Wav2Vec2, LiftW
                     -> synthesize + align -> transcode (Opus/MP3) -> VTT
 ```
 
+> **NB: why this is a separate service from the TTS model-server.** Most
+> LiftWing model-servers fetch Wikipedia content and do their own text
+> processing inside the model-server, ahead of prediction. TTS v1
+> deliberately splits that pattern in two, because no single TTS model can
+> cover Wikipedia: Kokoro speaks 9 languages, Wikipedia is written in more
+> than 300. Serving more languages means adding further TTS model-servers
+> with different models, voices, segment limits, and alignment behavior,
+> not extending this one. So the model-server owns synthesis only, and
+> everything language-independent and Wikipedia-facing (revision-pinned
+> fetch, section extraction, normalization, chunking, artifact identity,
+> transcoding, the DE-facing contract) lives here exactly once. When
+> additional model-servers exist, this service will route each request to
+> the appropriate one based on the requested language and voice; the DE
+> pipelines and the artifact contract will not change. The alternative
+> (fetch and processing inside each model-server, per the usual pattern)
+> would duplicate all of that per model and fragment the contract across N
+> inference endpoints.
+
 Two endpoints; full spec in [`openapi.yaml`](openapi.yaml) (the artifact DE
 reviews). `GET /sections` enumerates the valid, generatable sections of a
 pinned revision (what the DE pipeline diffs against the artifact index);
