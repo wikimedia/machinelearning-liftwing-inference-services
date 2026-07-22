@@ -207,7 +207,11 @@ def clean_spoken_text(text: str) -> str:
 
     # Scientific notation and superscript runs (must precede the single
     # ²/³ replacements, or 10²⁴ would read as "10 squared 4").
-    text = text.replace("×", " times ")
+    # × means "times" only between numbers (5.97×10²⁴); elsewhere (runic
+    # word separators, dimension glyphs in odd contexts) it is dropped.
+    # Global replacement was a 2026.07.20 regression caught by the pilot.
+    text = re.sub(r"(?<=[\d⁰¹²³⁴⁵⁶⁷⁸⁹])\s*×\s*(?=[\d⁰¹²³⁴⁵⁶⁷⁸⁹])", " times ", text)
+    text = text.replace("×", " ")
     text = re.sub(
         r"[⁰¹²³⁴⁵⁶⁷⁸⁹]{2,}",
         lambda m: " to the power of " + m.group(0).translate(_SUP_TO_DIGIT),

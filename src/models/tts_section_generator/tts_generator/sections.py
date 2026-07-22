@@ -86,6 +86,11 @@ _STRIP_CLASS_TOKENS = {
     "mw-empty-elt",
     "thumb",
     "gallery",
+    "interlinear",  # interlinear-gloss template containers (runestone
+    # transliterations, linguistics glosses): word-by-
+    # word lang="non"/"non-Latn" apparatus, unspeakable
+    # by construction; phonemizing it exploded past
+    # Kokoro's 510-phoneme limit (pilot, U 518)
 }
 
 _SLUG_RE = re.compile(r"[^a-z0-9]+")
