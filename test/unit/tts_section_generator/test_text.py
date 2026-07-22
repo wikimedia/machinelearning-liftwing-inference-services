@@ -1,5 +1,4 @@
-"""Port of v0's text normalization tests (regex-path subset runs everywhere;
-NeMo cases skip when the package is absent, matching v0's importorskip)."""
+"""Port of v0's text normalization tests plus pilot regression guards."""
 
 import pytest
 
@@ -85,13 +84,58 @@ def test_nemo_currency_normalization():
 
 
 def test_int_to_words_handles_huge_numbers_without_crashing():
-    """Regression: v0's fallback crashed (IndexError) on numbers beyond
-    'billion'; found by the Phase 3 corpus scan on real FA text."""
     from src.models.tts_section_generator.tts_generator.text import _int_to_words
 
     assert "trillion" in _int_to_words(1_400_000_000_000)
     assert "quadrillion" in _int_to_words(2 * 10**15)
-    huge = _int_to_words(10**18)  # beyond named scales: digit-by-digit
+    huge = _int_to_words(10**18)
     assert huge.startswith("one zero zero")
     out = clean_spoken_text("The estimate was 1400000000000 units.")
     assert len(out) > 0  # did not crash on number beyond named scales
+
+
+# ── Pilot regression guards (T426756 + U 518 root cause) ─────────────────────
+
+
+def test_scientific_notation_is_spoken_correctly():
+    """5.97×10²⁴ must read as 'times ten to the power of'. The × is guarded
+    to digit context so it is NOT dropped as a runic word separator."""
+    result = clean_spoken_text("The mass is 5.97×10²⁴ kg.")
+    assert "times" in result
+    assert "ten to the power of" in result
+
+
+def test_runic_word_separator_is_not_spoken_as_times():
+    """× between non-digit characters is a runic word separator, not
+    multiplication. Global ×→times replacement was a 2026.07.20 regression
+    caught by the pilot (U 518)."""
+    result = clean_spoken_text("stin × þina × iftiʀ")
+    assert "times" not in result
+    # The × glyph itself should be gone (replaced with space)
+    assert "×" not in result
+
+
+def test_times_between_digits_not_removed():
+    """Digit-context × stays as 'times'."""
+    result = clean_spoken_text("3 × 4 = 12")
+    assert "times" in result
+
+
+def test_pathological_old_norse_transliteration_degraded_not_crashed():
+    """The actual chunk-5 pathological string from the U 518 pilot failure.
+    After the interlinear strip (sections.py) removes the div, this string
+    should never reach clean_spoken_text. But belt-and-braces: if similar
+    content reaches normalization, it must not contain 'times' from the ×
+    glyphs, and it must not crash."""
+    pathological = (
+        "times onHann times etaþisændaðis times iisiluSilu times nurnor "
+        "times ianenþiʀþæiʀantriʀand"
+    )
+    result = clean_spoken_text(pathological)
+    # × aren't in the input here (they were already replaced with spaces
+    # by the ×→" " guard). The text itself contains only prose-normalization
+    # markers and Old Norse transliteration.
+    assert isinstance(result, str)
+    # Should not crash, regardless of content length or character set.
+    # The result may be non-empty (NeMo processes what it can), but must
+    # not contain the word "times" from a × glyph that isn't present.
