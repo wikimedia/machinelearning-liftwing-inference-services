@@ -23,6 +23,7 @@ class EmbeddingModel(kserve.Model):
         max_model_len: int,
         max_num_batched_tokens: int,
         disable_log_stats: bool,
+        enforce_eager: bool = False,
         vllm_runner: str = "",
         pooling_type: str = "",
     ) -> None:
@@ -36,6 +37,7 @@ class EmbeddingModel(kserve.Model):
         self.max_model_len = max_model_len
         self.max_num_batched_tokens = max_num_batched_tokens
         self.disable_log_stats = disable_log_stats
+        self.enforce_eager = enforce_eager
         self.vllm_runner = vllm_runner
         self.pooling_type = pooling_type
         self.model = None
@@ -51,6 +53,8 @@ class EmbeddingModel(kserve.Model):
             # Initialize vLLM without task="embed" as this was causing a crash due to our ROCm-specific setup.
             # Instead, we will call embed() directly in predict() which works without the task argument.
             # Unlike the previous transformers-based isvc, vLLM handles tokenizer, attention implementation, and pooling internally.
+            # enforce_eager=True skips CUDA/HIP graph capture (needed on ROCm for pooling models
+            # like Jina, where capturing 51 graphs takes ~70min and exceeds Knative's deadline).
             llm_kwargs = {
                 "model": self.model_path,
                 "dtype": self.dtype,
@@ -58,7 +62,7 @@ class EmbeddingModel(kserve.Model):
                 "gpu_memory_utilization": self.gpu_memory_utilization,
                 "max_model_len": self.max_model_len,
                 "max_num_batched_tokens": self.max_num_batched_tokens,
-                "enforce_eager": False,  # Allows CUDA graph capture for performance
+                "enforce_eager": self.enforce_eager,
                 "enable_prefix_caching": False,
                 "served_model_name": self.name,
                 "disable_log_stats": self.disable_log_stats,
@@ -177,6 +181,7 @@ if __name__ == "__main__":
     max_model_len = int(os.environ.get("MAX_MODEL_LEN", 8192))
     max_num_batched_tokens = int(os.environ.get("MAX_NUM_BATCHED_TOKENS", 8192))
     disable_log_stats = strtobool(os.environ.get("DISABLE_LOG_STATS", "False"))
+    enforce_eager = strtobool(os.environ.get("ENFORCE_EAGER", "False"))
 
     vllm_runner = os.environ.get("VLLM_RUNNER", "").strip()
     pooling_type = os.environ.get("POOLING_TYPE", "").strip()
@@ -191,6 +196,7 @@ if __name__ == "__main__":
         max_model_len=max_model_len,
         max_num_batched_tokens=max_num_batched_tokens,
         disable_log_stats=disable_log_stats,
+        enforce_eager=enforce_eager,
         vllm_runner=vllm_runner,
         pooling_type=pooling_type,
     )
