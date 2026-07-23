@@ -39,7 +39,7 @@ from tts_generator.config import (
 )
 from tts_generator.fetch import FetchError, fetch_revision_html, fetch_revision_meta
 from tts_generator.sections import extract_sections, find_section
-from tts_generator.sinks import InlineSink, artifact_key, build_sink
+from tts_generator.sinks import InlineSink, SinkWriteError, artifact_key, build_sink
 from tts_generator.text import clean_spoken_text, init_nemo
 from tts_generator.transcode import TranscodeError, pcm_to_mp3, pcm_to_opus
 from tts_generator.version import content_sha256, generation_version
@@ -96,7 +96,7 @@ def _error(status: int, code: str, message: str) -> JSONResponse:
 # section_not_found_at_revision (blocklisted sections are never addressable),
 # text_below_minimum, artifact_type_not_available, unsupported_wiki.
 # Transient (retryable): upstream_fetch_error, synthesis_error,
-# transcode_error.
+# transcode_error, blob_write_error.
 
 
 def _fetch_and_verify(wiki_id: str, page_id: int, rev_id: int):
@@ -295,6 +295,11 @@ def generate_section(req: GenerateRequest):
             artifacts.append(entry)
     except TranscodeError as e:
         return _error(502, "transcode_error", str(e))
+    except SinkWriteError as e:
+        # Blob write failed after synthesis succeeded. Transient: the
+        # whole request is retryable (generation is idempotent), and the
+        # bytes are simply regenerated on retry.
+        return _error(502, "blob_write_error", str(e))
 
     logger.info(
         "generated %s/%s/%s/%s: %d segments, %.1fms audio "

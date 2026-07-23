@@ -12,10 +12,13 @@ putting the choice behind one interface selected by config:
   key layout and the response carries ``blob_uri`` (file://...). Used by
   the Phase 4 pilot so 50 articles of audio do not travel as base64
   through the driver script; also the local stand-in for object storage.
-* ``s3``: the write-to-object-storage mode, interface-complete but
-  unconfigured until Data Persistence provisions the Swift/S3 PoC bucket
-  and credentials. Selecting it without endpoint config fails loudly at
-  STARTUP, not at first write.
+* ``s3``: writes to S3-compatible object storage (thanos-swift or any
+  S3 endpoint; Swift's s3api middleware exposes the S3 protocol). boto3 with
+  path-style addressing (required by Swift and MinIO), credentials from
+  the standard AWS env vars (mounted from a Kubernetes Secret following
+  the swift-s3-credentials pattern). Misconfiguration (missing config,
+  unreachable endpoint, absent bucket, bad credentials) fails loudly at
+  STARTUP via a head_bucket probe, not at first write.
 
 Key layout (the revision-scoped schema from the intake doc):
     {wiki_id}/{page_id}/{rev_id}/{section_id}.{ext}
@@ -28,9 +31,22 @@ import base64
 import logging
 from pathlib import Path
 
-from tts_generator.config import BLOB_SINK, BLOB_SINK_DIR, S3_BUCKET, S3_ENDPOINT
+from tts_generator.config import (
+    BLOB_SINK,
+    BLOB_SINK_DIR,
+    S3_BUCKET,
+    S3_ENDPOINT,
+    S3_REGION,
+)
 
 logger = logging.getLogger(__name__)
+
+
+class SinkWriteError(Exception):
+    """A blob write failed at generation time (transient: the caller may
+    retry the whole request; generation is idempotent). Mapped to the
+    blob_write_error taxonomy code by the service layer."""
+
 
 _EXT = {
     "audio_opus": "opus",
@@ -75,27 +91,82 @@ class FileSink:
 
 
 class S3Sink:
-    """Object-storage write mode. Interface-complete; wiring lands when
-    Data Persistence provisions the bucket. Kept as a stub deliberately:
-    the boto3 dependency and credential plumbing should arrive together
-    with a real endpoint to test against, not before."""
+    """Write to S3-compatible object storage; return an s3:// blob_uri.
+
+    Design notes, hard-won against WMF infrastructure:
+
+    * PATH-STYLE addressing is mandatory: Swift's s3api middleware (and
+      MinIO) do not serve virtual-host bucket URLs. Same flag every other
+      WMF service sets against thanos-swift.
+    * Credentials come from the standard AWS env vars, which boto3 reads
+      natively; no credential handling in this code. In deployment they
+      are mounted from a Kubernetes Secret (swift-s3-credentials pattern).
+    * The startup head_bucket probe makes every misconfiguration class
+      (endpoint, credentials, bucket, egress policy) fail the DEPLOY with
+      an actionable message, not request #1.
+    * put_object is atomic per object, so there is no tmp+rename dance to
+      replicate; overwrite idempotence holds for audio artifacts (byte-
+      deterministic transcode) and is tolerated for timing sidecars,
+      which may differ by one CTC frame across regenerations.
+    * botocore's own retries cover transient endpoint blips; a write that
+      still fails raises SinkWriteError, surfaced by the service as the
+      transient blob_write_error taxonomy code.
+    """
 
     mode = "s3"
 
-    def __init__(self, endpoint: str, bucket: str):
+    def __init__(self, endpoint: str, bucket: str, region: str = S3_REGION):
         if not endpoint or not bucket:
             raise RuntimeError(
                 "BLOB_SINK=s3 requires TTS_GEN_S3_ENDPOINT and TTS_GEN_S3_BUCKET "
                 "(Data Persistence PoC bucket not provisioned yet? use "
                 "inline or file)"
             )
-        self.endpoint, self.bucket = endpoint, bucket
-        raise NotImplementedError(
-            "S3 sink wiring lands with the Data Persistence PoC bucket"
-        )
+        try:
+            import boto3
+            from botocore.config import Config as BotoConfig
+        except ImportError as e:
+            raise RuntimeError(
+                "BLOB_SINK=s3 requires boto3 (in requirements.txt for the "
+                "production image; pip install boto3 for local dev)"
+            ) from e
 
-    def store(self, key: str, data: bytes, media_type: str) -> dict:  # pragma: no cover
-        raise NotImplementedError
+        self.endpoint, self.bucket = endpoint, bucket
+        self._client = boto3.client(
+            "s3",
+            endpoint_url=endpoint,
+            region_name=region,
+            config=BotoConfig(
+                s3={"addressing_style": "path"},
+                retries={"max_attempts": 3, "mode": "standard"},
+                connect_timeout=10,
+                read_timeout=60,
+            ),
+        )
+        # Fail the deploy, not request #1: one cheap probe verifies
+        # endpoint reachability, credentials, and bucket existence.
+        try:
+            self._client.head_bucket(Bucket=bucket)
+        except Exception as e:
+            raise RuntimeError(
+                f"S3 sink startup check failed (endpoint={endpoint!r}, "
+                f"bucket={bucket!r}): {e}. Check TTS_GEN_S3_ENDPOINT / "
+                "TTS_GEN_S3_BUCKET, the AWS_ACCESS_KEY_ID / "
+                "AWS_SECRET_ACCESS_KEY secret, and the egress network "
+                "policy for the object-storage frontend."
+            ) from e
+        logger.info("S3 sink ready: %s bucket=%s (path-style)", endpoint, bucket)
+
+    def store(self, key: str, data: bytes, media_type: str) -> dict:
+        from botocore.exceptions import BotoCoreError, ClientError
+
+        try:
+            self._client.put_object(
+                Bucket=self.bucket, Key=key, Body=data, ContentType=media_type
+            )
+        except (ClientError, BotoCoreError) as e:
+            raise SinkWriteError(f"S3 put_object failed for {key!r}: {e}") from e
+        return {"blob_uri": f"s3://{self.bucket}/{key}", "size_bytes": len(data)}
 
 
 def build_sink():

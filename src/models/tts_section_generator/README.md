@@ -146,9 +146,9 @@ development against the ml-staging TTS isvc.
 | `TTS_GEN_OPUS_BITRATE` | `32k` | Opus bitrate (mono speech). |
 | `TTS_GEN_OPUS_APPLICATION` | `voip` | Opus encoder tuning (speech intelligibility). |
 | `TTS_GEN_MP3_BITRATE` | `48k` | MP3 bitrate. |
-| `TTS_GEN_BLOB_SINK` | `inline` | Artifact sink: `inline` (bytes_b64 in the response), `file` (writes under `TTS_GEN_BLOB_SINK_DIR`, returns `blob_uri`), `s3` (stub until the Data Persistence bucket exists; fails loudly at startup). |
+| `TTS_GEN_BLOB_SINK` | `inline` | Artifact sink: `inline` (bytes_b64 in the response), `file` (writes under `TTS_GEN_BLOB_SINK_DIR`, returns `blob_uri`), `s3` (writes to S3-compatible object storage, returns `s3://` blob_uri; startup head_bucket probe fails the deploy on any misconfiguration). |
 | `TTS_GEN_BLOB_SINK_DIR` | `/tmp/tts-artifacts` | Root directory for the `file` sink. |
-| `TTS_GEN_S3_ENDPOINT` / `TTS_GEN_S3_BUCKET` | empty | S3 sink wiring; lands with the Data Persistence PoC bucket. |
+| `TTS_GEN_S3_ENDPOINT` / `TTS_GEN_S3_BUCKET` / `TTS_GEN_S3_REGION` | empty / empty / `us-east-1` | S3 sink target (e.g. `https://thanos-swift.discovery.wmnet`). Path-style addressing is built in (required by Swift/MinIO). Credentials are NOT config: boto3 reads `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` from the environment (mounted from a Kubernetes Secret, swift-s3-credentials pattern). Region is signature-only; Swift ignores it. |
 
 ## Input
 
@@ -249,6 +249,7 @@ contract promise the DE retry logic depends on.
 | `upstream_fetch_error` | 502 | transient |
 | `synthesis_error` | 502 | transient |
 | `transcode_error` | 502 | transient |
+| `blob_write_error` | 502 | transient |
 
 ## Contract decisions (Phase 1, locked)
 

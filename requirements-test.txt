@@ -8,3 +8,4 @@ setuptools
 ruamel.yaml
 # Unit test dependencies
 furl
+moto[s3]==5.2.2

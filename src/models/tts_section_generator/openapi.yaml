@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: TTS Section Generator
-  version: 0.2.0
+  version: 0.3.0
   description: >
     ML-owned compute function for the Wikipedia TTS Audio Archive
     (T430536 successor work). Takes a (wiki, page, revision, section)
@@ -80,7 +80,7 @@ components:
             revision_page_mismatch, section_not_found_at_revision,
             text_below_minimum, artifact_type_not_available,
             unsupported_wiki. Transient (retry): upstream_fetch_error,
-            synthesis_error.
+            synthesis_error, transcode_error, blob_write_error.
           enum:
             - revision_not_found
             - revision_page_mismatch
@@ -91,6 +91,7 @@ components:
             - upstream_fetch_error
             - synthesis_error
             - transcode_error
+            - blob_write_error
         message: {type: string}
 
     SectionsResponse:
@@ -207,9 +208,15 @@ components:
         bytes_b64:
           type: string
           description: >
-            Present for binary artifacts in return-bytes mode. Phase 3
-            adds an alternative write-to-blob-store mode returning
-            blob_uri instead (open design question with Data Persistence).
+            Present for binary artifacts with the inline sink; the
+            file/s3 sinks return blob_uri (+ size_bytes) instead. The
+            schema differs by exactly this field.
+        blob_uri:
+          type: string
+          description: >
+            Written-blob pointer (file:// or s3://{bucket}/{key}) when a
+            writing sink is configured; mutually exclusive with bytes_b64.
+        size_bytes: {type: integer}
         sample_rate: {type: integer, example: 24000}
         encoding: {type: string, example: pcm_s16le}
         timestamps_mode: {type: string, enum: [full, proportional, none]}

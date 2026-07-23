@@ -89,3 +89,8 @@ BLOB_SINK = os.environ.get("TTS_GEN_BLOB_SINK", "inline")
 BLOB_SINK_DIR = os.environ.get("TTS_GEN_BLOB_SINK_DIR", "/tmp/tts-artifacts")  # noqa: S108
 S3_ENDPOINT = os.environ.get("TTS_GEN_S3_ENDPOINT", "")
 S3_BUCKET = os.environ.get("TTS_GEN_S3_BUCKET", "")
+# Region is required by AWS signature calculation; thanos-swift ignores its
+# value, so any string works. Credentials are NOT config here: boto3 reads
+# AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY from the environment natively
+# (mounted from the swift-s3-credentials-pattern Kubernetes Secret).
+S3_REGION = os.environ.get("TTS_GEN_S3_REGION", "us-east-1")

@@ -55,8 +55,8 @@ def test_s3_stub_fails_loudly_without_config():
         S3Sink("", "")
 
 
-def test_s3_stub_fails_loudly_even_with_config():
-    with pytest.raises(NotImplementedError, match="Data Persistence"):
+def test_s3_unreachable_endpoint_fails_at_construction():
+    with pytest.raises(RuntimeError, match="startup check failed"):
         S3Sink("https://endpoint", "bucket")
 
 
