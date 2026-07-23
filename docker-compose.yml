@@ -222,6 +222,30 @@ services:
       POOLING_TYPE: "LAST"
     volumes:
       - ${PATH_TO_JINA_EMBEDDINGS_MODEL:-./models/jina}:/mnt/models/
+  # LOCAL TESTING ONLY: CPU-target vLLM build (no GPU on a laptop). Not deployed.
+  # Runs host-native (no platform override) so it uses the arm64/amd64 CPU image
+  # directly rather than emulating.
+  jina-embeddings-cpu:
+    build:
+      context: .
+      dockerfile: .pipeline/embeddings/blubber_cpu.yaml
+      target: production
+    image: embeddings:cpu
+    ports:
+      - "8080:8080"
+    environment:
+      MODEL_NAME: "jina-embedding"
+      MODEL_PATH: "jinaai/jina-embeddings-v5-text-nano-retrieval"
+      # CPU vLLM does not support float16; use bfloat16 for the local build.
+      DTYPE: "bfloat16"
+      TRUST_REMOTE_CODE: "True"
+      VLLM_RUNNER: "pooling"
+      POOLING_TYPE: "LAST"
+      VLLM_CPU_KVCACHE_SPACE: "8"
+      VLLM_CPU_OMP_THREADS_BIND: "nobind"
+    volumes:
+      - ${PATH_TO_JINA_EMBEDDINGS_MODEL:-./models/jina}:/mnt/models/
+    shm_size: 4gb
   policy-violation-gpt-oss-safeguard:
     platform: linux/amd64
     build:

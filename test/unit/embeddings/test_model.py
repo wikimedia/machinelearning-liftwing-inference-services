@@ -95,6 +95,7 @@ def _default_kwargs(**overrides):
         max_model_len=8192,
         max_num_batched_tokens=8192,
         disable_log_stats=False,
+        enforce_eager=False,
         vllm_runner="",
         pooling_type="",
     )
@@ -147,6 +148,13 @@ class TestLoad:
             assert "runner" not in kwargs
             assert "pooler_config" not in kwargs
             assert m.ready is True
+
+    def test_enforce_eager_passed_to_llm(self):
+        with patch("src.models.embeddings.model_server.model.LLM") as mock_llm:
+            m = self._make_model(enforce_eager=True)
+            m.load()
+
+            assert mock_llm.call_args.kwargs["enforce_eager"] is True
 
     def test_vllm_runner_passed_to_llm(self):
         with patch("src.models.embeddings.model_server.model.LLM") as mock_llm:

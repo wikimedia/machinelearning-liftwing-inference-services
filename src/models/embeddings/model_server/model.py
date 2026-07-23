@@ -121,14 +121,15 @@ class EmbeddingModel(kserve.Model):
 
             # Pooling runner (e.g. Jina) may require encode(); prefer embed() otherwise.
             if self.vllm_runner == "pooling" and hasattr(self.model, "encode"):
+                logging.info("Using encode() for inference...")
                 outputs = self.model.encode(inputs, pooling_task="embed")
-                # encode() returns torch.Tensor in PoolingOutput.data
+                logging.info("outputs created")
+                # encode() returns torch.Tensor in PoolingOutput.data (possibly [1, D]).
+                # Keep device/dtype; F.normalize + .tolist() handle host transfer.
                 tensor_embeddings = torch.stack(
-                    [
-                        output.outputs.data.float().cpu().reshape(-1)
-                        for output in outputs
-                    ]
+                    [output.outputs.data.reshape(-1) for output in outputs]
                 )
+                logging.info("tensor_embeddings created")
             else:
                 outputs = self.model.embed(inputs)
                 # Extract embeddings from vLLM output
@@ -143,7 +144,7 @@ class EmbeddingModel(kserve.Model):
             # Normalize embeddings (Important for cosine similarity)
             # vLLM returns raw embeddings, so normalization is still required manually
             normalized_embeddings = F.normalize(tensor_embeddings, p=2, dim=1)
-
+            logging.info("normalized_embeddings created")
             # Format response in OpenAI API format
             data = [
                 {

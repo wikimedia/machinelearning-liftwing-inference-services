@@ -1,0 +1,32 @@
+# syntax=docker-registry.wikimedia.org/repos/releng/blubber/buildkit:v1.0.1
+# LOCAL TESTING ONLY. Production uses blubber.yaml (ROCm base image). This
+# variant pulls the upstream CPU-target vLLM so model.py can be smoke-tested on
+# a laptop with no GPU. Kept version-locked to the ROCm base's vLLM (0.22.1) so
+# the pooling code path (runner="pooling", PoolerConfig, encode) matches prod.
+version: v4
+base: vllm/vllm-openai-cpu:v0.22.1
+runs:
+  insecurely: true
+  environment:
+    VLLM_TARGET_DEVICE: cpu
+    VLLM_USE_V1: "0"
+    PYTHONPATH: /opt/venv/lib/python3.12/site-packages
+    http_proxy:
+    https_proxy:
+    no_proxy:
+
+lives:
+  in: /srv/app
+
+variants:
+  production:
+    copies:
+      - from: local
+        source: src/models/embeddings/model_server/.
+        destination: .
+    python:
+      version: python3
+      requirements: [src/models/embeddings/requirements.txt]
+      use-system-site-packages: true
+      no-deps: false
+    entrypoint: ["python", "model.py"]
