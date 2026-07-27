@@ -246,6 +246,27 @@ services:
     volumes:
       - ${PATH_TO_JINA_EMBEDDINGS_MODEL:-./models/jina}:/mnt/models/
     shm_size: 4gb
+  # HF transformers backend for Jina (no vLLM), on the ROCm PyTorch base.
+  # ATTN_IMPLEMENTATION=eager for now (flash_attention_2 disabled).
+  jina-embeddings-transformers:
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: .pipeline/embeddings/blubber_transformers.yaml
+      target: production
+    image: embeddings-transformers:prod
+    ports:
+      - "8080:8080"
+    environment:
+      MODEL_NAME: "jina-embedding"
+      MODEL_PATH: "jinaai/jina-embeddings-v5-text-nano-retrieval"
+      # Jina model card recommends bfloat16 on GPUs.
+      DTYPE: "bfloat16"
+      ATTN_IMPLEMENTATION: "eager"
+      # Default retrieval prompt; callers override per request via "prompt_name".
+      PROMPT_NAME: "query"
+    volumes:
+      - ${PATH_TO_JINA_EMBEDDINGS_MODEL:-./models/jina}:/mnt/models/
   policy-violation-gpt-oss-safeguard:
     platform: linux/amd64
     build:

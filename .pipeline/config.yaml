@@ -241,6 +241,16 @@ pipelines:
             name: '${setup.project}-embeddings'
             tags: [stable]
 
+  embeddings-transformers-publish:
+    blubberfile: embeddings/blubber_transformers.yaml
+    stages:
+      - name: publish
+        build: production
+        publish:
+          image:
+            name: '${setup.project}-embeddings-transformers'
+            tags: [stable]
+
   policy-violation-gpt-oss-safeguard-publish:
     blubberfile: policy_violation/blubber_gpt_oss_safeguard_20b.yaml
     stages:

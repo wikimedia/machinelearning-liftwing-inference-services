@@ -1,0 +1,16 @@
+# SentenceTransformer backend for Jina embeddings (no vLLM).
+#
+# NOTE: torch 2.10.0, ROCm 7.2.0, and flash-attn 2.8.3 (gfx90a+gfx942) are
+# provided by the amd-vllm022 base image, so they are NOT pinned here. Jina v5
+# requires torch>=2.8, satisfied by the base (2.10.0).
+#
+# Version floors below come from the jina-embeddings-v5-text-nano-retrieval
+# model card. transformers>=5.1 upgrades the base image's bundled transformers,
+# which makes the base's (unused) vLLM inoperable — acceptable, since this image
+# never imports vLLM.
+kserve==0.16.0
+sentence-transformers>=5.1.2
+transformers>=5.1.0
+peft>=0.15.2
+einops>=0.8.1
+sentencepiece>=0.2.1
