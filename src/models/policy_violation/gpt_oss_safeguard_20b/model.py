@@ -9,6 +9,7 @@ from openai_harmony import (
     Conversation,
     DeveloperContent,
     HarmonyEncodingName,
+    HarmonyError,
     Message,
     Role,
     SystemContent,
@@ -171,9 +172,12 @@ class PolicyViolationModel(kserve.Model):
                 final_output = request_output
 
             # Extract just the raw token IDs to pass to postprocess
-            completion_token_ids = final_output.outputs[0].token_ids
+            output = final_output.outputs[0]
 
-            return {"completion_token_ids": completion_token_ids}
+            return {
+                "completion_token_ids": output.token_ids,
+                "finish_reason": output.finish_reason,
+            }
 
         except Exception as e:
             error_message = f"Error during inference: {e}"
@@ -187,11 +191,15 @@ class PolicyViolationModel(kserve.Model):
         try:
             logging.info("Post-processing generated tokens...")
             completion_token_ids = inputs["completion_token_ids"]
+            finish_reason = inputs.get("finish_reason")
 
             # Parse Harmony output channels
-            response_messages = self.encoding.parse_messages_from_completion_tokens(
-                completion_token_ids, Role.ASSISTANT
-            )
+            try:
+                response_messages = self.encoding.parse_messages_from_completion_tokens(
+                    completion_token_ids, Role.ASSISTANT
+                )
+            except HarmonyError as e:
+                return self._no_verdict_response(str(e), finish_reason)
 
             # Extract reasoning and verdict from channels
             reasoning = ""
@@ -205,10 +213,15 @@ class PolicyViolationModel(kserve.Model):
                 else:
                     reasoning += content
 
-            # Fallback if no final channel is found
-            if not verdict and response_messages:
-                content = response_messages[-1].content
-                verdict = content if isinstance(content, str) else str(content)
+            # A truncated generation parses fine when it is cut mid-content, but
+            # cannot contain a trustworthy verdict; a complete generation always
+            # ends with a final channel.
+            if finish_reason == "length" or not verdict:
+                return self._no_verdict_response(
+                    "parsed output has no complete final channel",
+                    finish_reason,
+                    reasoning.strip() or None,
+                )
 
             return {
                 "reasoning": reasoning.strip(),
@@ -219,6 +232,35 @@ class PolicyViolationModel(kserve.Model):
             error_message = f"Error during post-processing: {e}"
             logging.error(error_message)
             raise InferenceError(error_message)
+
+    @staticmethod
+    def _no_verdict_response(
+        detail: str, finish_reason: str, reasoning: str = None
+    ) -> dict:
+        """
+        Build a readable response for generations that contain no usable
+        verdict (degenerate, truncated, or otherwise incomplete output),
+        instead of raising a 500 that dumps the raw tokens into the error
+        message or serving partial reasoning as a verdict.
+        """
+        error_message = (
+            f"Model did not produce a verdict (finish_reason={finish_reason})."
+        )
+        if finish_reason == "length":
+            error_message += (
+                " Generation hit the max_tokens limit before completing a verdict."
+            )
+        else:
+            error_message += (
+                " The model produced malformed or incomplete output for this input."
+            )
+        logging.error(f"{error_message} Detail: {detail[:500]}")
+        return {
+            "reasoning": reasoning,
+            "verdict": None,
+            "error": error_message,
+            "finish_reason": finish_reason,
+        }
 
 
 if __name__ == "__main__":

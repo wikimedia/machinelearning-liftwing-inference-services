@@ -11,6 +11,19 @@ The policy violation detection inference services evaluate user content against 
 
 Uses OpenAI's Harmony encoding for structured input/output with reasoning and verdict channels.
 
+### Error handling
+
+A verdict is only served when the generation completed with a final channel.
+If the model output cannot be parsed as Harmony messages, was truncated at
+`max_tokens`, or contains no final channel (degenerate generation on
+pathological input, or reasoning loops exhausting the token budget), the
+server returns a readable error response instead of an HTTP 500 or a bogus
+verdict:
+
+```json
+{"reasoning": "<partial reasoning, if any>", "verdict": null, "error": "<explanation>", "finish_reason": "length"}
+```
+
 ### How to run locally
 
 > [!NOTE]
