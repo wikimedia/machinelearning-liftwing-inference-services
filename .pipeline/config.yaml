@@ -241,7 +241,7 @@ pipelines:
             name: '${setup.project}-embeddings'
             tags: [stable]
 
-  embeddings-transformers-publish:
+  embeddings-transformers:
     blubberfile: embeddings/blubber_transformers.yaml
     stages:
       - name: publish
