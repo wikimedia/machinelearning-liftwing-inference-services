@@ -134,7 +134,7 @@ if __name__ == "__main__":
     model_version = os.environ.get("MODEL_VERSION", "")
     # Jina model card recommends bfloat16 on GPUs.
     dtype = getattr(torch, os.environ.get("DTYPE", "bfloat16"))
-    # flash_attention_2 disabled for now; use eager (or override via ATTN_IMPLEMENTATION).
+    # flash_attention_2 is disabled for now; use eager (or override via ATTN_IMPLEMENTATION).
     attn_implementation = os.environ.get("ATTN_IMPLEMENTATION", "eager")
     # Default retrieval prompt; callers can override per request via "prompt_name".
     default_prompt_name = os.environ.get("PROMPT_NAME", "query").strip()
