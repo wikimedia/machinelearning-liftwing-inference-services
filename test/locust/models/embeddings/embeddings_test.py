@@ -30,14 +30,19 @@ class Embeddings(FastHttpUser):
     def get_prediction(self):
         hostname = os.environ.get("HOST", "embeddings")
         namespace = os.environ.get("NS", "llm")
+        model_name = os.environ.get("MODEL_NAME", "qwen3-embedding")
+        use_prompt = os.environ.get("USE_PROMPT", "true").lower() == "true"
         headers = {
             "Content-Type": "application/json",
             "Host": f"{hostname}.{namespace}.wikimedia.org",
         }
         questions = list(df.sample(n=1)["question"])
-        prompts = [get_prompt(question) for question in questions]
+        if use_prompt:
+            prompts = [get_prompt(question) for question in questions]
+        else:
+            prompts = questions
         self.client.post(
-            "/v1/models/qwen3-embedding:predict",
+            f"/v1/models/{model_name}:predict",
             json={"input": prompts},
             headers=headers,
         )
