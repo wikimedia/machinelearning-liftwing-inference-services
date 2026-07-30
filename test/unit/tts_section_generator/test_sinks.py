@@ -94,7 +94,9 @@ def test_service_file_mode_returns_blob_uri(monkeypatch, tmp_path):
         "fetch_revision_meta",
         lambda w, r: {"page": {"id": 9228}, "timestamp": "2026-07-01T00:00:00Z"},
     )
-    monkeypatch.setattr(service, "fetch_revision_html", lambda w, r: FIXTURE_HTML)
+    monkeypatch.setattr(
+        service, "fetch_revision_html", lambda w, r: (FIXTURE_HTML, None)
+    )
 
     def fake_synthesize(segments, voice, lang, timestamps="full", encoding="pcm_s16le"):
         return {

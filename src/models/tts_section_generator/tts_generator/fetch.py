@@ -112,8 +112,13 @@ def fetch_revision_meta(wiki_id: str, rev_id: int) -> dict:
     return resp.json()
 
 
-def fetch_revision_html(wiki_id: str, rev_id: int) -> str:
-    """Fetch Parsoid HTML for an exact revision (``/revision/{id}/html``)."""
+def fetch_revision_html(wiki_id: str, rev_id: int) -> tuple[str, str | None]:
+    """Fetch Parsoid HTML for an exact revision. Returns (html, render_id).
+
+    render_id is the MediaWiki Parser render identity from the
+    X-MediaWiki-Render-ID header (T418792). None when absent (older MW,
+    non-WMF installs): the field is then omitted from output.
+    """
     url = f"{rest_base(wiki_id)}/revision/{rev_id}/html"
     resp = _shared_session.get(url, timeout=FETCH_TIMEOUT_S, headers=_headers(wiki_id))
     if resp.status_code == 404:
@@ -123,4 +128,4 @@ def fetch_revision_html(wiki_id: str, rev_id: int) -> str:
             f"Revision HTML fetch failed ({resp.status_code})",
             status=resp.status_code,
         )
-    return resp.text
+    return resp.text, resp.headers.get("X-MediaWiki-Render-ID")

@@ -46,7 +46,7 @@ def client(monkeypatch):
         return {"page": {"id": 9228}, "timestamp": "2026-07-01T00:00:00Z"}
 
     def fake_html(wiki_id, rev_id):
-        return FIXTURE_HTML
+        return FIXTURE_HTML, None  # (html, render_id); None = no header
 
     def fake_synthesize(segments, voice, lang, timestamps="full", encoding="pcm_s16le"):
         calls["timestamps"] = timestamps
@@ -189,6 +189,74 @@ def test_isvc_client_retries_transient_then_succeeds(monkeypatch):
     assert out["sample_rate"] == SR
 
 
+def test_render_id_on_artifacts_and_sections(monkeypatch):
+    """render_id from X-MediaWiki-Render-ID is stamped on every artifact
+    and on the /sections response when present; absent when missing."""
+
+    def fake_meta(w, r):
+        return {"page": {"id": 9228}, "timestamp": "2026-07-01T00:00:00Z"}
+
+    def fake_html_present(w, r):
+        return FIXTURE_HTML, "abc-def-123"
+
+    def fake_synth(segments, voice, lang, timestamps="full", encoding="pcm_s16le"):
+        pcm = _pcm()
+        return {
+            "audio_b64": base64.b64encode(pcm).decode("ascii"),
+            "encoding": "pcm_s16le",
+            "timestamps_mode": timestamps,
+            "sample_rate": SR,
+            "duration_ms": 1000.0,
+            "timestamps": [],
+        }
+
+    monkeypatch.setattr(service, "fetch_revision_meta", fake_meta)
+    monkeypatch.setattr(service, "fetch_revision_html", fake_html_present)
+    monkeypatch.setattr(service.isvc_client, "synthesize", fake_synth)
+
+    c = TestClient(service.app)
+
+    # /sections carries render_id when header present
+    r = c.get("/sections", params={"wiki_id": "enwiki", "page_id": 9228, "rev_id": 1})
+    assert r.status_code == 200
+    assert r.json()["render_id"] == "abc-def-123"
+
+    # /generate-section stamps render_id on every artifact
+    r = c.post("/generate-section", json=_req(["audio_opus"]))
+    assert r.status_code == 200, r.text
+    for a in r.json()["artifacts"]:
+        assert a["render_id"] == "abc-def-123"
+
+    # Absent header -> key omitted
+    monkeypatch.setattr(
+        service, "fetch_revision_html", lambda w, r: (FIXTURE_HTML, None)
+    )
+    r2 = c.get("/sections", params={"wiki_id": "enwiki", "page_id": 9228, "rev_id": 1})
+    assert "render_id" not in r2.json()
+
+
+def test_synthesis_not_possible_maps_to_422(monkeypatch):
+    """SynthesisNotPossible -> 422 text_not_synthesizable (deterministic skip)."""
+
+    def fake_meta(w, r):
+        return {"page": {"id": 9228}, "timestamp": "2026-07-01T00:00:00Z"}
+
+    def fake_html(w, r):
+        return FIXTURE_HTML, None
+
+    def fake_synth(*a, **k):
+        raise isvc_client.SynthesisNotPossible("phoneme limit 510 exceeded")
+
+    monkeypatch.setattr(service, "fetch_revision_meta", fake_meta)
+    monkeypatch.setattr(service, "fetch_revision_html", fake_html)
+    monkeypatch.setattr(service.isvc_client, "synthesize", fake_synth)
+
+    c = TestClient(service.app)
+    r = c.post("/generate-section", json=_req(["audio_opus"]))
+    assert r.status_code == 422
+    assert r.json()["code"] == "text_not_synthesizable"
+
+
 def test_isvc_client_never_retries_4xx(monkeypatch):
     attempts = []
 
@@ -196,6 +264,9 @@ def test_isvc_client_never_retries_4xx(monkeypatch):
         status_code = 400
         ok = False
         text = "bad request"
+
+        def json(self):
+            return {}
 
     def fake_post(*a, **k):
         attempts.append(1)
@@ -205,3 +276,20 @@ def test_isvc_client_never_retries_4xx(monkeypatch):
     with pytest.raises(isvc_client.SynthesisRejected):
         isvc_client.synthesize([{"text": "x"}], voice="v", lang="l")
     assert len(attempts) == 1
+
+
+def test_isvc_client_raises_synthesis_not_possible_for_phoneme_code(monkeypatch):
+    """4xx with code=text_not_synthesizable -> SynthesisNotPossible, not
+    SynthesisRejected. Deterministic skip, never retried."""
+
+    class FakeResp:
+        status_code = 422
+        ok = False
+        text = '{"code": "text_not_synthesizable"}'
+
+        def json(self):
+            return {"code": "text_not_synthesizable"}
+
+    monkeypatch.setattr(isvc_client.requests, "post", lambda *a, **k: FakeResp())
+    with pytest.raises(isvc_client.SynthesisNotPossible):
+        isvc_client.synthesize([{"text": "x"}], voice="v", lang="l")

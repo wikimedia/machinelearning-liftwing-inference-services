@@ -91,6 +91,10 @@ _STRIP_CLASS_TOKENS = {
     # word lang="non"/"non-Latn" apparatus, unspeakable
     # by construction; phonemizing it exploded past
     # Kokoro's 510-phoneme limit (pilot, U 518)
+    "IPA",  # pronunciation guides ({{IPA}} family renders
+    # <span class="IPA ...">): notation, not speech; v0 read
+    # the characters aloud (T424378). Speaking IPA properly
+    # needs per-language voice support: future work.
 }
 
 _SLUG_RE = re.compile(r"[^a-z0-9]+")

@@ -139,6 +139,25 @@ def test_refbegin_bibliography_content_is_stripped_structurally():
     assert secs["selected-works"].raw_text == ""
 
 
+IPA_FIXTURE = """
+<html><body>
+<section data-mw-section-id="0">
+  <p>Władysław II Jagiełło
+  <span class="IPA nowrap">[vwaˈdɨswaf jaˈɡʲɛwːɔ]</span>
+  was the Grand Duke of Lithuania.</p>
+</section>
+</body></html>
+"""
+
+
+def test_ipa_pronunciation_guides_are_stripped():
+    """v0 read IPA notation aloud (T424378); IPA spans are notation."""
+    sec = extract_sections(IPA_FIXTURE)[0]
+    assert "ˈ" not in sec.raw_text
+    assert "ɨ" not in sec.raw_text
+    assert "Władysław II Jagiełło" in sec.raw_text  # ł survives: content
+
+
 def test_interlinear_gloss_apparatus_is_stripped():
     """Regression: interlinear-gloss template containers (div.interlinear)
     wrap Old Norse transliteration pairs that are linguistic apparatus, not

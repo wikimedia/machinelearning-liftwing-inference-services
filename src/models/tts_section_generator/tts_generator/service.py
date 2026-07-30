@@ -34,6 +34,7 @@ from tts_generator.chunking import split_text
 from tts_generator.config import (
     DEFAULT_LANG,
     DEFAULT_VOICE,
+    LOG_LEVEL,
     MAX_SEGMENT_CHARS,
     MIN_TEXT_LENGTH,
 )
@@ -44,6 +45,11 @@ from tts_generator.text import clean_spoken_text, init_nemo
 from tts_generator.transcode import TranscodeError, pcm_to_mp3, pcm_to_opus
 from tts_generator.version import content_sha256, generation_version
 from tts_generator.vtt import timestamps_to_vtt
+
+logging.basicConfig(
+    level=LOG_LEVEL,
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+)
 
 logger = logging.getLogger(__name__)
 
@@ -82,7 +88,7 @@ async def _lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="TTS Section Generator", version="0.3.0", lifespan=_lifespan)
+app = FastAPI(title="TTS Section Generator", version="0.4.0", lifespan=_lifespan)
 
 
 # ── Error helper ────────────────────────────────────────────────────────────
@@ -94,13 +100,14 @@ def _error(status: int, code: str, message: str) -> JSONResponse:
 
 # Deterministic (never retried): revision_not_found, revision_page_mismatch,
 # section_not_found_at_revision (blocklisted sections are never addressable),
-# text_below_minimum, artifact_type_not_available, unsupported_wiki.
+# text_below_minimum, text_not_synthesizable, artifact_type_not_available,
+# unsupported_wiki.
 # Transient (retryable): upstream_fetch_error, synthesis_error,
 # transcode_error, blob_write_error.
 
 
 def _fetch_and_verify(wiki_id: str, page_id: int, rev_id: int):
-    """Shared fetch + integrity path. Returns (meta, html) or JSONResponse."""
+    """Shared fetch + integrity path. Returns (meta, html, render_id) or JSONResponse."""
     try:
         meta = fetch_revision_meta(wiki_id, rev_id)
     except FetchError as e:
@@ -120,10 +127,10 @@ def _fetch_and_verify(wiki_id: str, page_id: int, rev_id: int):
         )
 
     try:
-        html = fetch_revision_html(wiki_id, rev_id)
+        html, render_id = fetch_revision_html(wiki_id, rev_id)
     except FetchError as e:
         return _error(502, "upstream_fetch_error", str(e))
-    return meta, html
+    return meta, html, render_id
 
 
 # ── /sections ───────────────────────────────────────────────────────────────
@@ -138,7 +145,7 @@ def get_sections(
     result = _fetch_and_verify(wiki_id, page_id, rev_id)
     if isinstance(result, JSONResponse):
         return result
-    meta, html = result
+    meta, html, render_id = result
 
     out = []
     for s in extract_sections(html):
@@ -157,7 +164,7 @@ def get_sections(
             entry["skip_reason"] = "text_below_minimum"
         out.append(entry)
 
-    return {
+    resp = {
         "wiki_id": wiki_id,
         "page_id": page_id,
         "rev_id": rev_id,
@@ -165,6 +172,9 @@ def get_sections(
         "generation_version": generation_version(),
         "sections": out,
     }
+    if render_id:
+        resp["render_id"] = render_id
+    return resp
 
 
 # ── /generate-section ───────────────────────────────────────────────────────
@@ -202,7 +212,7 @@ def generate_section(req: GenerateRequest):
     result = _fetch_and_verify(req.wiki_id, req.page_id, req.rev_id)
     if isinstance(result, JSONResponse):
         return result
-    _meta, html = result
+    _meta, html, render_id = result
 
     section = find_section(extract_sections(html), req.section_id)
     if section is None:
@@ -234,6 +244,11 @@ def generate_section(req: GenerateRequest):
         isvc = isvc_client.synthesize(
             segments, voice=cfg.voice, lang=cfg.lang, timestamps=ts_mode
         )
+    except isvc_client.SynthesisNotPossible as e:
+        # The section's text cannot be synthesized under this model's
+        # limits: deterministic for this text + generation_version.
+        # Recorded skip, never retried (by us or any pipeline).
+        return _error(422, "text_not_synthesizable", str(e))
     except isvc_client.SynthesisRejected as e:
         # A 4xx from the isvc means WE built a bad request: a generator bug,
         # not load. Surfaced as transient so the pipeline flags it, and
@@ -256,6 +271,8 @@ def generate_section(req: GenerateRequest):
         "content_sha256": sha,
         "duration_ms": isvc["duration_ms"],
     }
+    if render_id:
+        common["render_id"] = render_id
 
     def _emit(entry: dict, data: bytes) -> None:
         # Binary bytes go through the configured sink: inline -> bytes_b64
@@ -321,5 +338,4 @@ def generate_section(req: GenerateRequest):
 if __name__ == "__main__":
     import uvicorn
 
-    logging.basicConfig(level=logging.INFO)
     uvicorn.run(app, host="0.0.0.0", port=8081)  # noqa: S104

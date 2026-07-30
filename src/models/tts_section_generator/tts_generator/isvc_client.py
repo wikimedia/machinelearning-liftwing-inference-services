@@ -39,6 +39,11 @@ class SynthesisError(Exception):
     """isvc call failed after retries (transport, 5xx, or malformed body)."""
 
 
+class SynthesisNotPossible(Exception):
+    """isvc rejected a segment as unsynthesizable (e.g. phoneme-limit):
+    deterministic for this text+version; maps to text_not_synthesizable."""
+
+
 class SynthesisRejected(Exception):
     """isvc rejected the request (4xx): deterministic, never retried.
 
@@ -97,6 +102,13 @@ def synthesize(
             continue
 
         if 400 <= resp.status_code < 500:
+            code = None
+            try:
+                code = resp.json().get("code")
+            except ValueError:
+                pass
+            if code == "text_not_synthesizable":
+                raise SynthesisNotPossible(resp.text[:500])
             logger.error(
                 "isvc rejected request (%d): %s", resp.status_code, resp.text[:500]
             )

@@ -117,7 +117,7 @@ def main() -> int:
     for i, title in enumerate(fa, 1):
         try:
             page_id, rev_id = resolve(title)
-            html = fetch_revision_html("enwiki", rev_id)
+            html, _ = fetch_revision_html("enwiki", rev_id)
             counts = []
             for s in extract_sections(html):
                 n = len(clean_spoken_text(s.raw_text))

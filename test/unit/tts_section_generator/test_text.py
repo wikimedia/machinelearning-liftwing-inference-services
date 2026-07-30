@@ -217,6 +217,17 @@ def test_aud_currency_prefix_expanded():
     assert "$" not in result
 
 
+def test_trailing_comma_number_classified_by_nemo():
+    """NeMo 1.2.0 fixes the decimal+comma verbatim bug (1.1.0: 'eight dot
+    five comma'; 1.2.0: 'eight point five,'). NeMo-only: the fallback
+    path does its best but can't match NeMo's grammar coverage."""
+    pytest.importorskip("nemo_text_processing")
+    init_nemo()
+    result = clean_spoken_text("about 8.5, roughly.")
+    assert "point five" in result
+    assert "comma" not in result
+
+
 def test_non_latin_cjk_is_stripped_romanization_kept():
     result = clean_spoken_text("Lightning (Japanese: ライトニング, Raitoningu)")
     assert "Raitoningu" in result

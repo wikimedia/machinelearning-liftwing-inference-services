@@ -139,7 +139,8 @@ development against the ml-staging TTS isvc.
 | `TTS_GEN_KOKORO_VERSION` | `kokoro-v1.0` | Model component of `generation_version`. |
 | `TTS_GEN_DEFAULT_VOICE` | `af_heart` | Default voice. |
 | `TTS_GEN_DEFAULT_LANG` | `en-us` | Default language. |
-| `TTS_GEN_NORM_RULESET` | `2026.07.20` | Hand-bumped normalization ruleset tag; bump whenever cleaning rules change output text for identical input. |
+| `TTS_GEN_NORM_RULESET` | `2026.07.30` | Hand-bumped normalization ruleset tag; bump whenever cleaning rules change output text for identical input. |
+| `TTS_GEN_LOG_LEVEL` | `INFO` | Python logging level for the service. |
 | `TTS_GEN_NEMO_WHITELIST` | packaged `nemo_whitelist.tsv` | Pronunciation whitelist; its hash is part of `generation_version`. |
 | `TTS_GEN_NEMO_CACHE` | `/tmp/tts-gen-nemo-grammars` | NeMo grammar cache dir (baked into the image at build in deployment). |
 | `TTS_GEN_FFMPEG` | `ffmpeg` | ffmpeg binary for transcoding. |
@@ -182,7 +183,7 @@ Produces the artifact family for one section of one pinned revision.
 | `generation_config.voice` | no (`af_heart`) | Voice. |
 | `generation_config.lang` | no (`en-us`) | Language. |
 | `generation_config.timestamps` | no (`full`) | `full`, `proportional`, or `none`; ignored when no timing artifact is requested (audio-only rides the isvc's cheapest path). |
-| `generation_config.artifacts` | no | Any of `audio_opus`, `audio_mp3`, `captions_vtt`, `timestamps_json`, `audio_pcm_s16le`. Default: `["audio_opus", "captions_vtt", "timestamps_json"]`. |
+| `generation_config.artifacts` | no | Any of `audio_opus`, `audio_mp3`, `captions_vtt`, `timestamps_json`, `audio_pcm_s16le`. `audio_mp3` is the v1 experiment delivery codec (audio_opus remains the recommended codec, regenerable from config). Default: `["audio_opus", "captions_vtt", "timestamps_json"]`. |
 
 ```console
 curl -s -X POST http://localhost:8080/generate-section \
@@ -214,6 +215,7 @@ order:
 | `char_count` | Length of the cleaned (normalized) text. |
 | `content_sha256` | SHA-256 of the normalized text (present iff generatable). Only comparable within one `generation_version`. |
 | `skip_reason` | Present iff not generatable (e.g. `text_below_minimum`). |
+| `render_id` | MediaWiki Parser render identity (UUID from `X-MediaWiki-Render-ID` header). Absent when the header was not present on the Parsoid response (older MW installs). |
 
 ### `POST /generate-section` response
 
@@ -230,6 +232,7 @@ index-record field set:
 | `bytes_b64` **or** `blob_uri` (+ `size_bytes`) | Inline bytes or a written-blob pointer, depending on the configured sink; the schema differs by exactly this field. |
 | `timestamps`, `timestamps_mode` | On `timestamps_json` (and mode on `captions_vtt`). |
 | `sample_rate`, `encoding` | On `audio_pcm_s16le`. |
+| `render_id` | MediaWiki Parser render identity (UUID). Present when captured from the Parsoid response; omitted otherwise. |
 
 ### Errors
 
@@ -244,6 +247,7 @@ contract promise the DE retry logic depends on.
 | `revision_page_mismatch` | 409 | deterministic (rev belongs to a different page; generating would poison the index) |
 | `section_not_found_at_revision` | 404 | deterministic (blocklisted sections are never addressable) |
 | `text_below_minimum` | 422 | deterministic |
+| `text_not_synthesizable` | 422 | deterministic (e.g. phoneme limit exceeded; text is known to exceed model capacity) |
 | `artifact_type_not_available` | 400 | deterministic |
 | `unsupported_wiki` | 400 | deterministic |
 | `upstream_fetch_error` | 502 | transient |
@@ -257,7 +261,7 @@ contract promise the DE retry logic depends on.
 | --- | --- | --- |
 | `section_id` | lowercase heading slug, `-N` ordinal for duplicates, `lead` for the lead | deterministic from heading text + document order; a renamed heading is a new section (a regeneration), accepted |
 | `content_sha256` | SHA-256 of the **normalized** text | normalized text is what the voice speaks; markup-only edits hash identically and share artifacts. Only comparable within one `generation_version` |
-| `generation_version` | `{kokoro_version}+{voice}+norm-{ruleset}-{engine}-{whitelist_sha8}` e.g. `kokoro-v1.0+af_heart+norm-2026.07.20-nemo-98d86449` | identifies everything that changes audio for identical input; a bump = ML requests a DE backfill. The engine tag (`nemo`/`regex`) matters because the fallback produces different text; the whitelist hash catches pronunciation changes with no code change |
+| `generation_version` | `{kokoro_version}+{voice}+norm-{ruleset}-{engine}{engine_version}-{whitelist_sha8}` e.g. `kokoro-v1.0+af_heart+norm-2026.07.30-nemo1.2.0-98d86449` | identifies everything that changes audio for identical input; a bump = ML requests a DE backfill. The engine tag (`nemo1.2.0`/`regex`) embeds the NeMo package version (or omits it for the regex fallback), so a NeMo upgrade is visible. The whitelist hash catches pronunciation changes with no code change |
 | Fetch source | Parsoid HTML via `GET /w/rest.php/v1/revision/{id}/html` | templates expanded (unlike wikitext), old revisions addressable (unlike TextExtracts), sections structurally marked (`<section data-mw-section-id>`) |
 | Chunk size | `MAX_SEGMENT_CHARS=400` default (isvc hard ceiling 800) | quality knob owned here; tune with listening in Phase 4 |
 
@@ -281,7 +285,9 @@ artifact for the storage layer; isvc client retries with linear backoff
 raises loudly); artifact-driven request shaping (no timing artifact ->
 isvc `timestamps=none`, the RTF-0.22 path); `transcode_error` added to the
 taxonomy. Includes empirical transcode-determinism tests and the golden test
-(same pinned input twice -> byte-identical artifacts).
+(same pinned input twice -> byte-identical artifacts within a single
+process; timing sidecars may differ by ±1 CTC frame across runs due to
+ONNX Runtime nondeterminism).
 
 **Phase 3 (done) -- deployment + de-risking spikes.** Image with the NeMo
 grammar cache baked at build (a broken normalization stack fails the image
@@ -298,11 +304,19 @@ reaching the voice through blocklist title variants, fixed structurally),
 both regression-tested. The T426756 sup/superscript carry-over landed with
 ruleset `2026.07.20` (markup-derived scientific notation is now spoken).
 
-**Phase 4 (in progress, T432692) -- 50-article pilot run.** Produces the
-measured numbers pack for the DE intake meeting: real artifact sizes,
-latency distribution, skip/failure taxonomy rates, sections-per-article
-stats, maxReplicas recommendation, and the permanent memory envelope.
+**Phase 4 (done, T432692) -- 50-article pilot run.** Produced the measured
+numbers pack for the DE intake meeting: real artifact sizes, latency
+distribution, skip/failure taxonomy rates, sections-per-article stats,
+maxReplicas recommendation, and the permanent memory envelope.
 Driver: `scripts/pilot_run.py`; pack: `scripts/pilot_summary.py`.
+
+**Pre-batch hardening (in progress, T433594).** This service's half:
+render_id capture (X-MediaWiki-Render-ID, T418792), structural IPA
+stripping (T424378), mapping of isvc phoneme-limit rejections to the new
+deterministic `text_not_synthesizable` code (the isvc-side guard lands
+separately), NeMo 1.2.0 with the engine version embedded in
+`generation_version`, ruleset 2026.07.30. The batch generation script and
+per-article manifest are the task's remaining workstream.
 
 ## What this service deliberately does NOT do
 
@@ -310,4 +324,7 @@ No queueing, no scheduling, no event consumption, no index diffing, no
 storage ownership. The moment this service grows a work queue it has rebuilt
 v0's Celery layer and un-drawn the ML/DE boundary. Those concerns belong to
 the DE pipelines (Airflow batch, Bento edit-stream) and Data Persistence
-(blob store + index), per the Prep Pantry intake document.
+(blob store + index), per the Prep Pantry intake document. The per-article
+manifest (static JSON enumerating artifact keys for one revision) is produced
+by the batch generation script, not by this service; the manifest format is an
+ML/Apps contract detail separate from the artifact contract itself.

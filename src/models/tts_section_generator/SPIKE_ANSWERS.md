@@ -117,3 +117,11 @@ field regardless of the eventual decision.
    landed: the isvc base64 string is dropped immediately after decode.
    Both ceilings this spike exists to find (time and memory) are tail
    properties invisible to median-workload testing.
+
+## Updates (2026-07-30)
+
+- **S3 sink:** implemented and MinIO-verified (T432944). Supersedes the
+  "interface-complete stub" line in Spike 2 above.
+- **Determinism scope:** audio artifacts are byte-identical within a single
+  pod/process. Timing sidecars (timestamps_json, captions_vtt) may differ by
+  ±1 CTC frame across runs due to ONNX Runtime nondeterminism.

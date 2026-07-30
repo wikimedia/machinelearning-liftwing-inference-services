@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: TTS Section Generator
-  version: 0.3.0
+  version: 0.4.0
   description: >
     ML-owned compute function for the Wikipedia TTS Audio Archive
     (T430536 successor work). Takes a (wiki, page, revision, section)
@@ -78,7 +78,8 @@ components:
           description: >
             Deterministic (never retry): revision_not_found,
             revision_page_mismatch, section_not_found_at_revision,
-            text_below_minimum, artifact_type_not_available,
+            text_below_minimum, text_not_synthesizable,
+            artifact_type_not_available,
             unsupported_wiki. Transient (retry): upstream_fetch_error,
             synthesis_error, transcode_error, blob_write_error.
           enum:
@@ -86,6 +87,7 @@ components:
             - revision_page_mismatch
             - section_not_found_at_revision
             - text_below_minimum
+            - text_not_synthesizable
             - artifact_type_not_available
             - unsupported_wiki
             - upstream_fetch_error
@@ -102,13 +104,22 @@ components:
         page_id: {type: integer}
         rev_id: {type: integer}
         revision_timestamp: {type: string, format: date-time}
+        render_id:
+          type: string
+          description: >
+            MediaWiki Parser render identity (X-MediaWiki-Render-ID
+            response header, T418792) captured at generation time. Lets
+            a client check whether audio was generated from the rendering
+            being read; joinable against DE page-change events (T420217).
+            Optional: absent when the header was not present.
+          example: 7b7d786a-8bfd-11f1-913d-a7994e1a2681
         generation_version:
           type: string
           description: >
             The version this service would stamp on artifacts generated
             now (model+voice+normalizer identity). The pipeline compares
             index records against this to find outdated artifacts.
-          example: kokoro-v1.0+af_heart+norm-2026.07-nemo-3f9a1c2b
+          example: kokoro-v1.0+af_heart+norm-2026.07.30-nemo1.2.0-98d86449
         sections:
           type: array
           items: {$ref: "#/components/schemas/SectionInfo"}
@@ -163,11 +174,12 @@ components:
             enum: [audio_opus, audio_mp3, captions_vtt, timestamps_json, audio_pcm_s16le]
           default: [audio_opus, captions_vtt, timestamps_json]
           description: >
-            audio_opus is the recommended delivery codec; audio_mp3 is the
-            supported alternative pending the Apps codec decision;
-            audio_pcm_s16le is raw isvc passthrough (debugging). Requests
-            with no timing artifact (captions_vtt / timestamps_json) ride
-            the isvc's alignment-free path.
+            audio_mp3 is the v1 experiment delivery codec (Apps decision);
+            audio_opus remains the recommended codec and is regenerable
+            from config; audio_pcm_s16le is raw isvc passthrough
+            (debugging). Requests with no timing artifact
+            (captions_vtt / timestamps_json) ride the isvc's
+            alignment-free path.
 
     GenerateRequest:
       type: object
@@ -195,6 +207,15 @@ components:
         generation_version: {type: string}
         content_sha256: {type: string}
         duration_ms: {type: number}
+        render_id:
+          type: string
+          description: >
+            MediaWiki Parser render identity (X-MediaWiki-Render-ID
+            response header, T418792) captured at generation time. Lets
+            a client check whether audio was generated from the rendering
+            being read; joinable against DE page-change events (T420217).
+            Optional: absent when the header was not present.
+          example: 7b7d786a-8bfd-11f1-913d-a7994e1a2681
         media_type:
           type: string
           description: >
