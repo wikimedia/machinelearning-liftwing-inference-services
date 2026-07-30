@@ -234,3 +234,29 @@ def test_non_latin_cjk_is_stripped_romanization_kept():
     assert "ライトニング" not in result
     # Must not leave dangling ": ," from the script strip
     assert ": ," not in result
+
+
+def test_year_alternative_slash_read_as_or():
+    """{{circa|1352/1362}} means either year; NeMo read the slash pair as
+    a fraction ("...sixty-seconds"). Engine-agnostic assertions."""
+    result = clean_spoken_text("born c. 1352/1362 in Vilnius")
+    assert " or " in result
+    assert "seconds" not in result
+    assert "circa" in result and "c." not in result
+
+
+def test_circa_guard_leaves_initialisms():
+    result = clean_spoken_text("dated 25 B.C. 1350 years ago")
+    assert "circa" not in result
+    # Lowercase initialisms are the real work of the lookbehind
+    assert "circa" not in clean_spoken_text("in 44 b.c. 1350 artifacts were found")
+
+
+def test_year_slash_nemo_reads_years():
+    """NeMo-only strong form: with the slash rewritten to 'or', NeMo
+    classifies both halves as years, not a fraction."""
+    pytest.importorskip("nemo_text_processing")
+    init_nemo()
+    result = clean_spoken_text("born c. 1352/1362 in Vilnius")
+    assert "thirteen fifty two" in result
+    assert "thirteen sixty two" in result

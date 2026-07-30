@@ -299,6 +299,17 @@ def clean_spoken_text(text: str) -> str:
             text,
         )
 
+    # Year-alternative slash ({{circa|1352/1362}}: uncertain year, meaning
+    # "either"). NeMo reads YYYY/YYYY as a fraction, denominator as plural
+    # ordinal ("...sixty-seconds"). Rewritten with "or", NeMo classifies
+    # both as years (verified 1.2.0: "thirteen fifty two or thirteen
+    # sixty two").
+    text = re.sub(r"\b(1\d{3}|20\d{2})/(1\d{3}|20\d{2})\b", r"\1 or \2", text)
+
+    # "c." before a digit -> "circa" (bio leads; the voice reads bare
+    # "c." as "see"). Lookbehind guards initialisms: "B.C. 1350" intact.
+    text = re.sub(r"(?<![A-Za-z]\.)\bc\.\s*(?=\d)", "circa ", text)
+
     # Non-Latin script runs: strip, keep romanization
     text = _NON_LATIN_RE.sub("", text)
     # Collapse damage left by script removal: ": ," -> ": ";

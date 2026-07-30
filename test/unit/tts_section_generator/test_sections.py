@@ -171,3 +171,21 @@ def test_interlinear_gloss_apparatus_is_stripped():
     assert "þurkir" not in u518.raw_text
     assert "Þorgeirr" not in u518.raw_text
     assert "interlinear" not in u518.raw_text
+
+
+PHONOS_FIXTURE = """
+<html><body><section data-mw-section-id="0">
+  <p>Jogaila (Lithuanian:
+  <sup class="ext-phonos-attribution noexcerpt navigation-not-searchable">
+  <a href="/wiki/File:x.ogg">ⓘ</a></sup>; born in Vilnius) was Grand Duke.</p>
+</section></body></html>
+"""
+
+
+def test_phonos_attribution_icon_is_stripped():
+    """The Phonos ⓘ 'listen' link is chrome, not speech (staging probe,
+    T433594): rendered as a sibling of IPA spans, so the IPA strip
+    doesn't catch it."""
+    sec = extract_sections(PHONOS_FIXTURE)[0]
+    assert "ⓘ" not in sec.raw_text
+    assert "Jogaila" in sec.raw_text
