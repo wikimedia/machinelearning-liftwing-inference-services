@@ -177,7 +177,14 @@ class EmbeddingModel(kserve.Model):
                 convert_to_numpy=True,
             )
             log_gpu_memory("after_encode", self.device)
+            param_device = next(self.model.parameters()).device
+            logging.info("Model parameters are on %s", param_device)
+            from collections import Counter
 
+            print(torch.cuda.is_available(), torch.cuda.get_device_name(0))
+            print(torch.cuda.get_device_properties(0).total_memory / 1024**3)  # ~24
+            print(Counter(str(p.device) for p in model.parameters()))
+            print(Counter(str(b.device) for b in model.buffers()))
             # encode() returns a 2D array (one row per input sentence).
             data = [
                 {
