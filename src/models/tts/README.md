@@ -113,7 +113,7 @@ Per-segment fields:
 
 | Field | Required | Description |
 | --- | --- | --- |
-| `text` | yes | Pre-normalized text to speak. Keep segments at or below 800 characters (Kokoro's practical input limit; the server warns above it and the model may silently truncate). |
+| `text` | yes | Pre-normalized text to speak. Keep segments at or below 800 characters (Kokoro's practical input limit; the server warns above it). Segments whose phonemization exceeds Kokoro's 510-phoneme context limit are rejected with HTTP 400, message prefixed `text_not_synthesizable`, rather than silently truncated as older behavior allowed (T433594). |
 | `voice` | no | Voice for this segment (falls back to `default_voice`). |
 | `speed` | no | Speaking-rate multiplier (falls back to `default_speed`). |
 | `lang` | no | Language code (falls back to `default_lang`). |

@@ -6,7 +6,11 @@ import time
 
 import kserve
 import numpy as np
-from inference import MAX_SEGMENT_CHARS, TTSInferencePipeline
+from inference import (
+    MAX_SEGMENT_CHARS,
+    TextNotSynthesizable,
+    TTSInferencePipeline,
+)
 from kserve.errors import InferenceError, InvalidInput, ModelMissingError
 
 logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
@@ -108,11 +112,14 @@ class TTSModel(kserve.Model):
                 raise InvalidInput(f"Segment {i} has empty or non-string `text`.")
             # Kokoro has a practical input-length limit (~800 chars).  The
             # orchestrator is expected to pre-chunk via _split_text().  This
-            # is a non-fatal warning as the model may silently truncate.
+            # is a non-fatal warning; the phoneme guard (T433594) rejects
+            # over-limit text before synthesis, so silent truncation by
+            # Kokoro is no longer a live outcome.
             if len(seg["text"]) > MAX_SEGMENT_CHARS:
                 logger.warning(
                     "Segment %d is %d chars (max recommended: %d); "
-                    "text may be truncated by Kokoro.  Pre-chunk via _split_text().",
+                    "over-length text is rejected by the phoneme guard "
+                    "rather than truncated.  Pre-chunk via _split_text().",
                     i,
                     len(seg["text"]),
                     MAX_SEGMENT_CHARS,
@@ -181,6 +188,15 @@ class TTSModel(kserve.Model):
             result["timestamps_mode"] = inputs["timestamps_mode"]
             return result
 
+        except TextNotSynthesizable as e:
+            # Deterministic rejection, NOT an inference failure: surface as
+            # a 4xx (InvalidInput) so callers record-and-skip instead of
+            # retrying. KServe's error envelope is {"error": "<message>"};
+            # the message's stable "text_not_synthesizable" prefix is the
+            # machine-readable marker the generator's isvc client keys on
+            # (T433594 workstream C).
+            logger.warning("Rejecting unsynthesizable input: %s", e)
+            raise InvalidInput(str(e))
         except Exception as e:
             error_message = f"Error during TTS inference: {e}"
             logger.error(error_message)

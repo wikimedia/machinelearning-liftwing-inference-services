@@ -39,6 +39,14 @@ def _install_inference_dependency_stubs() -> None:
             raise NotImplementedError
 
     kokoro_module.Kokoro = _DummyKokoro
+
+    # inference.py now imports MAX_PHONEME_LENGTH from kokoro_onnx.config at
+    # module level (phoneme guard, T433594).  Provide a stub submodule.
+    kokoro_config = types.ModuleType("kokoro_onnx.config")
+    kokoro_config.MAX_PHONEME_LENGTH = 510
+    sys.modules.setdefault("kokoro_onnx.config", kokoro_config)
+    kokoro_module.config = kokoro_config
+
     sys.modules.setdefault("kokoro_onnx", kokoro_module)
 
     # onnxruntime / scipy / transformers are imported by alignment.py at module
@@ -67,8 +75,11 @@ _install_inference_dependency_stubs()
 
 from src.models.tts.model_server.inference import (  # noqa: E402
     FADE_LEN,
+    MAX_PHONEME_LENGTH,
     MAX_SEGMENT_CHARS,
+    TextNotSynthesizable,
     TTSInferencePipeline,
+    check_phoneme_limits,
 )
 
 SAMPLE_RATE = 24000
@@ -89,6 +100,12 @@ class FakeKokoro:
     def __init__(self, lengths: dict[str, int]):
         self.lengths = lengths
         self.calls: list[str] = []
+        # Phoneme guard (T433594): identity phonemize so the count equals
+        # the text length; every fixture text is tiny, so the guard passes
+        # and these tests' behaviour is unchanged.
+        self.tokenizer = types.SimpleNamespace(
+            phonemize=lambda text, lang="en-us": text
+        )
 
     def create(self, text, voice=None, speed=None, lang=None):
         self.calls.append(text)
@@ -453,6 +470,45 @@ def test_proportional_multi_segment_offsets_are_correct():
     assert result["timestamps"][0]["start_ms"] == 0.0
     # Second chunk offset by first chunk's contribution.
     assert result["timestamps"][1]["start_ms"] == pytest.approx(_ms(L - FADE_LEN))
+
+
+# ── Phoneme-limit guard (T433594) ────────────────────────────────────────────
+
+
+class FakeTokenizer:
+    """Phonemize = identity: phoneme count == text length."""
+
+    def phonemize(self, text, lang="en-us"):
+        return text
+
+
+def test_over_limit_segment_raises_with_structured_fields():
+    segs = [{"text": "x" * 100}, {"text": "y" * (MAX_PHONEME_LENGTH + 1)}]
+    with pytest.raises(TextNotSynthesizable) as ei:
+        check_phoneme_limits(segs, FakeTokenizer(), "en-us")
+    e = ei.value
+    assert (e.segment_index, e.phoneme_count, e.limit) == (1, 511, 510)
+    assert str(e).startswith("text_not_synthesizable:")
+
+
+def test_at_limit_passes():
+    check_phoneme_limits(
+        [{"text": "x" * MAX_PHONEME_LENGTH}], FakeTokenizer(), "en-us"
+    )  # no raise
+
+
+def test_segment_lang_reaches_tokenizer():
+    seen = []
+
+    class Tok:
+        def phonemize(self, text, lang="en-us"):
+            seen.append(lang)
+            return text
+
+    check_phoneme_limits(
+        [{"text": "a"}, {"text": "b", "lang": "en-gb"}], Tok(), "en-us"
+    )
+    assert seen == ["en-us", "en-gb"]
 
 
 # ── Constants sanity ─────────────────────────────────────────────────────────

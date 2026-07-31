@@ -24,6 +24,14 @@ import pytest
 def _install_stubs() -> None:
     kokoro_module = types.ModuleType("kokoro_onnx")
     kokoro_module.Kokoro = type("Kokoro", (), {"__init__": lambda self, *a, **k: None})
+
+    # inference.py now imports MAX_PHONEME_LENGTH from kokoro_onnx.config at
+    # module level (phoneme guard, T433594).  Provide a stub submodule.
+    kokoro_config = types.ModuleType("kokoro_onnx.config")
+    kokoro_config.MAX_PHONEME_LENGTH = 510
+    sys.modules.setdefault("kokoro_onnx.config", kokoro_config)
+    kokoro_module.config = kokoro_config
+
     sys.modules.setdefault("kokoro_onnx", kokoro_module)
 
     onnxruntime = types.SimpleNamespace(
@@ -370,3 +378,45 @@ def test_predict_runs_off_the_event_loop_thread():
 
     asyncio.run(runner())
     assert loop_thread_ids["worker"] != loop_thread_ids["loop"]
+
+
+# ── Phoneme-limit guard → KServe mapping (T433594) ──────────────────────────
+
+
+def test_text_not_synthesizable_maps_to_invalid_input():
+    """TextNotSynthesizable from the pipeline -> KServe InvalidInput (4xx),
+    NOT InferenceError (5xx). The taxonomy contract's whole point.
+
+    Uses the flat ``inference`` module (the same one model.py imports from)
+    so the exception class identity matches the except clause exactly."""
+    import inference as inf  # flat module, populated by model.py's own import
+
+    m = TTSModel.__new__(TTSModel)
+
+    class StubPipeline:
+        def predict(self, **kw):
+            raise inf.TextNotSynthesizable(2, 641, 510)
+
+    m.pipeline = StubPipeline()
+
+    inputs = {
+        "segments": [{"text": "x"}],
+        "default_voice": "af_heart",
+        "default_speed": 1.0,
+        "default_lang": "en-us",
+        "encoding": "pcm_s16le",
+        "timestamps_mode": "none",
+    }
+    with pytest.raises(InvalidInput) as ei:
+        asyncio.run(m.predict(inputs))
+    msg = str(ei.value)
+    assert "text_not_synthesizable" in msg and "segment 2" in msg and "641" in msg
+
+    # Generic path still maps to InferenceError.
+    class BoomPipeline:
+        def predict(self, **kw):
+            raise RuntimeError("onnx exploded")
+
+    m.pipeline = BoomPipeline()
+    with pytest.raises(InferenceError):
+        asyncio.run(m.predict(inputs))

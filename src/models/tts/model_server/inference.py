@@ -17,11 +17,57 @@ from concurrent.futures import ThreadPoolExecutor
 import numpy as np
 import onnxruntime as ort
 from alignment import Aligner, _proportional_timestamps
+from kokoro_onnx.config import MAX_PHONEME_LENGTH
 
 logger = logging.getLogger(__name__)
 
 FADE_LEN = 120  # samples for crossfade envelope
 MAX_SEGMENT_CHARS = 800  # Kokoro's practical input-length limit
+
+
+class TextNotSynthesizable(Exception):
+    """A segment's phonemization exceeds Kokoro's context limit.
+
+    Deterministic for a given text + model version: retrying can never
+    succeed. The model-server maps this to a structured 4xx (the
+    generator's ``text_not_synthesizable`` taxonomy code, T433594) instead
+    of letting kokoro-onnx handle the overflow itself, whose behavior is
+    version-dependent and always wrong: the pinned 0.5.0 truncates the
+    phoneme string in ``_create_audio`` (silently dropping spoken words
+    under a 200 response, an audio-integrity failure no status code
+    surfaces) and can crash in the voice-style lookup after truncating to
+    exactly the limit (the pilot's u-518 failure). Reject, never truncate.
+    """
+
+    def __init__(self, segment_index: int, phoneme_count: int, limit: int):
+        self.segment_index = segment_index
+        self.phoneme_count = phoneme_count
+        self.limit = limit
+        super().__init__(
+            f"text_not_synthesizable: segment {segment_index} phonemizes to "
+            f"{phoneme_count} phonemes, over the Kokoro context limit "
+            f"({limit}); rejecting rather than truncating"
+        )
+
+
+def check_phoneme_limits(segments: list[dict], tokenizer, default_lang: str) -> None:
+    """Count-only phonemization of every segment; raise on the first over
+    Kokoro's context limit, BEFORE any synthesis work.
+
+    Costs one extra phonemization per segment (milliseconds, against
+    minutes of synthesis) and deliberately does NOT reuse the phonemes for
+    synthesis: the existing text-path ``kokoro.create(text, ...)`` call
+    stays byte-for-byte unchanged for every previously-working input, so
+    this guard has no generation_version implications.
+
+    MUST run under the pipeline's synthesis lock: phonemization goes
+    through espeak-ng, which is not thread-safe (the same shared state
+    behind ``_synth_lock``, T430536).
+    """
+    for i, seg in enumerate(segments):
+        phonemes = tokenizer.phonemize(seg["text"], lang=seg.get("lang", default_lang))
+        if len(phonemes) > MAX_PHONEME_LENGTH:
+            raise TextNotSynthesizable(i, len(phonemes), MAX_PHONEME_LENGTH)
 
 
 class TTSInferencePipeline:
@@ -134,6 +180,11 @@ class TTSInferencePipeline:
         Returns:
             ``{"audio": np.ndarray (float32), "sample_rate": int, "timestamps": list[dict]}``
         """
+        # Phoneme-limit guard first (count-only, under the lock we hold):
+        # an over-limit segment is rejected before ANY synthesis or
+        # alignment work is dispatched.
+        check_phoneme_limits(segments, self.kokoro.tokenizer, default_lang)
+
         audio_chunks: list[np.ndarray] = []
         all_timestamps: list[dict] = []
         current_time_ms = 0.0
