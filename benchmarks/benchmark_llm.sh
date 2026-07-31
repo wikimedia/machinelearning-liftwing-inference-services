@@ -1,33 +1,38 @@
 #!/usr/bin/env bash
 # =============================================================================
-# LiftWing LLM serving benchmark — vllm bench serve wrapper
+# LiftWing LLM serving benchmark — vllm-bench wrapper
 #
 # Runs a FIXED, documented configuration across a concurrency sweep, saves one
 # JSON per run, and prints (and writes) a combined summary table.
 #
-# See README-benchmarking.md for the full procedure and the metric glossary.
+# See README.md for the full procedure and the metric glossary.
 # Keep the configuration below fixed so results stay comparable across
 # infrastructure / vLLM / config changes (T431851).
 # =============================================================================
 set -euo pipefail
 
 # ---------------------------------------------------------------------------
-# Configuration — EDIT THE TWO "REPLACE" VALUES, then keep the rest fixed.
-# All are overridable via environment variables, e.g. NUM_PROMPTS=500 ./benchmark_llm.sh
+# Configuration — set the TOKENIZER path (and the endpoint vars for your target), then
+# keep the rest fixed. All are overridable via env vars, e.g. NUM_PROMPTS=500 ./benchmark_llm.sh
 # ---------------------------------------------------------------------------
-# Internal endpoint. base-url ENDS IN /openai; the endpoint is appended to it.
-# Two ways to reach it:
-#  (A) Knative gateway (mirrors real internal clients): connect to the gateway and
-#      route with a Host header. vllm-bench (rustls) does not trust the WMF CA, so
-#      INSECURE=1 is needed here (see below).
+# Endpoint. base-url ENDS IN /openai; ENDPOINT is appended to it. Three ways to reach it:
+#  (A) Internal Knative gateway (mirrors real internal clients): connect to the gateway and
+#      route with a Host header. vllm-bench (rustls) does not trust the WMF CA, so INSECURE=1.
 #        BASE_URL=https://inference.svc.eqiad.wmnet:30443/openai
-#        HOST_HEADER=llm-qwen36-27b.llm.wikimedia.org
-#  (B) Port-forward the predictor pod (no Host header, plain http, INSECURE=0):
+#        HOST_HEADER=llm-qwen36-27b.llm.wikimedia.org   INSECURE=1
+#  (B) Port-forward the predictor pod (no Host header, plain http):
 #        kubectl -n llm port-forward <predictor-pod> 8080:8080
 #        BASE_URL=http://localhost:8080/openai   HOST_HEADER=   INSECURE=0
+#  (C) Public endpoint via api.wikimedia.org (run from Toolforge/WMCS to avoid the
+#      100 req/hour cap). The model is in the PATH, so NO Host header; valid public cert.
+#        BASE_URL=https://api.wikimedia.org/service/lw/inference/v1/models/llm-<model>/openai
+#        HOST_HEADER=   INSECURE=0
 BASE_URL="${BASE_URL:-https://inference.svc.eqiad.wmnet:30443/openai}"
 ENDPOINT="${ENDPOINT:-/v1/completions}"
-HOST_HEADER="${HOST_HEADER:-llm-qwen36-27b.llm.wikimedia.org}"  # empty when port-forwarding
+# NOTE: colon-less "-" so an explicit empty (HOST_HEADER="") is honored — required for the
+# port-forward and public paths. With ":-", an empty value would wrongly fall back to the
+# default, sending a stale internal Host header (the public edge then rejects it with a 400).
+HOST_HEADER="${HOST_HEADER-llm-qwen36-27b.llm.wikimedia.org}"
 
 # Benchmark tool. Two options with a compatible JSON output schema:
 #   vllm-bench         -> standalone Rust binary; supports --header KEY=VALUE and --insecure (recommended: lets you

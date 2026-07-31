@@ -50,16 +50,19 @@ vllm-bench --help | head          # confirm it runs. NOTE: options hang directly
                                   # `vllm-bench` — there is no `serve` subcommand.
 ```
 
-Ran from the **ML Lab host** (Python 3.11), which can reach the internal endpoint.
+Runs from any host that can reach the target endpoint (only the summary step needs
+Python 3) — the internal baselines were run from the ML Lab host; public runs from
+Toolforge/WMCS.
 
 ---
 
 ## 3. Endpoint: internal gateway (with a Host header)
 
-- **Internal (used for baselines).** Not rate-limited; the internal Knative gateway.
+- **Internal (used for the baselines).** Not rate-limited; the internal Knative gateway.
 - **Public (`api.wikimedia.org`).** Capped at **100 requests/hour** for
   anonymous/non-WMCS clients (LiftWingLLM policy) — a load test hits that wall in
-  seconds. Benchmark the public path separately later, from a WMCS/known-client host.
+  seconds. Run it from **Toolforge/WMCS** (known-network → effectively unlimited); see
+  *Public endpoint (from Toolforge)* below.
 
 The internal Knative gateway routes **by `Host` header**, and the OpenAI server is
 mounted under **`/openai`**. So:
@@ -81,6 +84,26 @@ curl https://inference.svc.eqiad.wmnet:30443/openai/v1/chat/completions \
 `--base-url http://localhost:8080/openai` with no `Host` header. Simpler wiring, but the
 tunnel gets flaky under high concurrency and bypasses the gateway/mesh — prefer the
 gateway path above for representative numbers.
+
+### Public endpoint (from Toolforge)
+
+To benchmark the user-facing path (CDN + REST gateway + mesh + model), run from a
+**Toolforge/WMCS** host so egress is classified as a *known network* and the 100 req/hour
+cap is lifted. Differences from the internal recipe:
+
+- The **model is in the URL path**, so there is **no `Host` header**:
+  `--base-url https://api.wikimedia.org/service/lw/inference/v1/models/llm-<model>/openai`
+- **No `--insecure`** — `api.wikimedia.org` has a valid public cert (vllm-bench trusts public CAs).
+- Everything else is identical (`--prompt-token-ids`, `random` 1024/128, seed, sweep), so
+  the numbers compare 1:1 with the internal baseline.
+
+> **Gotcha:** set `HOST_HEADER=""` (the script honors an explicit empty value). A stale
+> internal `Host` header on a public request makes the edge reject *every* request with an
+> HTML **`400 Bad request`** — note that's the edge, not the model (the model returns JSON).
+
+Finding (2026-07-24): gateway/mesh/CDN overhead vs. the internal path is **negligible** — a
+small TTFT bump at low/moderate concurrency, within noise at saturation; throughput and E2EL
+match. So the internal baseline is a fair proxy for the public experience.
 
 ---
 
@@ -130,6 +153,17 @@ Set your tokenizer path and go:
 
 ```bash
 TOKENIZER=/home/<you>/benchmarks/Qwen3.6-27B-FP8 ./benchmark_llm.sh
+```
+
+Public run (from Toolforge — model in the path, no Host header, no `--insecure`):
+
+```bash
+HOST_HEADER="" INSECURE=0 \
+BASE_URL="https://api.wikimedia.org/service/lw/inference/v1/models/llm-qwen36-27b/openai" \
+ENDPOINT="/v1/completions" \
+MODEL="llm-qwen36-27b" \
+TOKENIZER=/home/<you>/benchmarks/Qwen3.6-27B-FP8 \
+./benchmark_llm.sh
 ```
 
 The script:
@@ -258,10 +292,16 @@ capacity per replica.
 
 ---
 
-## 11. Deferred / follow-ups
+## 11. Status & follow-ups
 
-- Public-endpoint run from WMCS/known-client (full user-facing path).
-- Additional models: `llm-qwen3-14b` (and its future quantized build), internal models.
+Done:
+- Internal baselines: `llm-qwen36-27b` (full GPU) and `llm-qwen3-14b` (24 GB partition).
+- Public-endpoint baseline for both models, from Toolforge (see §3).
+
+Follow-ups:
 - More input/output shapes and a realistic dataset (`--dataset-name sharegpt`).
 - Automated result storage + regression comparison.
-- **(Stretch)** Locust-based end-to-end load tests.
+- **Locust end-to-end load testing — deferred for V0.** `vllm-bench` covers the baseline and
+  gives the LLM metrics natively; revisit when autoscaling is enabled (`maxReplicas > 1`) for
+  elasticity/SLO testing, a soak/spike need arises, or LLMs should join the shared
+  `test/locust/` harness (T416475).
