@@ -8,64 +8,6 @@ from sentence_transformers import SentenceTransformer
 
 logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
 
-_GIB = 1024**3
-
-
-def _bytes_to_gib(n: int | float) -> float:
-    return n / _GIB
-
-
-def _pct(n: int | float, total: int | float) -> float:
-    return 100.0 * n / total if total else 0.0
-
-
-def log_gpu_memory(label: str, device: str) -> None:
-    """Log torch CUDA allocator stats (works on ROCm via the CUDA API shim)."""
-    if device != "cuda" or not torch.cuda.is_available():
-        return
-    torch.cuda.synchronize()
-    props = torch.cuda.get_device_properties(0)
-    allocated = torch.cuda.memory_allocated(0)
-    reserved = torch.cuda.memory_reserved(0)
-    peak_allocated = torch.cuda.max_memory_allocated(0)
-    peak_reserved = torch.cuda.max_memory_reserved(0)
-    free, total = torch.cuda.mem_get_info(0)
-    used = total - free
-    slack = reserved - allocated
-    stats = torch.cuda.memory_stats(0)
-    inactive_split = stats.get("inactive_split_bytes.all.current", 0)
-    logging.info(
-        "GPU mem [%s] device=%r: "
-        "allocated=%.3f GiB (%.1f%%) reserved=%.3f GiB (%.1f%%) slack=%.3f GiB "
-        "peak_allocated=%.3f GiB (%.1f%%) peak_reserved=%.3f GiB "
-        "device_used=%.3f GiB (%.1f%%) device_free=%.3f GiB device_total=%.3f GiB "
-        "inactive_split=%.3f GiB ooms=%d alloc_retries=%d",
-        label,
-        props.name,
-        _bytes_to_gib(allocated),
-        _pct(allocated, total),
-        _bytes_to_gib(reserved),
-        _pct(reserved, total),
-        _bytes_to_gib(slack),
-        _bytes_to_gib(peak_allocated),
-        _pct(peak_allocated, total),
-        _bytes_to_gib(peak_reserved),
-        _bytes_to_gib(used),
-        _pct(used, total),
-        _bytes_to_gib(free),
-        _bytes_to_gib(total),
-        _bytes_to_gib(inactive_split),
-        stats.get("num_ooms", 0),
-        stats.get("num_alloc_retries", 0),
-    )
-
-
-def reset_peak_gpu_memory(device: str) -> None:
-    if device != "cuda" or not torch.cuda.is_available():
-        return
-    torch.cuda.synchronize()
-    torch.cuda.reset_peak_memory_stats(0)
-
 
 class EmbeddingModel(kserve.Model):
     """
@@ -127,7 +69,6 @@ class EmbeddingModel(kserve.Model):
             self.model.eval()
             self.ready = True
             logging.info("SentenceTransformer model loaded successfully!")
-            log_gpu_memory("after_load", self.device)
         except Exception as e:
             error_message = f"Failed to load model. Reason: {e}"
             logging.critical(error_message)
@@ -158,33 +99,13 @@ class EmbeddingModel(kserve.Model):
         Supports OpenAI-compatible API response format. (see T412338#11482782)
         """
         try:
-            sentences = request["sentences"]
-            n_sentences = len(sentences)
-            total_chars = sum(len(s) for s in sentences)
-            max_chars = max((len(s) for s in sentences), default=0)
-            logging.info(
-                "Performing inference (sentences=%d total_chars=%d max_chars=%d)...",
-                n_sentences,
-                total_chars,
-                max_chars,
-            )
-            reset_peak_gpu_memory(self.device)
-            log_gpu_memory("before_encode", self.device)
+            logging.info("Performing inference...")
             embeddings = self.model.encode(
-                sentences=sentences,
+                sentences=request["sentences"],
                 prompt_name=request["prompt_name"],
                 normalize_embeddings=True,
                 convert_to_numpy=True,
             )
-            log_gpu_memory("after_encode", self.device)
-            param_device = next(self.model.parameters()).device
-            logging.info("Model parameters are on %s", param_device)
-            from collections import Counter
-
-            print(torch.cuda.is_available(), torch.cuda.get_device_name(0))
-            print(torch.cuda.get_device_properties(0).total_memory / 1024**3)  # ~24
-            print(Counter(str(p.device) for p in model.parameters()))
-            print(Counter(str(b.device) for b in model.buffers()))
             # encode() returns a 2D array (one row per input sentence).
             data = [
                 {
