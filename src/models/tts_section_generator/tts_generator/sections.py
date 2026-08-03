@@ -95,6 +95,12 @@ _STRIP_CLASS_TOKENS = {
     # <span class="IPA ...">): notation, not speech; v0 read
     # the characters aloud (T424378). Speaking IPA properly
     # needs per-language voice support: future work.
+    "geo-nondefault",  # {{Coord}} emits the coordinate TWICE (DMS + a
+    # decimal twin) with these two classes CSS-hidden by the template's
+    # own stylesheet; the extractor applies no CSS, so an inline
+    # coordinate would be read twice with a stray slash. Stripping
+    # display:none-by-definition content is zero-risk.
+    "geo-multi-punct",
     "ext-phonos-attribution",  # the ⓘ "listen" attribution link the
     # Phonos extension renders as a sibling of IPA spans
     # (<sup class="ext-phonos-attribution...">ⓘ</sup>): chrome, not speech

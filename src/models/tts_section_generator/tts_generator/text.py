@@ -116,6 +116,102 @@ _NON_LATIN_RE = re.compile(
 )
 
 
+# ── Roman numerals (listening-pass ruleset 2026.08) ───────────────────────
+# espeak (Kokoro's G2P) reads roman numerals by literally saying "roman":
+# "Henry VIII" was heard as "Henry roman eight", "Elizabeth I" as
+# "Elizabeth eye". Two contexts, two readings (the industry-standard split):
+#   * structural words take CARDINALS:  World War II -> World War Two
+#   * regnal names take ORDINALS:       Henry VIII -> Henry the Eighth
+# Guards, in order of the damage they prevent:
+#   * multi-char romans first in the alternation (XVIII before XVII before X)
+#   * single-char V and X are skipped when followed by "." (middle
+#     initials: "John V. Smith"); multi-char romans keep sentence-final "."
+#   * "Malcolm X" is a literal exception (the famous counterexample)
+#   * bare I after a name converts only when NOT followed by "." (middle
+#     initial "John I. Smith") and NOT followed by another Capitalized word
+#     ("Mary I Tudor" is left alone and logged). Encyclopedic prose has no
+#     first-person I outside quotations, which bounds the pronoun risk.
+_ROMANS_1_30 = (
+    "I II III IV V VI VII VIII IX X XI XII XIII XIV XV XVI XVII XVIII XIX XX "
+    "XXI XXII XXIII XXIV XXV XXVI XXVII XXVIII XXIX XXX"
+).split()
+_ORDINAL_WORDS = (
+    "First Second Third Fourth Fifth Sixth Seventh Eighth Ninth Tenth "
+    "Eleventh Twelfth Thirteenth Fourteenth Fifteenth Sixteenth Seventeenth "
+    "Eighteenth Nineteenth Twentieth Twenty-first Twenty-second Twenty-third "
+    "Twenty-fourth Twenty-fifth Twenty-sixth Twenty-seventh Twenty-eighth "
+    "Twenty-ninth Thirtieth"
+).split()
+_CARDINAL_WORDS = (
+    "One Two Three Four Five Six Seven Eight Nine Ten Eleven Twelve Thirteen "
+    "Fourteen Fifteen Sixteen Seventeen Eighteen Nineteen Twenty Twenty-one "
+    "Twenty-two Twenty-three Twenty-four Twenty-five Twenty-six Twenty-seven "
+    "Twenty-eight Twenty-nine Thirty"
+).split()
+_ROMAN_TO_N = {r: i + 1 for i, r in enumerate(_ROMANS_1_30)}
+# Longest-first alternation: regex alternation is ordered, and X must not
+# shadow XVIII.
+_ROMAN_ALT = "|".join(sorted(_ROMANS_1_30, key=len, reverse=True))
+_ROMAN_MULTI_ALT = "|".join(
+    sorted((r for r in _ROMANS_1_30 if len(r) > 1), key=len, reverse=True)
+)
+
+# Structural words whose roman suffix reads as a CARDINAL. Generous on
+# purpose: every entry is a word after which "the Nth" would sound wrong.
+_ROMAN_STRUCT_RE = re.compile(
+    r"\b(World\s+War|Act|Part|Chapter|Volume|Book|Section|Phase|Class|Type"
+    r"|Mark|Grade|Stage|Level|Camp|Appendix|Article|Table|Figure|Title)"
+    rf"\s+({_ROMAN_ALT})\b"
+)
+# Regnal/name context. The name pattern matches any Unicode word
+# ([^\W\d_] is "\w minus digits/underscore" = letters, Unicode-aware);
+# the capitalized-name SHAPE (upper first, lower last) is enforced in the
+# callable with str.isupper()/islower(), because [A-Za-z] is ASCII-only
+# and royal names are not: "Władysław II" (ł), "Æthelred II" (Æ) must
+# match. Multi-char romans (II..XXX): sentence-final "." is fine since
+# "VIII." can never be an initial.
+_ROMAN_NAME_MULTI_RE = re.compile(rf"\b([^\W\d_]+)\s+({_ROMAN_MULTI_ALT})\b")
+# Single-char V and X after a name: the trailing-dot guard protects middle
+# initials ("John V. Smith"); Malcolm X is excepted in the callable.
+_ROMAN_NAME_VX_RE = re.compile(r"\b([^\W\d_]+)\s+([VX])\b(?!\.)")
+# Bare I after a name: dot guard (initial), next-Capital guard (Mary I Tudor).
+_ROMAN_NAME_I_RE = re.compile(r"\b([^\W\d_]+)\s+I\b(?!\.)(?!\s+[A-Z])")
+
+
+def _is_name_shaped(word: str) -> bool:
+    """Capitalized-name shape, Unicode-correct: upper first, lower last
+    (filters lowercase words, ALLCAPS acronyms, and single letters)."""
+    return len(word) >= 2 and word[0].isupper() and word[-1].islower()
+
+
+def _roman_struct(m: re.Match) -> str:
+    return f"{m.group(1)} {_CARDINAL_WORDS[_ROMAN_TO_N[m.group(2)] - 1]}"
+
+
+def _roman_name(m: re.Match) -> str:
+    name, roman = m.group(1), m.group(2)
+    if not _is_name_shaped(name):
+        return m.group(0)
+    if name == "Malcolm" and roman == "X":
+        return m.group(0)
+    return f"{name} the {_ORDINAL_WORDS[_ROMAN_TO_N[roman] - 1]}"
+
+
+def _norm_roman_numerals(text: str) -> str:
+    """Structural first, so "World War I" reads cardinal before the
+    name-ordinal rules could ever see it."""
+    text = _ROMAN_STRUCT_RE.sub(_roman_struct, text)
+    text = _ROMAN_NAME_MULTI_RE.sub(_roman_name, text)
+    text = _ROMAN_NAME_VX_RE.sub(_roman_name, text)
+    text = _ROMAN_NAME_I_RE.sub(
+        lambda m: f"{m.group(1)} the First"
+        if _is_name_shaped(m.group(1))
+        else m.group(0),
+        text,
+    )
+    return text
+
+
 def _norm_units(text: str) -> str:
     """Expand measurement unit abbreviations following numeric values."""
     for pattern, replacement in _UNIT_SUBS:
@@ -309,6 +405,65 @@ def clean_spoken_text(text: str) -> str:
     # "c." before a digit -> "circa" (bio leads; the voice reads bare
     # "c." as "see"). Lookbehind guards initialisms: "B.C. 1350" intact.
     text = re.sub(r"(?<![A-Za-z]\.)\bc\.\s*(?=\d)", "circa ", text)
+
+    # "r." / "fl." before a digit -> "reigned" / "flourished" (monarch and
+    # medieval-figure leads: "(r. 1386-1434)" was heard as "ar thirteen
+    # eighty six"; "(fl. 1200)" as "ef-el"). Same initialism lookbehind as
+    # the circa rule above.
+    text = re.sub(r"(?<![A-Za-z]\.)\br\.\s*(?=\d)", "reigned ", text)
+    text = re.sub(r"(?<![A-Za-z]\.)\bfl\.\s*(?=\d)", "flourished ", text)
+
+    # Roman numerals: espeak says the word "roman" for them ("Henry roman
+    # eight"). Structural contexts read cardinal, names read ordinal; see
+    # the guard notes on the module-level tables.
+    text = _norm_roman_numerals(text)
+
+    # "No." before a digit -> "number" ("reached No. 1" was heard as
+    # "reached no one": actively misleading). Capital-only on purpose:
+    # lowercase "no." before a digit is almost always a sentence ending
+    # ("The answer was no. 5 people agreed"), and MOS writes numero as
+    # "No.".
+    text = re.sub(r"\bNo\.\s*(?=\d)", "number ", text)
+
+    # Dagger before a year -> "died" (bio convention "(† 1434)"; the glyph
+    # is silent in espeak, leaving an orphaned parenthetical year).
+    text = re.sub(r"†\s*(?=\d)", "died ", text)
+
+    # "~" before a digit -> "approximately". Without this NeMo classifies
+    # "~50" as one verbatim token: the output glues ("approximatelyfifty")
+    # AND the following unit escapes the measure grammar ("km" unread).
+    text = re.sub(r"~\s*(?=\d)", "approximately ", text)
+
+    # Coordinate/DMS notation: compass letters first (while the prime
+    # glyphs still mark the context), then the primes themselves, which
+    # espeak renders as silence ("28' 40\" N" was heard as "twenty eight
+    # forty en").
+    text = re.sub(
+        r"([\u00b0\u2032\u2033])\s*([NSEW])\b",
+        lambda m: m.group(1)
+        + " "
+        + {"N": "north", "S": "south", "E": "east", "W": "west"}[m.group(2)],
+        text,
+    )
+    text = re.sub(r"(?<=\d)\s*\u2032", " minutes ", text)
+    text = re.sub(r"(?<=\d)\s*\u2033", " seconds ", text)
+
+    # Micro-sign units (both U+00B5 MICRO SIGN and U+03BC GREEK MU appear
+    # in wiki text): "10 um" was heard as "ten micro-em". Digit-guarded,
+    # slash-units style: unit expansion must be deliberate.
+    for _mu_unit, _mu_spoken in (
+        ("m", "micrometers"),
+        ("g", "micrograms"),
+        ("s", "microseconds"),
+        ("L", "microliters"),
+    ):
+        text = re.sub(rf"(?<=\d)\s*[\u00b5\u03bc]{_mu_unit}\b", f" {_mu_spoken}", text)
+
+    # Latin abbreviations espeak spells as letters ("ee-jee", "eye-ee").
+    # Lowercase-only (the written convention); "etc." and "et al." are
+    # already spoken correctly by espeak and stay untouched.
+    text = re.sub(r"\be\.g\.,?\s*", "for example, ", text)
+    text = re.sub(r"\bi\.e\.,?\s*", "that is, ", text)
 
     # Non-Latin script runs: strip, keep romanization
     text = _NON_LATIN_RE.sub("", text)

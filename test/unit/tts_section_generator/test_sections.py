@@ -189,3 +189,23 @@ def test_phonos_attribution_icon_is_stripped():
     sec = extract_sections(PHONOS_FIXTURE)[0]
     assert "ⓘ" not in sec.raw_text
     assert "Jogaila" in sec.raw_text
+
+
+GEO_FIXTURE = """
+<html><body><section data-mw-section-id="0"><p>The memorial stands at
+<span class="geo-default"><span class="geo-dms"><span class="latitude">40°41′21″N</span>
+<span class="longitude">74°2′40″W</span></span></span><span
+class="geo-multi-punct"> / </span><span class="geo-nondefault"><span
+class="geo-dec">40.689°N 74.044°W</span></span> in the harbor, near the
+old fort that guarded the approaches.</p></section></body></html>
+"""
+
+
+def test_geo_hidden_duplicate_is_stripped():
+    """{{Coord}} emits the coordinate twice (DMS + CSS-hidden decimal twin
+    + hidden ' / '); the extractor applies no CSS, so without the strip an
+    inline coordinate is read twice with a stray slash."""
+    sec = extract_sections(GEO_FIXTURE)[0]
+    assert "40°41′21″N" in sec.raw_text
+    assert "40.689" not in sec.raw_text
+    assert " / " not in sec.raw_text

@@ -139,7 +139,7 @@ development against the ml-staging TTS isvc.
 | `TTS_GEN_KOKORO_VERSION` | `kokoro-v1.0` | Model component of `generation_version`. |
 | `TTS_GEN_DEFAULT_VOICE` | `af_heart` | Default voice. |
 | `TTS_GEN_DEFAULT_LANG` | `en-us` | Default language. |
-| `TTS_GEN_NORM_RULESET` | `2026.07.30` | Hand-bumped normalization ruleset tag; bump whenever cleaning rules change output text for identical input. |
+| `TTS_GEN_NORM_RULESET` | `2026.08.03` | Hand-bumped normalization ruleset tag; bump whenever cleaning rules change output text for identical input. |
 | `TTS_GEN_LOG_LEVEL` | `INFO` | Python logging level for the service. |
 | `TTS_GEN_NEMO_WHITELIST` | packaged `nemo_whitelist.tsv` | Pronunciation whitelist; its hash is part of `generation_version`. |
 | `TTS_GEN_NEMO_CACHE` | `/tmp/tts-gen-nemo-grammars` | NeMo grammar cache dir (baked into the image at build in deployment). |
@@ -261,7 +261,7 @@ contract promise the DE retry logic depends on.
 | --- | --- | --- |
 | `section_id` | lowercase heading slug, `-N` ordinal for duplicates, `lead` for the lead | deterministic from heading text + document order; a renamed heading is a new section (a regeneration), accepted |
 | `content_sha256` | SHA-256 of the **normalized** text | normalized text is what the voice speaks; markup-only edits hash identically and share artifacts. Only comparable within one `generation_version` |
-| `generation_version` | `{kokoro_version}+{voice}+norm-{ruleset}-{engine}{engine_version}-{whitelist_sha8}` e.g. `kokoro-v1.0+af_heart+norm-2026.07.30-nemo1.2.0-98d86449` | identifies everything that changes audio for identical input; a bump = ML requests a DE backfill. The engine tag (`nemo1.2.0`/`regex`) embeds the NeMo package version (or omits it for the regex fallback), so a NeMo upgrade is visible. The whitelist hash catches pronunciation changes with no code change |
+| `generation_version` | `{kokoro_version}+{voice}+norm-{ruleset}-{engine}{engine_version}-{whitelist_sha8}` e.g. `kokoro-v1.0+af_heart+norm-2026.08.03-nemo1.2.0-98d86449` | identifies everything that changes audio for identical input; a bump = ML requests a DE backfill. The engine tag (`nemo1.2.0`/`regex`) embeds the NeMo package version (or omits it for the regex fallback), so a NeMo upgrade is visible. The whitelist hash catches pronunciation changes with no code change |
 | Fetch source | Parsoid HTML via `GET /w/rest.php/v1/revision/{id}/html` | templates expanded (unlike wikitext), old revisions addressable (unlike TextExtracts), sections structurally marked (`<section data-mw-section-id>`) |
 | Chunk size | `MAX_SEGMENT_CHARS=400` default (isvc hard ceiling 800) | quality knob owned here; tune with listening in Phase 4 |
 

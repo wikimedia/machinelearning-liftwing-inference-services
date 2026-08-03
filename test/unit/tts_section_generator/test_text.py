@@ -260,3 +260,115 @@ def test_year_slash_nemo_reads_years():
     result = clean_spoken_text("born c. 1352/1362 in Vilnius")
     assert "thirteen fifty two" in result
     assert "thirteen sixty two" in result
+
+
+# ── Ruleset 2026.08.03 regression guards (T433594 follow-up) ──────────────
+
+
+def test_regnal_roman_reads_ordinal():
+    out = clean_spoken_text("Henry VIII married; Louis XIV built Versailles.")
+    assert "Henry the Eighth" in out and "Louis the Fourteenth" in out
+
+
+def test_regnal_roman_unicode_names():
+    assert "Władysław the Second" in clean_spoken_text("Władysław II ruled.")
+    assert "Æthelred the Second" in clean_spoken_text("Æthelred II fled.")
+
+
+def test_name_I_converts_with_guards():
+    assert "Elizabeth the First was" in clean_spoken_text("Elizabeth I was crowned.")
+    assert "Charles the First of England" in clean_spoken_text(
+        "Charles I of England was tried."
+    )
+
+
+def test_structural_roman_reads_cardinal():
+    out = clean_spoken_text(
+        "He served in World War II and World War I; see Volume XIV, Part IV."
+    )
+    assert "World War Two" in out and "World War One" in out
+    assert "Volume Fourteen" in out and "Part Four" in out
+
+
+def test_roman_guards():
+    # Middle initials: single-char V/X/I followed by "." never convert.
+    assert "John V. Smith" in clean_spoken_text("John V. Smith wrote.")
+    assert "John I. Smith" in clean_spoken_text("John I. Smith wrote.")
+    # The famous exception.
+    out = clean_spoken_text("Malcolm X spoke in Harlem.")
+    assert "Malcolm X" in out and "Tenth" not in out
+    # I followed by a Capitalized word is left alone (Mary I Tudor: logged).
+    assert "Mary I Tudor" in clean_spoken_text("Mary I Tudor reigned.")
+    # Pronoun I and ALLCAPS predecessors never convert.
+    assert "It is I who" in clean_spoken_text("It is I who decides.")
+    assert "NASA II" in clean_spoken_text("The NASA II mission.")
+
+
+# ── No. / r. / fl. / dagger ──────────────────────────────────────────────
+
+
+def test_numero_before_digit():
+    out = clean_spoken_text("The song reached No. 1 on the chart.")
+    assert "number " in out and "No." not in out
+
+
+def test_numero_capital_only():
+    assert "number" not in clean_spoken_text("The answer was no. 5 people.")
+
+
+def test_reigned_floruit_expand_with_initialism_guard():
+    assert "reigned " in clean_spoken_text("Władysław (r. 1386) ruled.")
+    assert "flourished " in clean_spoken_text("The poet (fl. 1200) wrote.")
+    out = clean_spoken_text("The B.R. 1904 model.")
+    assert "B.R." in out and "reigned" not in out
+
+
+def test_dagger_before_year_reads_died():
+    out = clean_spoken_text("John Smith († 1434) was a bishop.")
+    assert "died " in out and "†" not in out
+
+
+# ── Tilde / DMS / micro / latin abbreviations ────────────────────────────
+
+
+def test_tilde_before_digit():
+    out = clean_spoken_text("The city lies ~50 km east.")
+    assert "approximately " in out and "~" not in out
+
+
+def test_dms_primes_and_compass():
+    out = clean_spoken_text("Located at 51°28′40″N 0°5′W.")
+    assert "minutes" in out and "seconds" in out
+    assert "north" in out and "west" in out
+    assert "′" not in out and "″" not in out
+
+
+def test_micro_units_both_glyphs():
+    out = clean_spoken_text("The cell is 10 µm long; a dose of 5 μg.")
+    assert "micrometers" in out and "micrograms" in out
+
+
+def test_latin_abbreviations_expand():
+    out = clean_spoken_text("Birds, e.g., crows, adapt, i.e., quickly.")
+    assert "for example, crows" in out and "that is, quickly" in out
+
+
+def test_st_is_never_touched():
+    out = clean_spoken_text("St. Peter's stands on Main St. today.")
+    assert "St. Peter" in out and "Main St." in out
+
+
+# ── NeMo-strong composition (the probe sentence) ─────────────────────────
+
+
+def test_monarch_lead_composition_nemo():
+    pytest.importorskip("nemo_text_processing")
+    init_nemo()
+    from tts_generator.text import nemo_available
+
+    if not nemo_available():
+        pytest.skip("NeMo init failed")
+    out = clean_spoken_text("Henry VIII (r. 1509–1547) succeeded Henry VII.")
+    assert "Henry the Eighth" in out
+    assert "reigned fifteen oh nine to fifteen forty seven" in out
+    assert "Henry the Seventh" in out
