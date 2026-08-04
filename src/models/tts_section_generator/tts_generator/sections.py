@@ -95,6 +95,11 @@ _STRIP_CLASS_TOKENS = {
     # <span class="IPA ...">): notation, not speech; v0 read
     # the characters aloud (T424378). Speaking IPA properly
     # needs per-language voice support: future work.
+    "hidden-begin",  # {{Hidden begin}}: collapsed-by-default supplementary
+    # content (family trees, lineage charts). The collapsible BODY already
+    # yields no text; only the title bar leaked ("Family tree of
+    # Jogaila/..."), read aloud as a 4-second orphan caption (T433923:
+    # 75% WER, the slash spoken). Collapsed-by-default is not prose.
     "geo-nondefault",  # {{Coord}} emits the coordinate TWICE (DMS + a
     # decimal twin) with these two classes CSS-hidden by the template's
     # own stylesheet; the extractor applies no CSS, so an inline

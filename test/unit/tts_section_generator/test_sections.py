@@ -209,3 +209,28 @@ def test_geo_hidden_duplicate_is_stripped():
     assert "40°41′21″N" in sec.raw_text
     assert "40.689" not in sec.raw_text
     assert " / " not in sec.raw_text
+
+
+HIDDEN_BEGIN_FIXTURE = """
+<html><body><section data-mw-section-id="20"><h2>Family tree</h2>
+<div class="hidden-begin mw-collapsible" style="border:1px solid #667766;">
+<div class="hidden-title"><b>Family tree of Jogaila/Wladyslaw II
+Jagiello</b></div>
+<div class="hidden-content mw-collapsible-content"><table><tr><td>
+Gediminas b. c. 1275 d. 1341</td></tr></table></div>
+</div>
+<p>The dynasty he founded reigned over the union for nearly two hundred
+years, shaping the region's politics and faith for generations to
+come.</p></section></body></html>
+"""
+
+
+def test_hidden_begin_collapsed_content_is_stripped():
+    """{{Hidden begin}}: collapsed-by-default supplementary content
+    (family trees). Only its title bar used to leak, read aloud as an
+    orphan caption (T433923: 75% WER, the slash spoken). The sibling
+    prose must survive."""
+    sec = extract_sections(HIDDEN_BEGIN_FIXTURE)[0]
+    assert "Family tree of Jogaila" not in sec.raw_text
+    assert "Gediminas" not in sec.raw_text
+    assert "The dynasty he founded" in sec.raw_text

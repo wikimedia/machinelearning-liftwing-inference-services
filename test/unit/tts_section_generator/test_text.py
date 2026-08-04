@@ -271,7 +271,13 @@ def test_regnal_roman_reads_ordinal():
 
 
 def test_regnal_roman_unicode_names():
-    assert "Władysław the Second" in clean_spoken_text("Władysław II ruled.")
+    """[A-Za-z] is ASCII-only; royal names are not. Name shape is checked
+    with str.isupper()/islower(). Władysław is whitelist-respelled when
+    NeMo is live (Vladiswav, T433923), so assert the roman conversion via
+    'the Second' rather than pinning the surname's spelling; Æthelred has
+    no whitelist entry and pins the name-preserving path."""
+    out = clean_spoken_text("Władysław II ruled.")
+    assert "the Second ruled" in out and " II " not in out
     assert "Æthelred the Second" in clean_spoken_text("Æthelred II fled.")
 
 
@@ -372,3 +378,26 @@ def test_monarch_lead_composition_nemo():
     assert "Henry the Eighth" in out
     assert "reigned fifteen oh nine to fifteen forty seven" in out
     assert "Henry the Seventh" in out
+
+
+def test_pronunciation_whitelist_names_nemo():
+    """ASR round-trip findings (T433923): non-English names espeak
+    mangles (Wladyslaw was heard with a spelled letter W). Respellings
+    are phoneme-verified; this pins them through the whitelist.
+    NOTE for local runs: the grammar cache is keyed by whitelist
+    FILENAME, not content; clear TTS_GEN_NEMO_CACHE after editing the
+    tsv or the old FST is silently reused."""
+    pytest.importorskip("nemo_text_processing")
+    from tts_generator.text import nemo_available
+
+    init_nemo()
+    if not nemo_available():
+        pytest.skip("NeMo init failed")
+    out = clean_spoken_text(
+        "Władysław II Jagiełło, born Jogaila, crossed the Wkra with "
+        "Vytautas; the złoty and Białowieża endure."
+    )
+    assert "Vladiswav the Second Yahg yehwo" in out
+    assert "Yo guyla" in out
+    assert "Vukra" in out and "Veetowtas" in out
+    assert "zwoty" in out and "Byahwovyezha" in out
