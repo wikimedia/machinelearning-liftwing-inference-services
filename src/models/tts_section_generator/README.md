@@ -139,7 +139,7 @@ development against the ml-staging TTS isvc.
 | `TTS_GEN_KOKORO_VERSION` | `kokoro-v1.0` | Model component of `generation_version`. |
 | `TTS_GEN_DEFAULT_VOICE` | `af_heart` | Default voice. |
 | `TTS_GEN_DEFAULT_LANG` | `en-us` | Default language. |
-| `TTS_GEN_NORM_RULESET` | `2026.08.03` | Hand-bumped normalization ruleset tag; bump whenever cleaning rules change output text for identical input. |
+| `TTS_GEN_NORM_RULESET` | `2026.08.04` | Hand-bumped normalization ruleset tag; bump whenever cleaning rules change output text for identical input. |
 | `TTS_GEN_LOG_LEVEL` | `INFO` | Python logging level for the service. |
 | `TTS_GEN_NEMO_WHITELIST` | packaged `nemo_whitelist.tsv` | Pronunciation whitelist; its hash is part of `generation_version`. |
 | `TTS_GEN_NEMO_CACHE` | `/tmp/tts-gen-nemo-grammars` | NeMo grammar cache dir (baked into the image at build in deployment). |
@@ -315,8 +315,9 @@ render_id capture (X-MediaWiki-Render-ID, T418792), structural IPA
 stripping (T424378), mapping of isvc phoneme-limit rejections to the new
 deterministic `text_not_synthesizable` code (the isvc-side guard lands
 separately), NeMo 1.2.0 with the engine version embedded in
-`generation_version`, ruleset 2026.07.30. The batch generation script and
-per-article manifest are the task's remaining workstream.
+`generation_version` (rulesets 2026.07.30/31 at the time; the current
+ruleset is in the env table above). The batch generation script and
+per-article manifest landed as workstream B; see Scripts below.
 
 ## What this service deliberately does NOT do
 
@@ -328,3 +329,111 @@ the DE pipelines (Airflow batch, Bento edit-stream) and Data Persistence
 manifest (static JSON enumerating artifact keys for one revision) is produced
 by the batch generation script, not by this service; the manifest format is an
 ML/Apps contract detail separate from the artifact contract itself.
+
+## Audio quality evaluation (ASR round-trip)
+
+`scripts/asr_wer_eval.py` scores generated audio by transcribing it
+(faster-whisper) and comparing against the section's own caption text:
+per-section Word Error Rate, speech to speech. Sections whose transcripts
+diverge most from their intended words are where audio defects live; the
+worst-N word diffs point at them directly (T433923).
+
+Run it against any bucket of mp3+vtt pairs (see `Dockerfile.asreval` for
+the eval image; build with `--build-arg BASE_IMAGE=<current service
+image>`; config via `TTS_GEN_S3_ENDPOINT`/`TTS_GEN_S3_BUCKET` and AWS env
+credentials; `HF_HOME` for the ASR model cache).
+
+Reading rules, in order of importance: (1) there is no absolute WER
+target; encyclopedic proper nouns inflate WER through no fault of the
+audio, so read the distribution, the worst-N ranking, and paired deltas
+between generation versions; (2) paired comparisons require the same
+pinned sections and the same ASR model and version (pinned here:
+faster-whisper 1.0.3, medium.en; changing either breaks pairing); (3)
+the scoring folds recognizer orthography back to speech ("22nd" ->
+"twenty second") and folds pronunciation-whitelist respellings and their
+recognizer spellings to one token per name, or every whitelist fix would
+score as an error. Extend `_NAME_ALIASES` when new whitelist entries
+land.
+
+Development note: the NeMo grammar cache is keyed by the whitelist
+*filename*, not its content; after editing `nemo_whitelist.tsv` locally,
+clear `TTS_GEN_NEMO_CACHE` or the old FST is silently reused (image
+builds bake fresh).
+
+## Scripts
+
+Each script below answers "how do I run this *now*." Full transcripts
+(proxy env blocks, bucket creation, kill/resume choreography) live in
+the linked task comments, not here: duplicating 40-line docker commands
+into the README guarantees drift.
+
+### `scan_corpus.py`
+
+```
+python3 scripts/scan_corpus.py --sample 100 --seed 43 --delay 0.5 --out corpus_scan.json
+```
+
+The seed does **not** pin the population: the Featured Article list
+shifts beneath it (promotions, delistings), so cross-scan section counts
+are not comparable. Ruleset effects need pinned-revision comparison
+instead.
+
+### `pilot_run.py`
+
+Frozen as the Phase 4 pilot record's reproduction path; do not evolve.
+`batch_generate.py` is its successor. ([T432692](https://phabricator.wikimedia.org/T432692))
+
+```
+python3 pilot_run.py \
+    --scan corpus_scan.json --articles 50 --seed 43 \
+    --base https://tts-section-generator.k8s-ml-staging.discovery.wmnet:31443 \
+    --out ./pilot-artifacts --log ./pilot_results.jsonl
+```
+
+### `batch_generate.py`
+
+The v1 experiment's batch driver ([T433594](https://phabricator.wikimedia.org/T433594)
+workstream B). Evolves the pilot driver into a one-shot run tool with
+per-article manifest writing.
+
+```
+TTS_GEN_S3_ENDPOINT=<endpoint> TTS_GEN_S3_BUCKET=<bucket> \
+python3 scripts/batch_generate.py \
+    --dataset articles.json \
+    --base https://tts-section-generator.discovery.wmnet:31443 \
+    --log ./batch_results.jsonl --concurrency 4
+```
+
+Manifest destination is required: the S3 env pair above (plus AWS
+credentials) or `--manifest-dir DIR` for local runs.
+
+Pin a titles-only product list first:
+```
+python3 batch_generate.py --resolve titles.txt --dataset articles.json
+```
+
+Two footguns:
+- **Requires a writing sink** on the generator (s3 or file): inline
+  `bytes_b64` is a hard fail by design — a batch whose artifacts
+  evaporate is not a batch.
+- **Never reuse a results log against an empty store**: the log says
+  settled, the batch writes manifests without audio.
+
+### `asr_wer_eval.py` + `Dockerfile.asreval`
+
+See [Audio quality evaluation](#audio-quality-evaluation-asr-round-trip)
+above. ([T433923](https://phabricator.wikimedia.org/T433923))
+
+```
+docker build -f scripts/Dockerfile.asreval \
+    --build-arg BASE_IMAGE=<current service image> \
+    -t tts-asr-eval .
+docker run --rm --entrypoint python3 \
+    -e TTS_GEN_S3_ENDPOINT -e TTS_GEN_S3_BUCKET \
+    -e AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY \
+    -e HF_HOME=/tmp/hf-cache \
+    tts-asr-eval scripts/asr_wer_eval.py
+```
+
+`scripts/eval_articles_shakedown.json` is the pinned dataset the
+T433923 runs used.

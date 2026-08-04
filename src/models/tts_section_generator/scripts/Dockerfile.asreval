@@ -1,0 +1,9 @@
+ARG BASE_IMAGE=docker-registry.wikimedia.org/wikimedia/machinelearning-liftwing-inference-services-tts-section-generator:2026-08-04-132124-publish
+FROM ${BASE_IMAGE}
+USER root
+ENV http_proxy=http://webproxy.eqiad.wmnet:8080 https_proxy=http://webproxy.eqiad.wmnet:8080
+RUN (python3 -m pip --version || python3 -m ensurepip --upgrade || \
+     (apt-get update && apt-get install -y --no-install-recommends python3-pip)) && \
+    python3 -m pip install --no-cache-dir --break-system-packages \
+      faster-whisper==1.0.3 jiwer==3.0.4
+ENV http_proxy= https_proxy=
