@@ -53,6 +53,7 @@ def model():
     with patch.object(Qwen36Model, "__init__", return_value=None):
         m = Qwen36Model()
         m.name = "qwen36-27b"
+        m.tool_calling_enabled = False
         m.tokenizer = MagicMock()
         m.tokenizer.encode.return_value = [100, 200, 300, 400, 500]
         m.tokenizer.apply_chat_template.return_value = "mocked template output"
@@ -213,6 +214,7 @@ class TestPreprocessSamplingParams:
 class TestApplyChatTemplate:
     def test_returns_chat_prompt(self, model):
         request = MagicMock()
+        request.tools = None
         user_msg = MagicMock()
         user_msg.role = "user"
         user_msg.content = "Hello"
@@ -235,6 +237,7 @@ class TestApplyChatTemplate:
 
         model.tokenizer.apply_chat_template.side_effect = _apply_side_effect
         request = MagicMock()
+        request.tools = None
         request.messages = [MagicMock(role="user", content="Hi")]
 
         result = model.apply_chat_template(request)
@@ -247,6 +250,7 @@ class TestApplyChatTemplate:
         # vLLM ChatCompletion messages support dict() conversion natively
         msg = {"role": "system", "content": "You are helpful."}
         request = MagicMock()
+        request.tools = None
         request.messages = [msg]
 
         model.apply_chat_template(request)
@@ -536,8 +540,8 @@ class TestStreamCompletion:
             assert c3["usage"]["completion_tokens"] == 5
             assert c3["usage"]["total_tokens"] == 8
 
-    def test_stream_error_raises_inference_error(self, model):
-        from kserve.errors import InferenceError
+    def test_stream_error_yields_sse_error_and_done(self, model):
+        import json
 
         async def _error_gen():
             out = MagicMock()
@@ -560,5 +564,12 @@ class TestStreamCompletion:
 
         import asyncio
 
-        with pytest.raises(InferenceError):
-            asyncio.run(_collect())
+        chunks = asyncio.run(_collect())
+        # First chunk is the successful token, then error SSE, then [DONE]
+        assert len(chunks) >= 2
+        # Last chunk should be [DONE]
+        assert chunks[-1] == "data: [DONE]\n\n"
+        # Second-to-last should be the error payload
+        error_chunk = json.loads(chunks[-2][len("data: ") :])
+        assert error_chunk["error"]["message"] == "GPU error"
+        assert error_chunk["error"]["type"] == "server_error"

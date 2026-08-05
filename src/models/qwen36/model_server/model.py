@@ -1,20 +1,29 @@
+import json
 import logging
 import os
+import re
 import time
 import uuid
 from collections.abc import AsyncGenerator
-from typing import Union
+from typing import Any, Union
 
 import kserve
 from kserve.errors import InferenceError, InvalidInput
 from kserve.protocol.rest.openai import ChatPrompt, OpenAIChatAdapterModel
 from kserve.protocol.rest.openai.types import (
+    ChatCompletion,
+    ChatCompletionChoice,
+    ChatCompletionChunk,
     ChatCompletionRequest,
+    ChatMessage,
+    ChoiceDelta,
+    ChunkChoice,
     Completion,
     CompletionChoice,
     CompletionChunk,
     CompletionChunkChoice,
     CompletionRequest,
+    ErrorResponse,
     UsageInfo,
 )
 from vllm import RequestOutput, SamplingParams
@@ -53,6 +62,7 @@ class Qwen36Model(kserve.Model, OpenAIChatAdapterModel):
         disable_custom_all_reduce: bool = False,
         enforce_eager: bool = False,
         disable_log_stats: bool = False,
+        tool_calling_enabled: bool = False,
     ) -> None:
         super().__init__(name)
         self.name = name
@@ -72,6 +82,7 @@ class Qwen36Model(kserve.Model, OpenAIChatAdapterModel):
         self.disable_custom_all_reduce = disable_custom_all_reduce
         self.enforce_eager = enforce_eager
         self.disable_log_stats = disable_log_stats
+        self.tool_calling_enabled = tool_calling_enabled
         self.model = None
         self.tokenizer = None
         self.ready = False
@@ -120,29 +131,51 @@ class Qwen36Model(kserve.Model, OpenAIChatAdapterModel):
             messages.insert(0, {"role": "system", "content": system})
         return messages
 
-    def _apply_chat_template(self, messages: list, enable_thinking: bool = True) -> str:
-        """Apply the tokenizer chat template with optional thinking mode.
+    def _apply_chat_template(
+        self, messages: list, enable_thinking: bool = True, tools: list | None = None
+    ) -> str:
+        """Apply the tokenizer chat template with optional thinking mode and tools.
 
         Falls back to calling without enable_thinking if the tokenizer doesn't
         support that parameter (e.g. older Qwen models).
         """
+        kwargs: dict[str, Any] = {}
+        if tools is not None:
+            kwargs["tools"] = tools
         try:
             return self.tokenizer.apply_chat_template(
                 messages,
                 tokenize=False,
                 add_generation_prompt=True,
                 enable_thinking=enable_thinking,
+                **kwargs,
             )
         except TypeError:
             return self.tokenizer.apply_chat_template(
                 messages,
                 tokenize=False,
                 add_generation_prompt=True,
+                **kwargs,
             )
 
     def apply_chat_template(self, request: ChatCompletionRequest) -> ChatPrompt:
         messages = [dict(msg) for msg in request.messages]
-        text = self._apply_chat_template(messages, enable_thinking=False)
+        tools = None
+        if request.tools:
+            if self.tool_calling_enabled:
+                tools = [
+                    tool.model_dump() if hasattr(tool, "model_dump") else tool
+                    for tool in request.tools
+                ]
+            else:
+                logging.warning(
+                    "Request included tools but tool calling is disabled "
+                    "(TOOL_CALLING_ENABLED); ignoring them."
+                )
+        # NOTE: tool_choice is ignored — "none" and forced-function behave
+        # like "auto".  The Qwen3 chat template renders all supplied tools
+        # into the system prompt and the model decides whether to call one.
+        text = self._apply_chat_template(messages, enable_thinking=False, tools=tools)
         return ChatPrompt(prompt=text, response_role="assistant")
 
     def _build_sampling_params_from_request(
@@ -203,6 +236,228 @@ class Qwen36Model(kserve.Model, OpenAIChatAdapterModel):
             ),
             system_fingerprint=None,
         )
+
+    @staticmethod
+    def _parse_hermes_tool_calls(text: str) -> list[dict[str, Any]] | None:
+        """Parse Hermes-format tool calls from generated text.
+
+        Qwen3 outputs tool calls wrapped in <tool_call>...</tool_call> tags,
+        with a JSON object containing ``name`` and ``arguments``.
+        """
+        pattern = r"<tool_call>\s*(.*?)\s*</tool_call>"
+        matches = re.findall(pattern, text, re.DOTALL)
+        if not matches:
+            return None
+        tool_calls: list[dict[str, Any]] = []
+        for match in matches:
+            try:
+                data = json.loads(match)
+            except json.JSONDecodeError:
+                continue
+            args = data.get("arguments", {})
+            if isinstance(args, dict):
+                args = json.dumps(args, ensure_ascii=False)
+            tool_calls.append(
+                {
+                    "id": f"call_{uuid.uuid4().hex[:8]}",
+                    "type": "function",
+                    "function": {
+                        "name": data.get("name", ""),
+                        "arguments": args,
+                    },
+                }
+            )
+        return tool_calls if tool_calls else None
+
+    @staticmethod
+    def _build_chat_message_with_tool_calls(
+        text: str, tool_calls: list[dict[str, Any]]
+    ) -> ChatMessage:
+        """Build a ChatMessage that has tool_calls instead of the raw text content.
+
+        Strips the <tool_call> blocks from the content so only the
+        non-tool-call text (if any) shows as the message content.
+        """
+        clean_text = re.sub(
+            r"<tool_call>.*?</tool_call>", "", text, flags=re.DOTALL
+        ).strip()
+        return ChatMessage(
+            role="assistant",
+            content=clean_text or None,
+            tool_calls=tool_calls,
+        )
+
+    async def create_chat_completion(
+        self,
+        request: ChatCompletionRequest,
+        raw_request=None,
+        context: dict[str, Any] | None = None,
+    ) -> Union[AsyncGenerator[str, None], ChatCompletion, ErrorResponse]:
+        if request.n != 1:
+            raise InvalidInput("n != 1 is not supported")
+
+        chat_prompt = self.apply_chat_template(request)
+        completion_request = (
+            OpenAIChatAdapterModel.chat_completion_params_to_completion_params(
+                request, chat_prompt.prompt
+            )
+        )
+
+        parse_tool_calls = self.tool_calling_enabled and bool(request.tools)
+
+        if request.stream:
+            return self._stream_chat_completion(
+                request, chat_prompt, completion_request, parse_tool_calls
+            )
+
+        completion = await self.create_completion(
+            completion_request, raw_request, context
+        )
+        assert isinstance(completion, Completion)
+
+        text = completion.choices[0].text if completion.choices else ""
+        tool_calls = self._parse_hermes_tool_calls(text) if parse_tool_calls else None
+
+        if tool_calls:
+            message = self._build_chat_message_with_tool_calls(text, tool_calls)
+            return ChatCompletion(
+                id=completion.id,
+                created=completion.created,
+                model=completion.model,
+                object="chat.completion",
+                choices=[
+                    ChatCompletionChoice(
+                        index=0,
+                        message=message,
+                        finish_reason="tool_calls",
+                    )
+                ],
+                usage=completion.usage,
+            )
+
+        return self.completion_to_chat_completion(completion, chat_prompt.response_role)
+
+    async def _stream_chat_completion(
+        self,
+        request: ChatCompletionRequest,
+        chat_prompt: ChatPrompt,
+        completion_request: CompletionRequest,
+        parse_tool_calls: bool = False,
+    ) -> AsyncGenerator[str, None]:
+        """Stream chat completions as ``object:"chat.completion.chunk"`` chunks.
+
+        Per-token chunks carry ``delta.content`` with ``finish_reason=None``.
+        Exactly one final chunk is emitted after the stream ends: either a
+        ``delta.tool_calls`` chunk (finish_reason "tool_calls") or an empty
+        delta with the engine's finish_reason.  Usage is sent on the final
+        chunk only, matching OpenAI streaming semantics.
+        """
+        request_id = completion_request.request_id or uuid.uuid4().hex
+        sampling_params = self._build_sampling_params_from_request(completion_request)
+
+        try:
+            results_generator = self.model.generate(
+                prompt=completion_request.prompt,
+                sampling_params=sampling_params,
+                request_id=request_id,
+            )
+        except Exception as e:
+            logging.error("Error during streaming inference: %s", e)
+            raise InferenceError(f"Error during streaming inference: {e}")
+
+        full_text = ""
+        previous_texts: list[str] = [""]
+        previous_num_tokens: list[int] = [0]
+        created_time = int(time.time())
+        prompt_tokens = 0
+        final_finish_reason: str | None = None
+        final_completion_tokens = 0
+
+        try:
+            async for request_output in results_generator:
+                for output in request_output.outputs:
+                    i = output.index
+                    self._ensure_output_capacity(previous_texts, previous_num_tokens, i)
+
+                    delta_text = output.text[len(previous_texts[i]) :]
+                    previous_texts[i] = output.text
+                    previous_num_tokens[i] = len(output.token_ids)
+                    full_text += delta_text
+
+                    if output.finish_reason is not None:
+                        prompt_tokens = len(request_output.prompt_token_ids)
+                        final_finish_reason = output.finish_reason
+                        final_completion_tokens = len(output.token_ids)
+
+                    chunk = ChatCompletionChunk(
+                        id=request_id,
+                        created=created_time,
+                        model=request.model,
+                        object="chat.completion.chunk",
+                        choices=[
+                            ChunkChoice(
+                                index=i,
+                                delta=ChoiceDelta(
+                                    role=chat_prompt.response_role,
+                                    content=delta_text,
+                                ),
+                                finish_reason=None,
+                            )
+                        ],
+                        usage=None,
+                    )
+                    yield f"data: {chunk.model_dump_json()}\n\n"
+        except Exception as e:
+            logging.error("Error during streaming inference: %s", e)
+            yield f"data: {json.dumps({'error': {'message': str(e), 'type': 'server_error'}})}\n\n"
+            yield "data: [DONE]\n\n"
+            return
+
+        # Emit exactly one final chunk with finish_reason and usage.
+        tool_calls = (
+            self._parse_hermes_tool_calls(full_text) if parse_tool_calls else None
+        )
+        usage = UsageInfo(
+            prompt_tokens=prompt_tokens,
+            completion_tokens=final_completion_tokens,
+            total_tokens=prompt_tokens + final_completion_tokens,
+        )
+
+        if tool_calls:
+            for idx, tc in enumerate(tool_calls):
+                tc["index"] = idx
+            final_chunk = ChatCompletionChunk(
+                id=request_id,
+                created=created_time,
+                model=request.model,
+                object="chat.completion.chunk",
+                choices=[
+                    ChunkChoice(
+                        index=0,
+                        delta=ChoiceDelta(tool_calls=tool_calls),
+                        finish_reason="tool_calls",
+                    )
+                ],
+                usage=usage,
+            )
+        else:
+            final_chunk = ChatCompletionChunk(
+                id=request_id,
+                created=created_time,
+                model=request.model,
+                object="chat.completion.chunk",
+                choices=[
+                    ChunkChoice(
+                        index=0,
+                        delta=ChoiceDelta(),
+                        finish_reason=final_finish_reason,
+                    )
+                ],
+                usage=usage,
+            )
+
+        yield f"data: {final_chunk.model_dump_json()}\n\n"
+        yield "data: [DONE]\n\n"
 
     async def create_completion(
         self,
@@ -322,7 +577,9 @@ class Qwen36Model(kserve.Model, OpenAIChatAdapterModel):
                     yield f"data: {chunk.model_dump_json()}\n\n"
         except Exception as e:
             logging.error("Error during streaming inference: %s", e)
-            raise InferenceError(f"Error during streaming inference: {e}")
+            yield f"data: {json.dumps({'error': {'message': str(e), 'type': 'server_error'}})}\n\n"
+            yield "data: [DONE]\n\n"
+            return
 
         yield "data: [DONE]\n\n"
 
@@ -412,6 +669,7 @@ if __name__ == "__main__":
     )
     enforce_eager = strtobool(os.environ.get("ENFORCE_EAGER", "False"))
     disable_log_stats = strtobool(os.environ.get("DISABLE_LOG_STATS", "False"))
+    tool_calling_enabled = strtobool(os.environ.get("TOOL_CALLING_ENABLED", "False"))
 
     model = Qwen36Model(
         name=model_name,
@@ -431,6 +689,7 @@ if __name__ == "__main__":
         disable_custom_all_reduce=disable_custom_all_reduce,
         enforce_eager=enforce_eager,
         disable_log_stats=disable_log_stats,
+        tool_calling_enabled=tool_calling_enabled,
     )
 
     model.load()
