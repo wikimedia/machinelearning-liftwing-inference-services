@@ -6,6 +6,7 @@ The edit-check inference service compares the original and modified text (from a
 * Source: TBD
 * Model: https://analytics.wikimedia.org/published/wmf-ml-models/edit-check/
 * Model license: TBD
+* Swagger UI: [Test via Swagger UI](https://www.mediawiki.org/w/index.php?api=lift-wing%2Fv1&title=Special%3ARestSandbox#/Revision%20quality/editCheckPredict)
 
 
 ## How to run locally
@@ -72,13 +73,13 @@ This will run the container that hosts the model-server.
 ### 1.4. Query
 On the second terminal query the isvc using:
 ```console
-curl -s localhost:8080/v1/models/edit-check-staging:predict -X POST -d '{"instances": [{"lang": "en", "check_type": "tone", "original_text": "original text example original", "modified_text": "modified text example with hype"}]}' -i -H "Content-type: application/json"
+curl -s localhost:8080/v1/models/edit-check-staging:predict -X POST -d '{"instances": [{"lang": "en", "page_title": "Albert Einstein", "check_type": "tone", "original_text": "Einstein was a scientist who did things.", "modified_text": "Einstein was the most brilliant and unparalleled genius who ever lived, revolutionizing physics beyond all measure."}]}' -i -H "Content-type: application/json"
 ```
 
 Query locally on the cpu-version
 
 ```console
-curl -s localhost:8080/v1/models/edit-check:predict -X POST -d '{"instances": [{"lang": "en", "check_type": "tone", "original_text": "original text example original", "modified_text": "modified text example with hype"}]}' -i -H "Content-type: application/json"
+curl -s localhost:8080/v1/models/edit-check:predict -X POST -d '{"instances": [{"lang": "en", "page_title": "Albert Einstein", "check_type": "tone", "original_text": "Einstein was a scientist who did things.", "modified_text": "Einstein was the most brilliant and unparalleled genius who ever lived, revolutionizing physics beyond all measure."}]}' -i -H "Content-type: application/json"
 ```
 
 </details>
@@ -95,7 +96,7 @@ This build process will set up: a Python venv, install dependencies, download da
 ### 2.2. Query
 On the second terminal query the isvc using:
 ```console
-curl -s localhost:8080/v1/models/edit-check:predict -X POST -d '{"instances": [{"lang": "en", "check_type": "tone", "original_text": "original text example original", "modified_text": "modified text example with hype"}]}' -i -H "Content-type: application/json"
+curl -s localhost:8080/v1/models/edit-check:predict -X POST -d '{"instances": [{"lang": "en", "page_title": "Albert Einstein", "check_type": "tone", "original_text": "Einstein was a scientist who did things.", "modified_text": "Einstein was the most brilliant and unparalleled genius who ever lived, revolutionizing physics beyond all measure."}]}' -i -H "Content-type: application/json"
 ```
 
 ### 2.3. Remove
@@ -151,6 +152,6 @@ MODEL_NAME=edit-check MODEL_PATH=PATH_TO_MODEL_DIR python3 src/models/edit_check
 
 On a separate terminal we can make a request to the server with:
 ```console
-curl -s localhost:8080/v1/models/edit-check:predict -X POST -d '{"instances": [{"lang": "en", "check_type": "tone", "original_text": "original text example original", "modified_text": "modified text example with hype"}]}' -i -H "Content-type: application/json"
+curl -s localhost:8080/v1/models/edit-check:predict -X POST -d '{"instances": [{"lang": "en", "page_title": "Albert Einstein", "check_type": "tone", "original_text": "Einstein was a scientist who did things.", "modified_text": "Einstein was the most brilliant and unparalleled genius who ever lived, revolutionizing physics beyond all measure."}]}' -i -H "Content-type: application/json"
 ```
 </details>
