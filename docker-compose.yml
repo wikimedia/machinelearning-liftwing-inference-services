@@ -359,3 +359,22 @@ services:
     image: tool-server:prod
     ports:
       - "8080:8080"
+  # Extractive-QA semantic highlighter for the OpenSearch neural-search plugin.
+  # MODEL_PATH takes either the /mnt/models/ mount or a Hugging Face model id;
+  # the id is handy locally since the weights are ~1.7 GB.
+  semantic-highlighting:
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: .pipeline/semantic_highlighting/blubber.yaml
+      target: production
+    image: semantic-highlighting:prod
+    ports:
+      - "8080:8080"
+    environment:
+      MODEL_NAME: "semantic-highlighter"
+      # Defaults to the Hugging Face id (downloaded at startup). Export
+      # MODEL_PATH=/mnt/models/ to serve the mount below instead.
+      MODEL_PATH: "${MODEL_PATH:-timpal0l/mdeberta-v3-base-squad2}"
+    volumes:
+      - ${PATH_TO_SEMANTIC_HIGHLIGHTING_MODEL:-/dummy/path}:/mnt/models/

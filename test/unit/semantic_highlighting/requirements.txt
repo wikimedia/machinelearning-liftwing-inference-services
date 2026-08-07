@@ -1,0 +1,11 @@
+# Deps the unit tests need beyond requirements-test.txt.
+#
+# torch and transformers are deliberately absent: the tests stub them out via
+# sys.modules (as test/unit/qwen36 does for vLLM), so CI does not pull a
+# multi-hundred-MB wheel to test span arithmetic and the response envelope.
+kserve==0.20.0
+# The amd-vllm022 base image supplies pydantic-settings 2.14.2. The service
+# requirement is only a floor (>=2.8.1), and thus the production image keeps
+# that copy. Use the same version here, to test the code that production runs.
+# If the base image changes, change this pin also.
+pydantic-settings==2.14.2

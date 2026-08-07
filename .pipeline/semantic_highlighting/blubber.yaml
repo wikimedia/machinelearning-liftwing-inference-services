@@ -1,0 +1,128 @@
+# syntax=docker-registry.wikimedia.org/repos/releng/blubber/buildkit:v1.0.1
+version: v4
+# amd-vllm022 uses ROCm 7.2 and a ROCm build of torch 2.10
+# This file follows .pipeline/embeddings/blubber_transformers.yaml, which uses
+# this base the same way.
+base: docker-registry.wikimedia.org/ml/amd-vllm022:gfx90agfx942rocm7.2.0pytorch2.10.0flash-attn2.8.3aiter0.1.13vllm0.22.1-3
+runs:
+  insecurely: true
+  environment:
+    # production installs into an overlay venv at /srv/overlay and lists it
+    # before the base image's venv at /srv/venv. The base venv still supplies
+    # torch, ROCm and transformers. The test variant uses a different base and
+    # replaces this path list.
+    # Do not install into /srv/venv itself. We can only copy a directory over
+    # the base image's copy of it. it cannot delete the files pip's uninstall
+    # removed.
+    PYTHONPATH: /srv/overlay/lib/python3.12/site-packages:/srv/venv/lib/python3.12/site-packages:/srv/app
+    PATH: $PATH:/srv/app
+
+lives:
+  in: /srv/app
+
+variants:
+  build:
+    builders:
+      # Blubber's standard python builder installs into /opt/lib/venv with the
+      # system python, which is the wrong interpreter here: the base keeps torch
+      # in its own py3.12 venv.
+      #
+      # The base image ships newer copies of the deps than are pinned in
+      # python/requirements.txt, installing it would downgrade things.
+      # pydantic-settings 2.8.1 ships a flat sources.py, 2.14.2 ships a
+      # sources/ package, and the merged directory would keep both. Only
+      # pyopencl is actually needed from that file so it is pinned in this
+      # service's requirements.txt instead.
+      - custom:
+          requirements:
+            - src/models/semantic_highlighting/model_server/requirements.txt
+          # PYTHONPATH points pip at the base venv while it resolves, so it
+          # treats the packages as already installed. This avoids duplicating
+          # the ROCm stack.
+          command: ["/bin/sh", "-c", "/srv/venv/bin/python -m venv /srv/overlay && PYTHONPATH=/srv/venv/lib/python3.12/site-packages /srv/overlay/bin/python -m pip install --no-cache-dir -r src/models/semantic_highlighting/model_server/requirements.txt"]
+    apt:
+      packages:
+        - build-essential
+        - cmake
+        - git
+        - pkg-config
+
+  production:
+    copies:
+      - from: local
+        source: src/models/semantic_highlighting/model_server
+        destination: src/models/semantic_highlighting/model_server
+      - from: local
+        source: python
+        destination: python
+      - from: build
+        source: /srv/overlay/lib/python3.12/site-packages
+        destination: /srv/overlay/lib/python3.12/site-packages
+      - from: local
+        source: model_server_entrypoint_python312.sh
+        destination: entrypoint.sh
+      - from: local
+        source: common_settings_python312.sh
+        destination: common_settings.sh
+
+    apt:
+      packages:
+        - wmf-certificates
+        - libdrm-amdgpu1
+        - g++
+    entrypoint: ["./entrypoint.sh", "src/models/semantic_highlighting/model_server/model.py"]
+
+  test:
+    # Lint and unit tests do not need ROCm: the tests stub torch and
+    # transformers out, so they run on a plain bookworm image in seconds
+    # instead of pulling the multi-GB GPU base.
+    base: docker-registry.wikimedia.org/bookworm:20260510
+    runs:
+      environment:
+        # This base has no /srv/venv. Blubber installs the test requirements
+        # into its own py3.11 venv, so replace the py3.12 path list that the
+        # top-level environment sets for the GPU base.
+        PYTHONPATH: /opt/lib/venv/lib/python3.11/site-packages:/srv/app
+    apt:
+      packages:
+        - git
+        - python3
+        - python3-pip
+        - python3-venv
+    copies:
+      - from: local
+        source: src/models/semantic_highlighting/model_server
+        destination: src/models/semantic_highlighting/model_server
+      - from: local
+        source: python
+        destination: python
+      - from: local
+        source: tox.ini
+        destination: .
+      - from: local
+        source: .pre-commit-config.yaml
+        destination: .
+      - from: local
+        source: ci_entrypoint.sh
+        destination: entrypoint.sh
+      - from: local
+        source: ruff.toml
+        destination: .
+      - from: local
+        source: requirements-test.txt
+        destination: .
+      - from: local
+        source: test/unit/__init__.py
+        destination: test/unit/__init__.py
+      - from: local
+        source: test/unit/semantic_highlighting
+        destination: test/unit/semantic_highlighting
+    entrypoint: ["./entrypoint.sh", "ci-lint", "ci-unit"]
+    python:
+      version: python3
+      # Deliberately NOT the service requirements.txt: that would drag in
+      # torch and transformers.  The tests stub both.
+      # Same shape as .pipeline/edit_check.
+      requirements:
+        - requirements-test.txt
+        - test/unit/semantic_highlighting/requirements.txt

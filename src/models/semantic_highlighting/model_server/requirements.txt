@@ -1,0 +1,27 @@
+# torch and ROCm come from the base image, so torch is deliberately not pinned
+# here: adding it would pull a CUDA build from PyPI and shadow the base's ROCm
+# one.
+# 0.19.0 pins starlette==0.49.1 exactly, but amd-vllm022 ships 1.3.1. 0.20.0
+# asks for starlette>=1.0.1, so the base's copy is kept instead of being
+# shadowed by a major version older.
+kserve==0.20.0
+# Keep the base image's grpcio rather than letting kserve's range (>=1.73.0)
+# resolve to a newer one. The bundled vLLM pins grpcio==1.78.0 exactly
+grpcio==1.78.0
+grpcio-tools==1.78.0
+# config.py imports this and kserve does not bring it in -- only pydantic.
+pydantic-settings>=2.8.1
+# qa.py passes `dtype=` to `from_pretrained`, and 4.40-4.55 pass that keyword
+# on to the model constructor, which raises TypeError at load.
+transformers>=4.56
+# DeBERTa-v3 uses a SentencePiece tokenizer; it will not load without these.
+sentencepiece>=0.1.99
+protobuf>=3.20
+# Used directly by model.py to run blocking inference off the event loop;
+# arrives transitively via kserve -> fastapi -> starlette anyway.
+anyio>=4.0
+# Needed by python/resource_utils, which common_settings.sh imports to size
+# OMP_NUM_THREADS. Pinned here because the shared python/requirements.txt is
+# not installed on this base image; see the comment in
+# .pipeline/semantic_highlighting/blubber.yaml for why.
+pyopencl==2025.2.7

@@ -72,6 +72,22 @@ MODEL=huggingface MODEL_NAME=gemma2 HOST=gemma2-27b-it locust
 ```
 
 
+## Semantic highlighting
+
+This one is not imported by `models/__init__.py`, because the service has no
+staging deployment yet, so a plain `locust` run would only record failures for
+it. Ask for it by name:
+
+```bash
+MODEL=semantic_highlighting locust --passages 10
+```
+
+It replays real kNN retrieval output from `data/pure_knn_10.json`, and
+`--passages N` sets how many passages ride in one request — the client half of
+`SH_BATCH_SIZE`, and the knob worth sweeping. See
+[the model README](../../src/models/semantic_highlighting/README.md#load-testing)
+for what the corpus looks like and how to read the numbers.
+
 ## Running load tests using the Makefile
 
 ### 1. Build

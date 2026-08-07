@@ -370,3 +370,20 @@ pipelines:
           image:
             name: '${setup.project}-tool-server'
             tags: [stable]
+
+  semantic-highlighting:
+    blubberfile: semantic_highlighting/blubber.yaml
+    stages:
+      - name: run-test
+        build: test
+        run: true
+
+  semantic-highlighting-publish:
+    blubberfile: semantic_highlighting/blubber.yaml
+    stages:
+      - name: publish
+        build: production
+        publish:
+          image:
+            name: '${setup.project}-semantic-highlighting'
+            tags: [stable]
