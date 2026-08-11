@@ -429,6 +429,12 @@ def clean_spoken_text(text: str) -> str:
     # is silent in espeak, leaving an orphaned parenthetical year).
     text = re.sub(r"†\s*(?=\d)", "died ", text)
 
+    # Arrow glyphs -> "to": succession lists and reactions ("Khafre ->
+    # Menkaure -> Shepseskaf") are otherwise spoken as "right arrow"
+    # between every item (espeak verbalizes the glyph; T433923 standing
+    # benchmark, relative-chronology worst-10).
+    text = re.sub(r"\s*[→⟶]\s*", " to ", text)
+
     # "~" before a digit -> "approximately". Without this NeMo classifies
     # "~50" as one verbatim token: the output glues ("approximatelyfifty")
     # AND the following unit escapes the measure grammar ("km" unread).

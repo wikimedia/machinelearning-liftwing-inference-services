@@ -169,6 +169,11 @@ _NAME_ALIASES = {
     "zloty": ["zwoty"],
     "raciaz": ["rah chonzh", "ratchanj"],
     "navahrudak": ["nava hroodak", "navahroodak"],
+    "shepseskaf": ["shep sess kaf"],
+    "soegijapranata": ["soo geeya prah nahta"],
+    "aethelwulf": ["athel wulf"],
+    "zlotoryja": ["zwo toree ya"],
+    "soegija": ["soogeeya"],
 }
 _ALIAS_SUBS = sorted(
     ((alias, canon) for canon, aliases in _NAME_ALIASES.items() for alias in aliases),

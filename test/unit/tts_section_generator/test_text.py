@@ -401,3 +401,34 @@ def test_pronunciation_whitelist_names_nemo():
     assert "Yo guyla" in out
     assert "Vukra" in out and "Veetowtas" in out
     assert "zwoty" in out and "Byahwovyezha" in out
+
+
+# ── Ruleset 2026.08.10 regression guards (T433923 benchmark worst-10) ──────
+
+
+def test_arrow_glyph_reads_to():
+    """Succession lists ("Khafre -> Menkaure") were spoken as "right
+    arrow" between every item (T433923 benchmark, relative-chronology).
+    Engine-agnostic: the pre-rule runs before either normalizer."""
+    out = clean_spoken_text("Djedefre → Khafre ⟶ Menkaure ruled in turn.")
+    assert "Djedefre to Khafre to Menkaure" in out
+    assert "→" not in out and "⟶" not in out
+
+
+def test_benchmark_name_respellings_nemo():
+    """Standing-benchmark worst-10 names: the voice rushed leading
+    syllables ("Shepseskaf" heard as "kaf"); spaced respellings force
+    articulation. Phoneme-verified before landing (T433923)."""
+    pytest.importorskip("nemo_text_processing")
+    from tts_generator.text import nemo_available
+
+    init_nemo()
+    if not nemo_available():
+        pytest.skip("NeMo init failed")
+    out = clean_spoken_text(
+        "Æthelwulf's heir met Soegijapranata near Złotoryja; Shepseskaf's tomb endured."
+    )
+    assert "Athel wulf's" in out
+    assert "Soo geeya prah nahta" in out
+    assert "Zwo toree ya" in out
+    assert "Shep sess kaf's" in out
