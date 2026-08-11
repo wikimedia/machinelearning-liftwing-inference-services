@@ -211,6 +211,43 @@ class TestPreprocessSamplingParams:
         assert call_kwargs["repetition_penalty"] == 1.2
 
 
+class TestPreprocessThinkingTokenBudget:
+    """Tests for thinking_token_budget in preprocess."""
+
+    def test_budget_present(self, model):
+        from src.models.qwen36.model_server.model import SamplingParams
+
+        model.preprocess({"prompt": "Hello", "thinking_token_budget": 100}, None)
+        assert SamplingParams.call_args.kwargs["thinking_token_budget"] == 100
+
+    def test_budget_absent_is_none(self, model):
+        from src.models.qwen36.model_server.model import SamplingParams
+
+        model.preprocess({"prompt": "Hello"}, None)
+        assert SamplingParams.call_args.kwargs["thinking_token_budget"] is None
+
+    def test_budget_string_coerced(self, model):
+        from src.models.qwen36.model_server.model import SamplingParams
+
+        model.preprocess({"prompt": "Hello", "thinking_token_budget": "100"}, None)
+        assert SamplingParams.call_args.kwargs["thinking_token_budget"] == 100
+
+    def test_budget_garbage_raises_invalid_input(self, model):
+        with pytest.raises(InvalidInput, match="must be an integer"):
+            model.preprocess(
+                {"prompt": "Hello", "thinking_token_budget": "not_a_number"},
+                None,
+            )
+
+    def test_budget_zero_raises_invalid_input(self, model):
+        with pytest.raises(InvalidInput, match="must be >= 1"):
+            model.preprocess({"prompt": "Hello", "thinking_token_budget": 0}, None)
+
+    def test_budget_negative_raises_invalid_input(self, model):
+        with pytest.raises(InvalidInput, match="must be >= 1"):
+            model.preprocess({"prompt": "Hello", "thinking_token_budget": -5}, None)
+
+
 class TestApplyChatTemplate:
     def test_returns_chat_prompt(self, model):
         request = MagicMock()

@@ -599,6 +599,14 @@ class Qwen36Model(kserve.Model, OpenAIChatAdapterModel):
             payload.get("presence_penalty", defaults["presence_penalty"])
         )
         repetition_penalty = float(payload.get("repetition_penalty", 1.0))
+        thinking_token_budget = payload.get("thinking_token_budget")
+        if thinking_token_budget is not None:
+            try:
+                thinking_token_budget = int(thinking_token_budget)
+            except (TypeError, ValueError):
+                raise InvalidInput("thinking_token_budget must be an integer")
+            if thinking_token_budget < 1:
+                raise InvalidInput("thinking_token_budget must be >= 1")
 
         system = payload.get("system")
         messages = self._build_messages(prompt, system)
@@ -612,6 +620,7 @@ class Qwen36Model(kserve.Model, OpenAIChatAdapterModel):
             top_k=top_k,
             presence_penalty=presence_penalty,
             repetition_penalty=repetition_penalty,
+            thinking_token_budget=thinking_token_budget,
         )
 
         return {
