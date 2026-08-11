@@ -95,18 +95,22 @@ _ORD_SUFFIX = {
 
 
 def _ordinal_words(n: int) -> str:
+    """0..9999. Every recursive call strictly reduces n (the first version
+    recursed with the SAME n for multiples of ten >= 100: "610th" hung)."""
     if n in _ORD_SUFFIX:
         return _ORD_SUFFIX[n]
     if n < 20:
         return _ONES[n] + "th"
-    if n % 10 == 0 and n < 100:
-        return _TENS[n // 10][:-1] + "ieth"
-    if n % 100 < 20 and n % 100 in _ORD_SUFFIX or n % 10 in _ORD_SUFFIX:
-        pass
-    tens = _num_words(n - n % 10) if n % 10 else ""
-    return (
-        (tens + " " + _ordinal_words(n % 10)).strip() if n % 10 else _ordinal_words(n)
-    )
+    if n < 100:
+        t, o = divmod(n, 10)
+        if o == 0:
+            return _TENS[t][:-1] + "ieth"
+        return _TENS[t] + " " + _ordinal_words(o)
+    if n % 1000 == 0:
+        return _num_words(n // 1000) + " thousandth"
+    if n % 100 == 0:
+        return _num_words(n // 100) + " hundredth"
+    return _num_words(n - n % 100) + " " + _ordinal_words(n % 100)
 
 
 def _digits_to_words(text: str) -> str:
@@ -236,19 +240,30 @@ def main() -> int:
     print(f"loading {MODEL} (cache: {os.environ.get('HF_HOME', '~')})")
     model = WhisperModel(MODEL, device="cpu", compute_type="int8")
 
-    rows = []
+    rows, errors = [], []
     for i, base in enumerate(pairs, 1):
-        vtt = s3.get_object(Bucket=BUCKET, Key=base + ".vtt")["Body"].read()
-        ref = _norm(_vtt_text(vtt.decode("utf-8")), hypothesis=False)
-        mp3 = s3.get_object(Bucket=BUCKET, Key=base + ".mp3")["Body"].read()
-        segments, _ = model.transcribe(
-            io.BytesIO(mp3), language="en", beam_size=5, vad_filter=False
-        )
-        hyp = _norm(" ".join(s.text for s in segments), hypothesis=True)
-        wer = jiwer.wer(ref, hyp) if ref else float("nan")
-        rows.append((wer, base, ref, hyp))
-        print(f"  [{i}/{len(pairs)}] {wer:6.1%}  {base}", flush=True)
+        try:
+            vtt = s3.get_object(Bucket=BUCKET, Key=base + ".vtt")["Body"].read()
+            ref = _norm(_vtt_text(vtt.decode("utf-8")), hypothesis=False)
+            mp3 = s3.get_object(Bucket=BUCKET, Key=base + ".mp3")["Body"].read()
+            segments, _ = model.transcribe(
+                io.BytesIO(mp3), language="en", beam_size=5, vad_filter=False
+            )
+            hyp = _norm(" ".join(s.text for s in segments), hypothesis=True)
+            wer = jiwer.wer(ref, hyp) if ref else float("nan")
+            rows.append((wer, base, ref, hyp))
+            print(f"  [{i}/{len(pairs)}] {wer:6.1%}  {base}", flush=True)
+        except Exception as e:  # noqa: BLE001 - harness resilience
+            errors.append((base, repr(e)))
+            print(f"  [{i}/{len(pairs)}] ERROR   {base}: {e!r:.120}", flush=True)
 
+    if errors:
+        print(
+            f"\n{len(errors)} sections errored in the harness (scored "
+            f"sections unaffected):"
+        )
+        for base, err in errors:
+            print(f"  {base}: {err[:160]}")
     rows.sort(reverse=True)
     wers = [r[0] for r in rows]
     print("\n=== WER DISTRIBUTION ===")

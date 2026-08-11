@@ -435,5 +435,14 @@ docker run --rm --entrypoint python3 \
     tts-asr-eval scripts/asr_wer_eval.py
 ```
 
-`scripts/eval_articles_shakedown.json` is the pinned dataset the
-T433923 runs used.
+Two pinned datasets live beside the script.
+`scripts/eval_articles_shakedown.json` (Earth + Władysław II Jagiełło,
+~50 sections) is the quick set for instrument checks and before/after
+tests of single fixes. `scripts/eval_articles_benchmark.json`
+(30 articles, 436 sections, chosen from the committed corpus scan to
+cover defect-prone content: non-English names, designations, charts,
+coordinates, plus plain-English controls) is the standing benchmark;
+its first baseline is mean WER 5.3% under ruleset 2026.08.04 (T433923),
+and every future generation version is compared against it. Both pin
+exact revisions so a re-run is a paired comparison. Do not refresh the
+pins: that breaks pairing with every recorded baseline.
