@@ -34,12 +34,39 @@ SUPPORTED_LANG_CODE = ("en", "fr", "ar", "pt", "test")
 BATCH_SIZE = 200  # Batch size for the model pipeline
 MAXLEN = 512  # Maximum length for tokenization
 
-# Article topics to filter for
+# Article topics to filter for. The filter is being removed gradually (T433319):
+# currently all Culture and History_and_Society topics plus STEM.Technology are
+# enabled (30 of 64), with the remaining STEM and Geography topics to follow.
 ALLOWED_TOPICS = {
     "Culture.Biography.Biography*",
     "Culture.Biography.Women",
+    "Culture.Food_and_drink",
+    "Culture.Internet_culture",
+    "Culture.Linguistics",
+    "Culture.Literature",
+    "Culture.Media.Books",
+    "Culture.Media.Entertainment",
+    "Culture.Media.Films",
+    "Culture.Media.Media*",
+    "Culture.Media.Music",
+    "Culture.Media.Radio",
+    "Culture.Media.Software",
+    "Culture.Media.Television",
+    "Culture.Media.Video_games",
+    "Culture.Performing_arts",
+    "Culture.Philosophy_and_religion",
     "Culture.Sports",
+    "Culture.Visual_arts.Architecture",
+    "Culture.Visual_arts.Comics_and_Anime",
+    "Culture.Visual_arts.Fashion",
+    "Culture.Visual_arts.Visual_arts*",
     "History_and_Society.Business_and_economics",
+    "History_and_Society.Education",
+    "History_and_Society.History",
+    "History_and_Society.Military_and_warfare",
+    "History_and_Society.Politics_and_government",
+    "History_and_Society.Society",
+    "History_and_Society.Transportation",
     "STEM.Technology",
 }
 

@@ -273,13 +273,13 @@ def test_should_process_article_with_matching_topic(mock_model):
 
 def test_should_process_article_without_matching_topic(mock_model):
     """Test that articles without matching topics are not marked for processing."""
-    # Article without any matching topics
+    # Article with only topics that are not yet enabled (STEM and Geography)
     article_topics = {
         "prediction": {
             "article": "https://en.wikipedia.org/wiki?curid=12345",
             "results": [
-                {"topic": "Science.Technology", "score": 0.8},
-                {"topic": "Geography.Regions", "score": 0.7},
+                {"topic": "STEM.Biology", "score": 0.8},
+                {"topic": "Geography.Regions.Oceania", "score": 0.7},
             ],
         }
     }
