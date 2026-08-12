@@ -1,4 +1,5 @@
 import sys
+from contextlib import contextmanager
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -44,8 +45,73 @@ sys.modules["vllm.entrypoints.pooling.scoring"] = _make_mock_package(
 sys.modules["vllm.entrypoints.pooling.scoring.protocol"] = MagicMock()
 sys.modules["vllm.entrypoints.chat_utils"] = MagicMock()
 sys.modules["vllm.outputs"] = MagicMock()
+sys.modules["vllm.reasoning"] = _make_mock_package("vllm.reasoning")
 
 from src.models.qwen36.model_server.model import Qwen36Model  # noqa: E402
+
+
+class _FakeType:
+    """Minimal type that captures constructor kwargs as attributes."""
+
+    def __init__(self, **kwargs):
+        for k, v in kwargs.items():
+            setattr(self, k, v)
+
+    def model_dump_json(self):
+        """Serialize like a pydantic model, keeping None-valued fields."""
+        import json as _json
+
+        def _convert(obj):
+            if isinstance(obj, _FakeType):
+                return {k: _convert(v) for k, v in obj.__dict__.items()}
+            if isinstance(obj, list):
+                return [_convert(i) for i in obj]
+            return obj
+
+        return _json.dumps(_convert(self))
+
+
+def _completion_request_mock(**overrides):
+    """A completion-request mock with the attributes create_completion branches on.
+
+    MagicMock defaults every attribute to truthy, so an unpinned mock would
+    silently take the ``request.stream`` branch and return a generator where
+    a Completion is expected.
+    """
+    return MagicMock(stream=False, request_id=None, prompt="test prompt", **overrides)
+
+
+@contextmanager
+def _patched_chat_types(model_module):
+    """Patch all OpenAI protocol types used by the non-streaming chat path."""
+    with patch.multiple(
+        model_module,
+        Completion=_FakeType,
+        CompletionChoice=_FakeType,
+        UsageInfo=_FakeType,
+        CompletionRequest=_FakeType,
+        ChatPrompt=_FakeType,
+        ChatCompletion=_FakeType,
+        ChatCompletionChoice=_FakeType,
+        ChatMessage=_FakeType,
+        ChoiceDelta=_FakeType,
+        ChunkChoice=_FakeType,
+    ):
+        yield
+
+
+@contextmanager
+def _patched_stream_types(model_module):
+    """Patch all OpenAI protocol types used by the streaming chat path."""
+    with patch.multiple(
+        model_module,
+        ChatCompletionChunk=_FakeType,
+        ChunkChoice=_FakeType,
+        ChoiceDelta=_FakeType,
+        UsageInfo=_FakeType,
+        CompletionRequest=_FakeType,
+    ):
+        yield
 
 
 @pytest.fixture
@@ -87,6 +153,25 @@ class TestLoad:
 
         self._make_model(kv_cache_dtype="fp8").load()
         assert AsyncEngineArgs.call_args.kwargs["kv_cache_dtype"] == "fp8"
+
+    def test_reasoning_parser_initialized_with_tokenizer(self):
+        import src.models.qwen36.model_server.model as model_module
+
+        parser_cls = MagicMock()
+        parser_instance = MagicMock()
+        parser_cls.return_value = parser_instance
+
+        with patch.object(
+            model_module.ReasoningParserManager,
+            "get_reasoning_parser",
+            return_value=parser_cls,
+        ) as mock_get:
+            m = self._make_model()
+            m.load()
+
+            mock_get.assert_called_once_with("qwen3")
+            parser_cls.assert_called_once_with(m.tokenizer)
+            assert m.reasoning_parser is parser_instance
 
 
 class TestBuildMessages:
@@ -489,6 +574,24 @@ class TestApplyChatTemplate:
         assert kwargs["enable_thinking"] is False
 
 
+class TestParseHermesToolCalls:
+    def test_none_returns_none(self, model):
+        assert model._parse_hermes_tool_calls(None) is None
+
+    def test_empty_string_returns_none(self, model):
+        assert model._parse_hermes_tool_calls("") is None
+
+    def test_valid_tool_call_parsed(self, model):
+        text = (
+            '<tool_call>\n{"name": "get_weather", "arguments": '
+            '{"city": "Kampala"}}\n</tool_call>'
+        )
+        result = model._parse_hermes_tool_calls(text)
+        assert result is not None
+        assert len(result) == 1
+        assert result[0]["function"]["name"] == "get_weather"
+
+
 class TestCreateCompletion:
     @pytest.fixture
     def mock_output(self):
@@ -800,3 +903,525 @@ class TestStreamCompletion:
         error_chunk = json.loads(chunks[-2][len("data: ") :])
         assert error_chunk["error"]["message"] == "GPU error"
         assert error_chunk["error"]["type"] == "server_error"
+
+
+class TestReasoningExtractionNonStreaming:
+    """Tests for reasoning trace split in the non-streaming chat path."""
+
+    @pytest.fixture
+    def model_with_parser(self, model):
+        """Attach a stubbed reasoning parser to the model."""
+        mock_parser = MagicMock()
+        mock_parser.extract_reasoning.return_value = (
+            "think trace",
+            "final answer",
+        )
+        model.reasoning_parser = mock_parser
+        return model
+
+    @staticmethod
+    async def _async_gen(items):
+        for item in items:
+            yield item
+
+    @staticmethod
+    def _make_request(thinking=True, tools=None):
+        request = MagicMock()
+        request.n = 1
+        request.stream = False
+        request.tools = tools
+        request.chat_template_kwargs = {"enable_thinking": True} if thinking else {}
+        return request
+
+    def test_reasoning_extracted_when_thinking_enabled(self, model_with_parser):
+        model = model_with_parser
+        mock_output = MagicMock()
+        mock_output.index = 0
+        mock_output.text = "<think>\nthink trace\n</think>\n\nfinal answer"
+        mock_output.token_ids = list(range(10))
+        mock_output.finish_reason = "stop"
+        request_output = MagicMock()
+        request_output.prompt_token_ids = [1, 2, 3]
+        request_output.outputs = [mock_output]
+
+        model.model = MagicMock()
+        model.model.generate.return_value = self._async_gen([request_output])
+
+        import src.models.qwen36.model_server.model as model_module
+
+        with _patched_chat_types(model_module):
+            with patch.object(
+                model_module.OpenAIChatAdapterModel,
+                "chat_completion_params_to_completion_params",
+                return_value=_completion_request_mock(),
+            ):
+                with patch.object(
+                    model,
+                    "apply_chat_template",
+                    return_value=MagicMock(prompt="template output"),
+                ):
+                    with patch.object(
+                        model,
+                        "completion_to_chat_completion",
+                    ) as mock_c2c:
+                        mock_c2c.return_value = _FakeType(
+                            id="test-id",
+                            created=1000,
+                            model="test-model",
+                            object="chat.completion",
+                            choices=[
+                                _FakeType(
+                                    index=0,
+                                    message=_FakeType(
+                                        role="assistant",
+                                        content="old content",
+                                        reasoning=None,
+                                    ),
+                                    finish_reason="stop",
+                                )
+                            ],
+                            usage=_FakeType(
+                                prompt_tokens=3,
+                                completion_tokens=10,
+                                total_tokens=13,
+                            ),
+                        )
+
+                        import asyncio
+
+                        result = asyncio.run(
+                            model.create_chat_completion(
+                                self._make_request(thinking=True)
+                            )
+                        )
+
+        msg = result.choices[0].message
+        assert msg.reasoning == "think trace"
+        assert msg.content == "final answer"
+
+    def test_no_parser_called_when_thinking_disabled(self, model):
+        model.reasoning_parser = MagicMock()
+        mock_output = MagicMock()
+        mock_output.index = 0
+        mock_output.text = "plain answer"
+        mock_output.token_ids = list(range(5))
+        mock_output.finish_reason = "stop"
+        request_output = MagicMock()
+        request_output.prompt_token_ids = [1, 2, 3]
+        request_output.outputs = [mock_output]
+
+        model.model = MagicMock()
+        model.model.generate.return_value = self._async_gen([request_output])
+
+        import src.models.qwen36.model_server.model as model_module
+
+        with _patched_chat_types(model_module):
+            with patch.object(
+                model_module.OpenAIChatAdapterModel,
+                "chat_completion_params_to_completion_params",
+                return_value=_completion_request_mock(),
+            ):
+                with patch.object(
+                    model,
+                    "apply_chat_template",
+                    return_value=MagicMock(prompt="template output"),
+                ):
+                    with patch.object(
+                        model,
+                        "completion_to_chat_completion",
+                    ) as mock_c2c:
+                        mock_c2c.return_value = _FakeType(
+                            id="test-id",
+                            created=1000,
+                            model="test-model",
+                            object="chat.completion",
+                            choices=[
+                                _FakeType(
+                                    index=0,
+                                    message=_FakeType(
+                                        role="assistant",
+                                        content="old content",
+                                        reasoning=None,
+                                    ),
+                                    finish_reason="stop",
+                                )
+                            ],
+                            usage=_FakeType(
+                                prompt_tokens=3,
+                                completion_tokens=5,
+                                total_tokens=8,
+                            ),
+                        )
+
+                        import asyncio
+
+                        result = asyncio.run(
+                            model.create_chat_completion(
+                                self._make_request(thinking=False)
+                            )
+                        )
+
+        model.reasoning_parser.extract_reasoning.assert_not_called()
+        msg = result.choices[0].message
+        assert msg.reasoning is None
+        assert msg.content == "plain answer"
+
+    def test_tool_calls_with_reasoning(self, model_with_parser):
+        model = model_with_parser
+        model.tool_calling_enabled = True
+
+        text_with_tools = '<tool_call>\n{"name": "get_weather", "arguments": {"city": "Kampala"}}\n</tool_call>'
+        # The real parser keeps tool-call text on the content side (probe
+        # case 5); the fixture's fixed tuple would discard it, so override.
+        model.reasoning_parser.extract_reasoning.return_value = (
+            "think trace",
+            f"\n\n{text_with_tools}",
+        )
+        mock_output = MagicMock()
+        mock_output.index = 0
+        mock_output.text = f"<think>\nthink trace\n</think>\n\n{text_with_tools}"
+        mock_output.token_ids = list(range(20))
+        mock_output.finish_reason = "stop"
+        request_output = MagicMock()
+        request_output.prompt_token_ids = [1, 2, 3]
+        request_output.outputs = [mock_output]
+
+        model.model = MagicMock()
+        model.model.generate.return_value = self._async_gen([request_output])
+
+        import src.models.qwen36.model_server.model as model_module
+
+        with _patched_chat_types(model_module):
+            with patch.object(
+                model_module.OpenAIChatAdapterModel,
+                "chat_completion_params_to_completion_params",
+                return_value=_completion_request_mock(),
+            ):
+                with patch.object(
+                    model,
+                    "apply_chat_template",
+                    return_value=MagicMock(prompt="template output"),
+                ):
+                    import asyncio
+
+                    result = asyncio.run(
+                        model.create_chat_completion(
+                            self._make_request(thinking=True, tools=[MagicMock()])
+                        )
+                    )
+
+        msg = result.choices[0].message
+        assert msg.reasoning == "think trace"
+        assert msg.tool_calls is not None
+        assert len(msg.tool_calls) == 1
+
+    def test_truncated_thinking_with_tools_no_error(self, model_with_parser):
+        """Truncated mid-think output yields text=None and must not crash.
+
+        Thinking + tools + a generation cut off before </think> makes the
+        reasoning parser return (reasoning, None). _parse_hermes_tool_calls
+        must then return None instead of running re.findall on None.
+        """
+        model = model_with_parser
+        model.tool_calling_enabled = True
+
+        model.reasoning_parser.extract_reasoning.return_value = (
+            "think trace",
+            None,
+        )
+        mock_output = MagicMock()
+        mock_output.index = 0
+        mock_output.text = "<think>\nthink trace"  # no closing </think>
+        mock_output.token_ids = list(range(10))
+        mock_output.finish_reason = "length"
+        request_output = MagicMock()
+        request_output.prompt_token_ids = [1, 2, 3]
+        request_output.outputs = [mock_output]
+
+        model.model = MagicMock()
+        model.model.generate.return_value = self._async_gen([request_output])
+
+        import src.models.qwen36.model_server.model as model_module
+
+        with _patched_chat_types(model_module):
+            with patch.object(
+                model_module.OpenAIChatAdapterModel,
+                "chat_completion_params_to_completion_params",
+                return_value=_completion_request_mock(),
+            ):
+                with patch.object(
+                    model,
+                    "apply_chat_template",
+                    return_value=MagicMock(prompt="template output"),
+                ):
+                    with patch.object(
+                        model,
+                        "completion_to_chat_completion",
+                    ) as mock_c2c:
+                        mock_c2c.return_value = _FakeType(
+                            id="test-id",
+                            created=1000,
+                            model="test-model",
+                            object="chat.completion",
+                            choices=[
+                                _FakeType(
+                                    index=0,
+                                    message=_FakeType(
+                                        role="assistant",
+                                        content="old content",
+                                        reasoning=None,
+                                    ),
+                                    finish_reason="length",
+                                )
+                            ],
+                            usage=_FakeType(
+                                prompt_tokens=3,
+                                completion_tokens=10,
+                                total_tokens=13,
+                            ),
+                        )
+
+                        import asyncio
+
+                        result = asyncio.run(
+                            model.create_chat_completion(
+                                self._make_request(thinking=True, tools=[MagicMock()])
+                            )
+                        )
+
+        msg = result.choices[0].message
+        assert msg.reasoning == "think trace"
+        assert msg.content is None
+        assert getattr(msg, "tool_calls", None) is None
+        assert result.choices[0].finish_reason == "length"
+
+
+class TestReasoningExtractionStreaming:
+    """Tests for reasoning trace split in the streaming chat path."""
+
+    @pytest.fixture
+    def model_with_parser(self, model):
+        """Attach a stubbed reasoning parser to the model."""
+        model.reasoning_parser = MagicMock()
+        return model
+
+    @staticmethod
+    def _make_delta(reasoning=None, content=None):
+        """Create a mock DeltaMessage with reasoning and content."""
+        d = MagicMock()
+        d.reasoning = reasoning
+        d.content = content
+        return d
+
+    @staticmethod
+    async def _async_gen(items):
+        for item in items:
+            yield item
+
+    async def _make_request_outputs(self, parser_deltas):
+        """Build an async generator of RequestOutputs from parser deltas."""
+        full_text = ""
+        full_ids = []
+        for i, d in enumerate(parser_deltas):
+            if d.reasoning:
+                full_text += d.reasoning
+            if d.content:
+                full_text += d.content
+            new_tokens = [100 + i]
+            full_ids.extend(new_tokens)
+
+            out = MagicMock()
+            out.index = 0
+            out.text = full_text
+            out.token_ids = list(full_ids)
+            out.finish_reason = "stop" if i == len(parser_deltas) - 1 else None
+
+            req = MagicMock()
+            req.prompt_token_ids = [1, 2, 3]
+            req.outputs = [out]
+            yield req
+
+    @staticmethod
+    def _make_final_outputs(steps):
+        """Build outputs from a list of (text, token_ids, finished) tuples."""
+        outputs = []
+        for text, tokens, finished in steps:
+            out = MagicMock()
+            out.index = 0
+            out.text = text
+            out.token_ids = tokens
+            out.finish_reason = "stop" if finished else None
+            req = MagicMock()
+            req.prompt_token_ids = [1, 2, 3]
+            req.outputs = [out]
+            outputs.append(req)
+        return outputs
+
+    def _collect_stream(self, model, thinking=True):
+        """Run _stream_chat_completion and return parsed data chunks."""
+        import asyncio
+        import json
+
+        import src.models.qwen36.model_server.model as model_module
+
+        with _patched_stream_types(model_module):
+            with patch.object(
+                model,
+                "_build_sampling_params_from_request",
+                return_value=MagicMock(),
+            ):
+                request = MagicMock()
+                request.model = "test-model"
+                chat_prompt = MagicMock()
+                chat_prompt.response_role = "assistant"
+                completion_request = MagicMock()
+                completion_request.request_id = None
+                completion_request.prompt = "test prompt"
+
+                async def _collect():
+                    chunks = []
+                    async for chunk in model._stream_chat_completion(
+                        request,
+                        chat_prompt,
+                        completion_request,
+                        thinking=thinking,
+                    ):
+                        chunks.append(chunk)
+                    return chunks
+
+                chunks = asyncio.run(_collect())
+
+        return [
+            json.loads(c[len("data: ") :])
+            for c in chunks
+            if c.startswith("data: ") and "DONE" not in c
+        ]
+
+    def test_streaming_reasoning_routed_to_delta(self, model_with_parser):
+        model = model_with_parser
+
+        mock_parser = MagicMock()
+        deltas = [
+            self._make_delta(reasoning="think "),
+            self._make_delta(reasoning="trace"),
+            self._make_delta(content="answer"),
+        ]
+        mock_parser.extract_reasoning_streaming.side_effect = deltas
+        model.reasoning_parser = mock_parser
+
+        model.model = MagicMock()
+        model.model.generate.return_value = self._make_request_outputs(deltas)
+
+        data_chunks = self._collect_stream(model, thinking=True)
+
+        assert len(data_chunks) >= 3
+        assert data_chunks[0]["choices"][0]["delta"]["reasoning"] == "think "
+        assert data_chunks[0]["choices"][0]["delta"]["content"] is None
+        assert data_chunks[1]["choices"][0]["delta"]["reasoning"] == "trace"
+        assert data_chunks[2]["choices"][0]["delta"]["content"] == "answer"
+
+    def test_streaming_no_parser_when_thinking_disabled(self, model):
+        model.reasoning_parser = MagicMock()
+
+        out = MagicMock()
+        out.index = 0
+        out.text = "plain answer"
+        out.token_ids = [100]
+        out.finish_reason = "stop"
+        req = MagicMock()
+        req.prompt_token_ids = [1, 2, 3]
+        req.outputs = [out]
+
+        model.model = MagicMock()
+        model.model.generate.return_value = self._async_gen([req])
+
+        data_chunks = self._collect_stream(model, thinking=False)
+
+        model.reasoning_parser.extract_reasoning_streaming.assert_not_called()
+        assert len(data_chunks) >= 1
+        assert data_chunks[0]["choices"][0]["delta"]["content"] == "plain answer"
+        assert data_chunks[0]["choices"][0]["delta"]["reasoning"] is None
+
+    def test_streaming_final_chunk_carries_usage(self, model_with_parser):
+        model = model_with_parser
+
+        mock_parser = MagicMock()
+        mock_parser.extract_reasoning_streaming.return_value = self._make_delta(
+            content="answer"
+        )
+        model.reasoning_parser = mock_parser
+
+        out = MagicMock()
+        out.index = 0
+        out.text = "answer"
+        out.token_ids = [100, 200]
+        out.finish_reason = "stop"
+        req = MagicMock()
+        req.prompt_token_ids = [1, 2, 3]
+        req.outputs = [out]
+
+        model.model = MagicMock()
+        model.model.generate.return_value = self._async_gen([req])
+
+        data_chunks = self._collect_stream(model, thinking=True)
+
+        final = data_chunks[-1]
+        assert final["usage"] is not None
+        assert final["choices"][0]["finish_reason"] == "stop"
+
+    def test_streaming_parser_returns_none_skips_chunk(self, model_with_parser):
+        model = model_with_parser
+
+        mock_parser = MagicMock()
+        mock_parser.extract_reasoning_streaming.side_effect = [
+            None,
+            None,
+            self._make_delta(content="visible answer"),
+        ]
+        model.reasoning_parser = mock_parser
+
+        outputs = self._make_final_outputs(
+            [
+                ("<think>", [100], False),
+                ("<think>\nthink", [100, 200], False),
+                ("<think>\nthink\n</think>\n\nvisible answer", [100, 200, 300], True),
+            ]
+        )
+
+        model.model = MagicMock()
+        model.model.generate.return_value = self._async_gen(outputs)
+
+        data_chunks = self._collect_stream(model, thinking=True)
+
+        assert len(data_chunks) == 2
+        assert data_chunks[0]["choices"][0]["delta"]["content"] == "visible answer"
+
+    def test_final_delta_none_preserves_finish_reason(self, model_with_parser):
+        """Must-fix 1: parser returns None on final delta — finish_reason
+        and usage must still be captured for the closing chunk."""
+        model = model_with_parser
+
+        mock_parser = MagicMock()
+        mock_parser.extract_reasoning_streaming.side_effect = [
+            self._make_delta(content="some text"),
+            None,  # tag-boundary at end of generation
+        ]
+        model.reasoning_parser = mock_parser
+
+        outputs = self._make_final_outputs(
+            [
+                ("some text", [100, 200], False),
+                ("some text</think>", [100, 200, 300], True),
+            ]
+        )
+
+        model.model = MagicMock()
+        model.model.generate.return_value = self._async_gen(outputs)
+
+        data_chunks = self._collect_stream(model, thinking=True)
+
+        final = data_chunks[-1]
+        assert final["choices"][0]["finish_reason"] == "stop"
+        assert final["usage"]["prompt_tokens"] == 3
+        assert final["usage"]["completion_tokens"] == 3
+        assert final["usage"]["total_tokens"] == 6

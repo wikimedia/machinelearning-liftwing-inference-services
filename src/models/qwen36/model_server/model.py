@@ -29,6 +29,7 @@ from kserve.protocol.rest.openai.types import (
 from vllm import RequestOutput, SamplingParams
 from vllm.engine.arg_utils import AsyncEngineArgs
 from vllm.engine.async_llm_engine import AsyncLLMEngine
+from vllm.reasoning import ReasoningParserManager
 
 from python.type_utils import strtobool
 
@@ -85,6 +86,7 @@ class Qwen36Model(kserve.Model, OpenAIChatAdapterModel):
         self.tool_calling_enabled = tool_calling_enabled
         self.model = None
         self.tokenizer = None
+        self.reasoning_parser = None
         self.ready = False
 
     def load(self) -> None:
@@ -118,6 +120,9 @@ class Qwen36Model(kserve.Model, OpenAIChatAdapterModel):
             )
             self.model = AsyncLLMEngine.from_engine_args(engine_args)
             self.tokenizer = self.model.tokenizer
+            self.reasoning_parser = ReasoningParserManager.get_reasoning_parser(
+                "qwen3"
+            )(self.tokenizer)
             self.ready = True
             logging.info("Model loaded successfully!")
         except Exception as e:
@@ -288,12 +293,18 @@ class Qwen36Model(kserve.Model, OpenAIChatAdapterModel):
         )
 
     @staticmethod
-    def _parse_hermes_tool_calls(text: str) -> list[dict[str, Any]] | None:
+    def _parse_hermes_tool_calls(text: str | None) -> list[dict[str, Any]] | None:
         """Parse Hermes-format tool calls from generated text.
+
+        ``text`` may be None when thinking output was truncated before the
+        think block closed (the reasoning parser then returns all output as
+        reasoning and no content).
 
         Qwen3 outputs tool calls wrapped in <tool_call>...</tool_call> tags,
         with a JSON object containing ``name`` and ``arguments``.
         """
+        if not text:
+            return None
         pattern = r"<tool_call>\s*(.*?)\s*</tool_call>"
         matches = re.findall(pattern, text, re.DOTALL)
         if not matches:
@@ -386,10 +397,16 @@ class Qwen36Model(kserve.Model, OpenAIChatAdapterModel):
         assert isinstance(completion, Completion)
 
         text = completion.choices[0].text if completion.choices else ""
+        reasoning_text = None
+        if enable_thinking:
+            reasoning_text, text = self.reasoning_parser.extract_reasoning(
+                text, request
+            )
         tool_calls = self._parse_hermes_tool_calls(text) if parse_tool_calls else None
 
         if tool_calls:
             message = self._build_chat_message_with_tool_calls(text, tool_calls)
+            message.reasoning = reasoning_text
             return ChatCompletion(
                 id=completion.id,
                 created=completion.created,
@@ -405,7 +422,12 @@ class Qwen36Model(kserve.Model, OpenAIChatAdapterModel):
                 usage=completion.usage,
             )
 
-        return self.completion_to_chat_completion(completion, chat_prompt.response_role)
+        chat_completion = self.completion_to_chat_completion(
+            completion, chat_prompt.response_role
+        )
+        chat_completion.choices[0].message.content = text
+        chat_completion.choices[0].message.reasoning = reasoning_text
+        return chat_completion
 
     async def _stream_chat_completion(
         self,
@@ -441,29 +463,65 @@ class Qwen36Model(kserve.Model, OpenAIChatAdapterModel):
             logging.error("Error during streaming inference: %s", e)
             raise InferenceError(f"Error during streaming inference: {e}")
 
-        full_text = ""
+        full_content = ""
         previous_texts: list[str] = [""]
         previous_num_tokens: list[int] = [0]
+        previous_token_ids: list[list[int]] = [[]]
         created_time = int(time.time())
         prompt_tokens = 0
         final_finish_reason: str | None = None
         final_completion_tokens = 0
 
+        parser = self.reasoning_parser if thinking else None
+
         try:
             async for request_output in results_generator:
                 for output in request_output.outputs:
                     i = output.index
-                    self._ensure_output_capacity(previous_texts, previous_num_tokens, i)
+                    self._ensure_output_capacity(
+                        previous_texts,
+                        previous_num_tokens,
+                        i,
+                        previous_token_ids=(
+                            previous_token_ids if parser is not None else None
+                        ),
+                    )
 
-                    delta_text = output.text[len(previous_texts[i]) :]
-                    previous_texts[i] = output.text
-                    previous_num_tokens[i] = len(output.token_ids)
-                    full_text += delta_text
+                    prev_text = previous_texts[i]
+                    curr_text = output.text
+                    delta_text = curr_text[len(prev_text) :]
+                    curr_tokens = output.token_ids
+
+                    previous_texts[i] = curr_text
+                    previous_num_tokens[i] = len(curr_tokens)
 
                     if output.finish_reason is not None:
                         prompt_tokens = len(request_output.prompt_token_ids)
                         final_finish_reason = output.finish_reason
-                        final_completion_tokens = len(output.token_ids)
+                        final_completion_tokens = len(curr_tokens)
+
+                    if parser is not None:
+                        prev_tokens = previous_token_ids[i]
+                        delta_tokens = curr_tokens[len(prev_tokens) :]
+                        previous_token_ids[i] = list(curr_tokens)
+                        d = parser.extract_reasoning_streaming(
+                            prev_text,
+                            curr_text,
+                            delta_text,
+                            prev_tokens,
+                            curr_tokens,
+                            delta_tokens,
+                        )
+                        if d is None:
+                            continue
+                        delta_reasoning = d.reasoning
+                        delta_content = d.content
+                        if delta_content:
+                            full_content += delta_content
+                    else:
+                        full_content += delta_text
+                        delta_reasoning = None
+                        delta_content = delta_text
 
                     chunk = ChatCompletionChunk(
                         id=request_id,
@@ -475,7 +533,8 @@ class Qwen36Model(kserve.Model, OpenAIChatAdapterModel):
                                 index=i,
                                 delta=ChoiceDelta(
                                     role=chat_prompt.response_role,
-                                    content=delta_text,
+                                    content=delta_content,
+                                    reasoning=delta_reasoning,
                                 ),
                                 finish_reason=None,
                             )
@@ -491,7 +550,7 @@ class Qwen36Model(kserve.Model, OpenAIChatAdapterModel):
 
         # Emit exactly one final chunk with finish_reason and usage.
         tool_calls = (
-            self._parse_hermes_tool_calls(full_text) if parse_tool_calls else None
+            self._parse_hermes_tool_calls(full_content) if parse_tool_calls else None
         )
         usage = UsageInfo(
             prompt_tokens=prompt_tokens,
@@ -577,6 +636,7 @@ class Qwen36Model(kserve.Model, OpenAIChatAdapterModel):
         previous_texts: list,
         previous_num_tokens: list,
         index: int,
+        previous_token_ids: list | None = None,
     ) -> None:
         """Grow tracking lists to accommodate output at the given index.
 
@@ -587,6 +647,8 @@ class Qwen36Model(kserve.Model, OpenAIChatAdapterModel):
             gap = index - len(previous_texts) + 1
             previous_texts.extend([""] * gap)
             previous_num_tokens.extend([0] * gap)
+            if previous_token_ids is not None:
+                previous_token_ids.extend([[]] * gap)
 
     @staticmethod
     def _build_stream_chunk(
