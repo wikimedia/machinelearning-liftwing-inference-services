@@ -32,6 +32,12 @@ paths:
                   type: integer
                   description: Revision identifier
                   example: 12345
+                extended_output:
+                  type: string
+                  description: |
+                    Set to "true" to include the extended output of the model, such as
+                    the list of features used
+                  default: "false"
       responses:
         "200":
           description: Successful prediction
