@@ -248,6 +248,176 @@ class TestPreprocessThinkingTokenBudget:
             model.preprocess({"prompt": "Hello", "thinking_token_budget": -5}, None)
 
 
+class TestResolveEnableThinking:
+    """Tests for _resolve_enable_thinking."""
+
+    def test_no_chat_template_kwargs_defaults_false(self, model):
+        request = MagicMock(spec=[])
+        result = model._resolve_enable_thinking(request)
+        assert result is False
+
+    def test_empty_kwargs_defaults_false(self, model):
+        request = MagicMock(chat_template_kwargs={})
+        result = model._resolve_enable_thinking(request)
+        assert result is False
+
+    def test_enable_thinking_true(self, model):
+        request = MagicMock(chat_template_kwargs={"enable_thinking": True})
+        result = model._resolve_enable_thinking(request)
+        assert result is True
+
+    def test_enable_thinking_false(self, model):
+        request = MagicMock(chat_template_kwargs={"enable_thinking": False})
+        result = model._resolve_enable_thinking(request)
+        assert result is False
+
+    def test_kwargs_without_enable_thinking_key(self, model):
+        request = MagicMock(chat_template_kwargs={"other_key": "value"})
+        result = model._resolve_enable_thinking(request)
+        assert result is False
+
+    def test_kwargs_is_none(self, model):
+        request = MagicMock(chat_template_kwargs=None)
+        result = model._resolve_enable_thinking(request)
+        assert result is False
+
+    def test_kwargs_is_string_does_not_crash(self, model):
+        request = MagicMock(chat_template_kwargs="garbage")
+        result = model._resolve_enable_thinking(request)
+        assert result is False
+
+    def test_kwargs_is_list_does_not_crash(self, model):
+        request = MagicMock(chat_template_kwargs=["garbage"])
+        result = model._resolve_enable_thinking(request)
+        assert result is False
+
+    def test_string_true_coerces_to_true(self, model):
+        request = MagicMock(chat_template_kwargs={"enable_thinking": "true"})
+        result = model._resolve_enable_thinking(request)
+        assert result is True
+
+    def test_string_false_coerces_to_false(self, model):
+        request = MagicMock(chat_template_kwargs={"enable_thinking": "false"})
+        result = model._resolve_enable_thinking(request)
+        assert result is False
+
+    def test_string_yes_coerces_to_true(self, model):
+        request = MagicMock(chat_template_kwargs={"enable_thinking": "yes"})
+        result = model._resolve_enable_thinking(request)
+        assert result is True
+
+    def test_string_no_coerces_to_false(self, model):
+        request = MagicMock(chat_template_kwargs={"enable_thinking": "no"})
+        result = model._resolve_enable_thinking(request)
+        assert result is False
+
+    def test_garbage_string_raises_invalid_input(self, model):
+        with pytest.raises(InvalidInput, match="enable_thinking must be a boolean"):
+            model._resolve_enable_thinking(
+                MagicMock(chat_template_kwargs={"enable_thinking": "banana"})
+            )
+
+
+class TestBuildSamplingParamsDefaultsByMode:
+    """Tests for _build_sampling_params_from_request thinking parameter."""
+
+    def test_instruct_defaults(self, model):
+        from src.models.qwen36.model_server.model import SamplingParams
+
+        request = MagicMock()
+        request.max_tokens = None
+        request.temperature = None
+        request.top_p = None
+        request.top_k = None
+        request.presence_penalty = None
+        request.repetition_penalty = None
+
+        model._build_sampling_params_from_request(request, thinking=False)
+        kwargs = SamplingParams.call_args.kwargs
+        assert kwargs["temperature"] == 0.7
+        assert kwargs["top_p"] == 0.8
+        assert kwargs["presence_penalty"] == 1.5
+
+    def test_thinking_defaults(self, model):
+        from src.models.qwen36.model_server.model import SamplingParams
+
+        request = MagicMock()
+        request.max_tokens = None
+        request.temperature = None
+        request.top_p = None
+        request.top_k = None
+        request.presence_penalty = None
+        request.repetition_penalty = None
+
+        model._build_sampling_params_from_request(request, thinking=True)
+        kwargs = SamplingParams.call_args.kwargs
+        assert kwargs["temperature"] == 1.0
+        assert kwargs["top_p"] == 0.95
+        assert kwargs["presence_penalty"] == 0.0
+
+    def test_user_values_override_defaults(self, model):
+        from src.models.qwen36.model_server.model import SamplingParams
+
+        request = MagicMock()
+        request.max_tokens = None
+        request.temperature = 0.3
+        request.top_p = 0.5
+        request.top_k = None
+        request.presence_penalty = 0.2
+        request.repetition_penalty = None
+
+        model._build_sampling_params_from_request(request, thinking=False)
+        kwargs = SamplingParams.call_args.kwargs
+        assert kwargs["temperature"] == 0.3
+        assert kwargs["top_p"] == 0.5
+        assert kwargs["presence_penalty"] == 0.2
+
+    def test_default_is_thinking(self, model):
+        from src.models.qwen36.model_server.model import SamplingParams
+
+        request = MagicMock()
+        request.max_tokens = None
+        request.temperature = None
+        request.top_p = None
+        request.top_k = None
+        request.presence_penalty = None
+        request.repetition_penalty = None
+
+        model._build_sampling_params_from_request(request)
+        kwargs = SamplingParams.call_args.kwargs
+        assert kwargs["temperature"] == 1.0
+
+    def test_budget_passed_through(self, model):
+        from src.models.qwen36.model_server.model import SamplingParams
+
+        request = MagicMock()
+        request.max_tokens = None
+        request.temperature = None
+        request.top_p = None
+        request.top_k = None
+        request.presence_penalty = None
+        request.repetition_penalty = None
+
+        model._build_sampling_params_from_request(
+            request, thinking=True, thinking_token_budget=200
+        )
+        assert SamplingParams.call_args.kwargs["thinking_token_budget"] == 200
+
+    def test_budget_none_by_default(self, model):
+        from src.models.qwen36.model_server.model import SamplingParams
+
+        request = MagicMock()
+        request.max_tokens = None
+        request.temperature = None
+        request.top_p = None
+        request.top_k = None
+        request.presence_penalty = None
+        request.repetition_penalty = None
+
+        model._build_sampling_params_from_request(request)
+        assert SamplingParams.call_args.kwargs["thinking_token_budget"] is None
+
+
 class TestApplyChatTemplate:
     def test_returns_chat_prompt(self, model):
         request = MagicMock()
@@ -297,6 +467,26 @@ class TestApplyChatTemplate:
         assert isinstance(messages_arg[0], dict)
         assert messages_arg[0]["role"] == "system"
         assert messages_arg[0]["content"] == "You are helpful."
+
+    def test_enable_thinking_true_passed_to_template(self, model):
+        request = MagicMock()
+        request.tools = None
+        request.messages = [MagicMock(role="user", content="Hi")]
+
+        model.apply_chat_template(request, enable_thinking=True)
+
+        kwargs = model.tokenizer.apply_chat_template.call_args.kwargs
+        assert kwargs["enable_thinking"] is True
+
+    def test_enable_thinking_defaults_false(self, model):
+        request = MagicMock()
+        request.tools = None
+        request.messages = [MagicMock(role="user", content="Hi")]
+
+        model.apply_chat_template(request)
+
+        kwargs = model.tokenizer.apply_chat_template.call_args.kwargs
+        assert kwargs["enable_thinking"] is False
 
 
 class TestCreateCompletion:

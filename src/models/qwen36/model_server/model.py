@@ -131,6 +131,37 @@ class Qwen36Model(kserve.Model, OpenAIChatAdapterModel):
             messages.insert(0, {"role": "system", "content": system})
         return messages
 
+    @staticmethod
+    def _validate_thinking_token_budget(value: Any) -> int | None:
+        """Validate and coerce a thinking_token_budget value.
+
+        Returns an int >= 1, or None if the input is None.
+        Raises InvalidInput for non-integer or out-of-range values.
+        """
+        if value is None:
+            return None
+        try:
+            budget = int(value)
+        except (TypeError, ValueError):
+            raise InvalidInput("thinking_token_budget must be an integer")
+        if budget < 1:
+            raise InvalidInput("thinking_token_budget must be >= 1")
+        return budget
+
+    @staticmethod
+    def _resolve_enable_thinking(request: ChatCompletionRequest) -> bool:
+        """Extract enable_thinking from chat_template_kwargs; default off."""
+        kwargs = getattr(request, "chat_template_kwargs", None)
+        if not isinstance(kwargs, dict):
+            return False
+        value = kwargs.get("enable_thinking", False)
+        if isinstance(value, bool):
+            return value
+        try:
+            return bool(strtobool(str(value)))
+        except ValueError:
+            raise InvalidInput("enable_thinking must be a boolean")
+
     def _apply_chat_template(
         self, messages: list, enable_thinking: bool = True, tools: list | None = None
     ) -> str:
@@ -158,7 +189,9 @@ class Qwen36Model(kserve.Model, OpenAIChatAdapterModel):
                 **kwargs,
             )
 
-    def apply_chat_template(self, request: ChatCompletionRequest) -> ChatPrompt:
+    def apply_chat_template(
+        self, request: ChatCompletionRequest, enable_thinking: bool = False
+    ) -> ChatPrompt:
         messages = [dict(msg) for msg in request.messages]
         tools = None
         if request.tools:
@@ -175,28 +208,45 @@ class Qwen36Model(kserve.Model, OpenAIChatAdapterModel):
         # NOTE: tool_choice is ignored — "none" and forced-function behave
         # like "auto".  The Qwen3 chat template renders all supplied tools
         # into the system prompt and the model decides whether to call one.
-        text = self._apply_chat_template(messages, enable_thinking=False, tools=tools)
+        # TODO: pass through arbitrary chat_template_kwargs instead of only
+        # enable_thinking, so that preserve_thinking (27B) and future
+        # template kwargs are honoured without per-field plumbing.
+        text = self._apply_chat_template(
+            messages, enable_thinking=enable_thinking, tools=tools
+        )
         return ChatPrompt(prompt=text, response_role="assistant")
 
     def _build_sampling_params_from_request(
-        self, request: CompletionRequest
+        self,
+        request: CompletionRequest,
+        thinking: bool = True,
+        thinking_token_budget: int | None = None,
     ) -> SamplingParams:
         """Extract sampling parameters from a CompletionRequest with defaults.
 
-        Defaults use thinking-mode values (temperature=1.0, top_p=0.95,
-        presence_penalty=0.0) since the OpenAI endpoint always enables thinking.
+        *thinking* selects the default temperature / top_p / presence_penalty
+        from SAMPLING_DEFAULTS.  The chat completions endpoint passes
+        ``False`` when thinking is off (the common case); the raw
+        /openai/v1/completions endpoint keeps its historical ``True``
+        default because it has no chat-template concept.
         """
+        defaults = SAMPLING_DEFAULTS[thinking]
         return SamplingParams(
             max_tokens=request.max_tokens or 32768,
-            temperature=request.temperature if request.temperature is not None else 1.0,
-            top_p=request.top_p if request.top_p is not None else 0.95,
+            temperature=(
+                request.temperature
+                if request.temperature is not None
+                else defaults["temperature"]
+            ),
+            top_p=request.top_p if request.top_p is not None else defaults["top_p"],
             top_k=request.top_k or 20,
             presence_penalty=(
                 request.presence_penalty
                 if request.presence_penalty is not None
-                else 0.0
+                else defaults["presence_penalty"]
             ),
             repetition_penalty=request.repetition_penalty or 1.0,
+            thinking_token_budget=thinking_token_budget,
         )
 
     async def _collect_generator(self, results_generator) -> RequestOutput:
@@ -296,7 +346,18 @@ class Qwen36Model(kserve.Model, OpenAIChatAdapterModel):
         if request.n != 1:
             raise InvalidInput("n != 1 is not supported")
 
-        chat_prompt = self.apply_chat_template(request)
+        enable_thinking = self._resolve_enable_thinking(request)
+        thinking_token_budget = self._validate_thinking_token_budget(
+            getattr(request, "thinking_token_budget", None)
+        )
+        if thinking_token_budget is not None and not enable_thinking:
+            logging.warning(
+                "thinking_token_budget=%s received with thinking disabled; "
+                "budget has no effect",
+                thinking_token_budget,
+            )
+
+        chat_prompt = self.apply_chat_template(request, enable_thinking=enable_thinking)
         completion_request = (
             OpenAIChatAdapterModel.chat_completion_params_to_completion_params(
                 request, chat_prompt.prompt
@@ -307,11 +368,20 @@ class Qwen36Model(kserve.Model, OpenAIChatAdapterModel):
 
         if request.stream:
             return self._stream_chat_completion(
-                request, chat_prompt, completion_request, parse_tool_calls
+                request,
+                chat_prompt,
+                completion_request,
+                parse_tool_calls,
+                thinking=enable_thinking,
+                thinking_token_budget=thinking_token_budget,
             )
 
         completion = await self.create_completion(
-            completion_request, raw_request, context
+            completion_request,
+            raw_request,
+            context,
+            thinking=enable_thinking,
+            thinking_token_budget=thinking_token_budget,
         )
         assert isinstance(completion, Completion)
 
@@ -343,6 +413,8 @@ class Qwen36Model(kserve.Model, OpenAIChatAdapterModel):
         chat_prompt: ChatPrompt,
         completion_request: CompletionRequest,
         parse_tool_calls: bool = False,
+        thinking: bool = True,
+        thinking_token_budget: int | None = None,
     ) -> AsyncGenerator[str, None]:
         """Stream chat completions as ``object:"chat.completion.chunk"`` chunks.
 
@@ -353,7 +425,11 @@ class Qwen36Model(kserve.Model, OpenAIChatAdapterModel):
         chunk only, matching OpenAI streaming semantics.
         """
         request_id = completion_request.request_id or uuid.uuid4().hex
-        sampling_params = self._build_sampling_params_from_request(completion_request)
+        sampling_params = self._build_sampling_params_from_request(
+            completion_request,
+            thinking=thinking,
+            thinking_token_budget=thinking_token_budget,
+        )
 
         try:
             results_generator = self.model.generate(
@@ -464,12 +540,16 @@ class Qwen36Model(kserve.Model, OpenAIChatAdapterModel):
         request: CompletionRequest,
         raw_request=None,
         context: dict | None = None,
+        thinking: bool = True,
+        thinking_token_budget: int | None = None,
     ) -> Union[AsyncGenerator[str, None], Completion]:
         prompt = request.prompt
         if isinstance(prompt, list):
             prompt = self.tokenizer.decode(prompt)
 
-        sampling_params = self._build_sampling_params_from_request(request)
+        sampling_params = self._build_sampling_params_from_request(
+            request, thinking=thinking, thinking_token_budget=thinking_token_budget
+        )
         request_id = request.request_id or uuid.uuid4().hex
 
         try:
@@ -599,14 +679,9 @@ class Qwen36Model(kserve.Model, OpenAIChatAdapterModel):
             payload.get("presence_penalty", defaults["presence_penalty"])
         )
         repetition_penalty = float(payload.get("repetition_penalty", 1.0))
-        thinking_token_budget = payload.get("thinking_token_budget")
-        if thinking_token_budget is not None:
-            try:
-                thinking_token_budget = int(thinking_token_budget)
-            except (TypeError, ValueError):
-                raise InvalidInput("thinking_token_budget must be an integer")
-            if thinking_token_budget < 1:
-                raise InvalidInput("thinking_token_budget must be >= 1")
+        thinking_token_budget = self._validate_thinking_token_budget(
+            payload.get("thinking_token_budget")
+        )
 
         system = payload.get("system")
         messages = self._build_messages(prompt, system)
