@@ -99,44 +99,17 @@ Anees described his sound as genre-defying, ranging from [[Hip hop music|hip-hop
 """
 
 
-@pytest.fixture
-def mock_article_topics():
-    """Mock response from the article topic model for Anees (musician) (page_id=70793851)."""
-    return {
-        "prediction": {
-            "article": "https://en.wikipedia.org/wiki?curid=70793851",
-            "results": [
-                {"topic": "Culture.Biography.Biography*", "score": 0.9748311638832092},
-                {"topic": "Culture.Media.Music", "score": 0.9099169969558716},
-                {"topic": "Culture.Media.Media*", "score": 0.8634016513824463},
-                {
-                    "topic": "Geography.Regions.Americas.North_America",
-                    "score": 0.6224693655967712,
-                },
-            ],
-        }
-    }
-
-
 @pytest.mark.asyncio
 async def test_preprocess_extracts_paragraphs_html(
-    mock_model, sample_page_change_event, sample_page_html, mock_article_topics
+    mock_model, sample_page_change_event, sample_page_html
 ):
     """Test that preprocess method extracts and parses paragraphs from the event."""
-    # Mock get_page_html and get_article_topics to avoid external API calls
-    with (
-        patch.object(
-            mock_model,
-            "get_page_html",
-            new_callable=AsyncMock,
-            return_value=sample_page_html,
-        ),
-        patch.object(
-            mock_model,
-            "get_article_topics",
-            new_callable=AsyncMock,
-            return_value=mock_article_topics,
-        ),
+    # Mock get_page_html to avoid external API calls
+    with patch.object(
+        mock_model,
+        "get_page_html",
+        new_callable=AsyncMock,
+        return_value=sample_page_html,
     ):
         result = await mock_model.preprocess(sample_page_change_event)
 
@@ -162,23 +135,15 @@ async def test_preprocess_extracts_paragraphs_html(
 
 @pytest.mark.asyncio
 async def test_preprocess_extracts_metadata(
-    mock_model, sample_page_change_event, sample_page_html, mock_article_topics
+    mock_model, sample_page_change_event, sample_page_html
 ):
     """Test that preprocess method extracts necessary metadata from the event."""
-    # Mock get_page_html and get_article_topics to avoid external API calls
-    with (
-        patch.object(
-            mock_model,
-            "get_page_html",
-            new_callable=AsyncMock,
-            return_value=sample_page_html,
-        ),
-        patch.object(
-            mock_model,
-            "get_article_topics",
-            new_callable=AsyncMock,
-            return_value=mock_article_topics,
-        ),
+    # Mock get_page_html to avoid external API calls
+    with patch.object(
+        mock_model,
+        "get_page_html",
+        new_callable=AsyncMock,
+        return_value=sample_page_html,
     ):
         result = await mock_model.preprocess(sample_page_change_event)
 
@@ -198,24 +163,16 @@ async def test_preprocess_extracts_metadata(
 
 @pytest.mark.asyncio
 async def test_preprocess_filters_sections(
-    mock_model, sample_page_change_event, sample_page_html, mock_article_topics
+    mock_model, sample_page_change_event, sample_page_html
 ):
     """Test that preprocess filters out unwanted sections like References."""
     # The sample_page_html already includes References section
-    # Mock get_page_html and get_article_topics to avoid external API calls
-    with (
-        patch.object(
-            mock_model,
-            "get_page_html",
-            new_callable=AsyncMock,
-            return_value=sample_page_html,
-        ),
-        patch.object(
-            mock_model,
-            "get_article_topics",
-            new_callable=AsyncMock,
-            return_value=mock_article_topics,
-        ),
+    # Mock get_page_html to avoid external API calls
+    with patch.object(
+        mock_model,
+        "get_page_html",
+        new_callable=AsyncMock,
+        return_value=sample_page_html,
     ):
         result = await mock_model.preprocess(sample_page_change_event)
 
@@ -223,114 +180,3 @@ async def test_preprocess_filters_sections(
     section_names = [p[0] for p in result["paragraphs"]]
     assert "References" not in section_names
     assert "External links" not in section_names
-
-
-@pytest.mark.asyncio
-async def test_preprocess_includes_article_topics(
-    mock_model, sample_page_change_event, sample_page_html, mock_article_topics
-):
-    """Test that preprocess includes article topics from the outlink model."""
-    # Mock get_page_html and get_article_topics
-    with (
-        patch.object(
-            mock_model,
-            "get_page_html",
-            new_callable=AsyncMock,
-            return_value=sample_page_html,
-        ),
-        patch.object(
-            mock_model,
-            "get_article_topics",
-            new_callable=AsyncMock,
-            return_value=mock_article_topics,
-        ),
-    ):
-        result = await mock_model.preprocess(sample_page_change_event)
-
-    # Check that article_topics is included in the result
-    assert "article_topics" in result
-    assert result["article_topics"] == mock_article_topics
-    assert "prediction" in result["article_topics"]
-    assert "results" in result["article_topics"]["prediction"]
-    assert len(result["article_topics"]["prediction"]["results"]) == 4
-
-
-def test_should_process_article_with_matching_topic(mock_model):
-    """Test that articles with matching topics are marked for processing."""
-    # Article with Biography topic (matches allowed topics)
-    article_topics = {
-        "prediction": {
-            "article": "https://en.wikipedia.org/wiki?curid=70793851",
-            "results": [
-                {"topic": "Culture.Biography.Biography*", "score": 0.9748},
-                {"topic": "Culture.Media.Music", "score": 0.9099},
-            ],
-        }
-    }
-
-    assert mock_model.should_process_article(article_topics) is True
-
-
-def test_should_process_article_without_matching_topic(mock_model):
-    """Test that articles without matching topics are not marked for processing."""
-    # Article with only topics that are not yet enabled (STEM and Geography)
-    article_topics = {
-        "prediction": {
-            "article": "https://en.wikipedia.org/wiki?curid=12345",
-            "results": [
-                {"topic": "STEM.Biology", "score": 0.8},
-                {"topic": "Geography.Regions.Oceania", "score": 0.7},
-            ],
-        }
-    }
-
-    assert mock_model.should_process_article(article_topics) is False
-
-
-def test_should_process_article_with_empty_topics(mock_model):
-    """Test that articles with empty topics are not marked for processing."""
-    # Empty article topics
-    assert mock_model.should_process_article({}) is False
-    assert mock_model.should_process_article({"prediction": {}}) is False
-    assert mock_model.should_process_article({"prediction": {"results": []}}) is False
-
-
-def test_should_process_article_with_women_topic(mock_model):
-    """Test that articles with Culture.Biography.Women topic are marked for processing."""
-    article_topics = {
-        "prediction": {
-            "article": "https://en.wikipedia.org/wiki?curid=99999",
-            "results": [
-                {"topic": "Culture.Biography.Women", "score": 0.95},
-            ],
-        }
-    }
-
-    assert mock_model.should_process_article(article_topics) is True
-
-
-@pytest.mark.asyncio
-async def test_preprocess_sets_should_process_flag(
-    mock_model, sample_page_change_event, sample_page_html, mock_article_topics
-):
-    """Test that preprocess sets the should_process flag correctly."""
-    # Mock get_page_html and get_article_topics with matching topics
-    with (
-        patch.object(
-            mock_model,
-            "get_page_html",
-            new_callable=AsyncMock,
-            return_value=sample_page_html,
-        ),
-        patch.object(
-            mock_model,
-            "get_article_topics",
-            new_callable=AsyncMock,
-            return_value=mock_article_topics,
-        ),
-    ):
-        result = await mock_model.preprocess(sample_page_change_event)
-
-    # Check that should_process is set to True (mock has Biography topic)
-    assert "should_process" in result
-    assert result["should_process"] is True

@@ -3,10 +3,9 @@
 The Tone Suggestion Generator is a streaming application in Lift Wing that sources page_change events and updates the necessary systems for downstream use. To learn more about the use-case, please visit the (Phabricator page.)[https://phabricator.wikimedia.org/T408538]
 
 1. Consumes events: `mediawiki.page_change.v1`
-2. Filters the articles to a selected group of article topics. Topics are retrieved by querying article topic model on LiftWing.
-3. Splits the article into paragraphs and runs tone check inference on each paragraph.
-4. Paragraphs with tone check issues are saved into Cassandra table.
-5. We update the search weighed tags by emitting events: `mediawiki.cirrussearch.page_weighted_tags_change.v1`
+2. Splits the article into paragraphs and runs tone check inference on each paragraph.
+3. Paragraphs with tone check issues are saved into Cassandra table.
+4. We update the search weighed tags by emitting events: `mediawiki.cirrussearch.page_weighted_tags_change.v1`
 
 ## Local Cassandra setup
 

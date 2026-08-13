@@ -34,42 +34,6 @@ SUPPORTED_LANG_CODE = ("en", "fr", "ar", "pt", "test")
 BATCH_SIZE = 200  # Batch size for the model pipeline
 MAXLEN = 512  # Maximum length for tokenization
 
-# Article topics to filter for. The filter is being removed gradually (T433319):
-# currently all Culture and History_and_Society topics plus STEM.Technology are
-# enabled (30 of 64), with the remaining STEM and Geography topics to follow.
-ALLOWED_TOPICS = {
-    "Culture.Biography.Biography*",
-    "Culture.Biography.Women",
-    "Culture.Food_and_drink",
-    "Culture.Internet_culture",
-    "Culture.Linguistics",
-    "Culture.Literature",
-    "Culture.Media.Books",
-    "Culture.Media.Entertainment",
-    "Culture.Media.Films",
-    "Culture.Media.Media*",
-    "Culture.Media.Music",
-    "Culture.Media.Radio",
-    "Culture.Media.Software",
-    "Culture.Media.Television",
-    "Culture.Media.Video_games",
-    "Culture.Performing_arts",
-    "Culture.Philosophy_and_religion",
-    "Culture.Sports",
-    "Culture.Visual_arts.Architecture",
-    "Culture.Visual_arts.Comics_and_Anime",
-    "Culture.Visual_arts.Fashion",
-    "Culture.Visual_arts.Visual_arts*",
-    "History_and_Society.Business_and_economics",
-    "History_and_Society.Education",
-    "History_and_Society.History",
-    "History_and_Society.Military_and_warfare",
-    "History_and_Society.Politics_and_government",
-    "History_and_Society.Society",
-    "History_and_Society.Transportation",
-    "STEM.Technology",
-}
-
 TONE_CHECK_TRUE_LABEL = "LABEL_1"
 
 
@@ -79,11 +43,6 @@ class ReviseToneTaskGenerator(kserve.Model):
         self.name = name
         self.model_path = os.environ.get("MODEL_PATH", "/mnt/models/")
         self.model_version = os.environ.get("MODEL_VERSION", "v1.0")
-        self.outlink_topic_model_url = os.environ.get(
-            "OUTLINK_TOPIC_MODEL_URL",
-            "http://outlink-topic-model.articletopic-outlink:8080/v1/models/outlink-topic-model:predict",
-        )
-        self.outlink_topic_model_header = os.environ.get("OUTLINK_TOPIC_MODEL_HEADER")
         self.force_http = os.environ.get("FORCE_HTTP", "false").lower() == "true"
 
         # Event key for wrapped events
@@ -224,37 +183,6 @@ class ReviseToneTaskGenerator(kserve.Model):
             self.get_http_client_session("eventgate"),
         )
 
-    def should_process_article(self, article_topics: dict[str, Any]) -> bool:
-        """Check if article topics match the filter criteria.
-
-        Args:
-            article_topics: Article topics from outlink-topic-model
-
-        Returns:
-            True if at least one topic matches the allowed topics, False otherwise
-        """
-        if not article_topics:
-            return False
-
-        # Extract topic names from the prediction results
-        results = article_topics.get("prediction", {}).get("results", [])
-        predicted_topics = {
-            result.get("topic") for result in results if result.get("topic")
-        }
-
-        # Check if there's at least one match
-        has_match = bool(predicted_topics & ALLOWED_TOPICS)
-
-        if has_match:
-            matching_topics = predicted_topics & ALLOWED_TOPICS
-            logging.info(f"Article matches allowed topics: {matching_topics}")
-        else:
-            logging.info(
-                f"Article does not match allowed topics. Predicted: {predicted_topics}"
-            )
-
-        return has_match
-
     def extract_paragraphs_html(self, article):
         """Extract paragraphs plaintext from HTML content.
 
@@ -334,52 +262,6 @@ class ReviseToneTaskGenerator(kserve.Model):
             )
             return ""
 
-    async def get_article_topics(self, lang: str, page_id: int) -> dict[str, Any]:
-        """
-        Query the outlink article topic model from Wikimedia Lift Wing.
-
-        Args:
-            lang: Language code (e.g. 'en')
-            page_id: ID of the page whose topics we want
-
-        Returns:
-            Dict returned directly by the topic model (may contain probabilities,
-            topic names, etc.)
-        """
-        url = self.outlink_topic_model_url
-
-        headers = {
-            "Content-Type": "application/json",
-            "User-Agent": (
-                "Wikimedia-ReviseToneStructuredTask/1.0 "
-                "(https://wikitech.wikimedia.org/wiki/Machine_Learning)"
-            ),
-        }
-
-        # Only add Host header if specified in environment
-        if self.outlink_topic_model_header:
-            headers["Host"] = self.outlink_topic_model_header
-
-        payload = {
-            "lang": lang,
-            "page_id": page_id,
-        }
-
-        logging.info(f"Requesting article topics for page_id={page_id} ({lang})")
-
-        session = self.get_http_client_session("outlink-topic-model")
-        try:
-            async with session.post(url, json=payload, headers=headers) as resp:
-                if resp.status != 200:
-                    text = await resp.text()
-                    logging.error(f"Topic model request failed ({resp.status}): {text}")
-                    return {}
-
-                return await resp.json()
-        except Exception as e:
-            logging.error(f"Error fetching article topics: {e}", exc_info=True)
-            return {}
-
     async def preprocess(
         self, inputs: dict[str, Any], headers: dict[str, str] = None
     ) -> dict[str, Any]:
@@ -424,44 +306,12 @@ class ReviseToneTaskGenerator(kserve.Model):
         else:
             wiki_id = f"{lang}wiki"
 
-        # Check article topics first to enable early exit (optimization)
-        article_topics = await self.get_article_topics(lang, page_id)
-        should_process = self.should_process_article(article_topics)
-
-        if lang == "test":
-            logging.info("Testwiki - overriding should_process to True for QA purposes")
-            should_process = True
-
         # Remove old cached predictions for this page before processing
         if self.use_cache and wiki_id and page_id:
             try:
                 self.cache.remove_from_cache(wiki_id=wiki_id, page_id=page_id)
             except Exception as e:
                 logging.error(f"Failed to remove old cache entries: {e}", exc_info=True)
-
-        # Early exit if article doesn't match topic criteria
-        # This avoids expensive MW API call and wikitext parsing
-        if not should_process:
-            logging.info(
-                f"Skipping content fetch for page_id={page_id} - "
-                f"article does not match topic criteria"
-            )
-            preprocessed = {
-                "paragraphs": [],
-                "page_id": page_id,
-                "page_title": page_title,
-                "wiki_id": wiki_id,
-                "revision_id": revision_id,
-                "lang": lang,
-                "article_topics": article_topics,
-                "should_process": False,
-            }
-
-            # Store the event if we're processing an event payload
-            if self.EVENT_KEY in inputs:
-                preprocessed[self.EVENT_KEY] = inputs[self.EVENT_KEY]
-
-            return preprocessed
 
         html = await self.get_page_html(
             lang=lang, page_title=page_title, revision_id=revision_id
@@ -479,18 +329,13 @@ class ReviseToneTaskGenerator(kserve.Model):
             "wiki_id": wiki_id,
             "revision_id": revision_id,
             "lang": lang,
-            "article_topics": article_topics,
-            "should_process": should_process,
         }
 
         # Store the event if we're processing an event payload
         if self.EVENT_KEY in inputs:
             preprocessed[self.EVENT_KEY] = inputs[self.EVENT_KEY]
 
-        logging.info(
-            f"Extracted {len(paragraphs)} paragraphs for page_id={page_id} - "
-            f"article matches topic criteria and will be processed"
-        )
+        logging.info(f"Extracted {len(paragraphs)} paragraphs for page_id={page_id}")
 
         return preprocessed
 
@@ -508,17 +353,8 @@ class ReviseToneTaskGenerator(kserve.Model):
         """
         logging.info("Running inference")
 
-        should_process = request.get("should_process", False)
         paragraphs = request.get("paragraphs", [])
         lang = request.get("lang", "en")
-
-        # Skip prediction if article doesn't match topic criteria
-        if not should_process:
-            logging.info("Skipping prediction - article does not match topic criteria")
-            return {
-                "predictions": [],
-                "request_data": request,
-            }
 
         if not paragraphs:
             logging.warning("No paragraphs to predict on")
@@ -646,8 +482,6 @@ class ReviseToneTaskGenerator(kserve.Model):
             "wiki_id": request_data.get("wiki_id"),
             "revision_id": request_data.get("revision_id"),
             "lang": request_data.get("lang"),
-            "article_topics": request_data.get("article_topics"),
-            "should_process": request_data.get("should_process"),
             "predictions": formatted_predictions,
         }
 
