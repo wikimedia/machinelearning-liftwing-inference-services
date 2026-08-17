@@ -1,6 +1,6 @@
 import sys
 from contextlib import contextmanager
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from kserve.errors import InvalidInput
@@ -46,6 +46,7 @@ sys.modules["vllm.entrypoints.pooling.scoring.protocol"] = MagicMock()
 sys.modules["vllm.entrypoints.chat_utils"] = MagicMock()
 sys.modules["vllm.outputs"] = MagicMock()
 sys.modules["vllm.reasoning"] = _make_mock_package("vllm.reasoning")
+sys.modules["vllm.sampling_params"] = MagicMock()
 
 from src.models.qwen36.model_server.model import Qwen36Model  # noqa: E402
 
@@ -1425,3 +1426,349 @@ class TestReasoningExtractionStreaming:
         assert final["usage"]["prompt_tokens"] == 3
         assert final["usage"]["completion_tokens"] == 3
         assert final["usage"]["total_tokens"] == 6
+
+
+class TestResolveStructuredOutputs:
+    """Tests for _resolve_structured_outputs."""
+
+    def test_absent_returns_none(self, model):
+        request = MagicMock(response_format=None)
+        assert model._resolve_structured_outputs(request) is None
+
+    def test_bare_magicmock_returns_none(self, model):
+        # A bare MagicMock auto-creates a truthy response_format; it must not
+        # be mistaken for a structured-output request.
+        assert model._resolve_structured_outputs(MagicMock()) is None
+
+    def test_text_returns_none(self, model):
+        request = MagicMock(response_format={"type": "text"})
+        assert model._resolve_structured_outputs(request) is None
+
+    def test_json_object(self, model):
+        from src.models.qwen36.model_server.model import StructuredOutputsParams
+
+        result = model._resolve_structured_outputs(
+            MagicMock(response_format={"type": "json_object"})
+        )
+        assert StructuredOutputsParams.call_args.kwargs == {"json_object": True}
+        assert result is StructuredOutputsParams.return_value
+
+    def test_json_schema_inline(self, model):
+        from src.models.qwen36.model_server.model import StructuredOutputsParams
+
+        schema = {"type": "object", "properties": {"answer": {"type": "integer"}}}
+        model._resolve_structured_outputs(
+            MagicMock(
+                response_format={
+                    "type": "json_schema",
+                    "json_schema": {"name": "s", "schema": schema},
+                }
+            )
+        )
+        assert StructuredOutputsParams.call_args.kwargs == {"json": schema}
+
+    def test_json_schema_strict_is_ignored(self, model):
+        from src.models.qwen36.model_server.model import StructuredOutputsParams
+
+        schema = {"type": "object"}
+        model._resolve_structured_outputs(
+            MagicMock(
+                response_format={
+                    "type": "json_schema",
+                    "json_schema": {"name": "s", "schema": schema, "strict": True},
+                }
+            )
+        )
+        assert StructuredOutputsParams.call_args.kwargs == {"json": schema}
+
+    def test_json_schema_missing_json_schema_raises(self, model):
+        with pytest.raises(InvalidInput, match="json_schema must be an object"):
+            model._resolve_structured_outputs(
+                MagicMock(response_format={"type": "json_schema"})
+            )
+
+    def test_json_schema_missing_schema_raises(self, model):
+        with pytest.raises(InvalidInput, match="schema is required"):
+            model._resolve_structured_outputs(
+                MagicMock(
+                    response_format={
+                        "type": "json_schema",
+                        "json_schema": {"name": "s"},
+                    }
+                )
+            )
+
+    def test_json_schema_schema_not_dict_raises(self, model):
+        with pytest.raises(InvalidInput, match="must be a JSON Schema object"):
+            model._resolve_structured_outputs(
+                MagicMock(
+                    response_format={
+                        "type": "json_schema",
+                        "json_schema": {"name": "s", "schema": "not-a-dict"},
+                    }
+                )
+            )
+
+    def test_unknown_type_raises(self, model):
+        with pytest.raises(InvalidInput, match="Unsupported response_format type"):
+            model._resolve_structured_outputs(
+                MagicMock(response_format={"type": "bogus"})
+            )
+
+    def test_response_format_pydantic_model_uses_alias(self, model):
+        from src.models.qwen36.model_server.model import StructuredOutputsParams
+
+        schema = {"type": "object"}
+        outer = MagicMock(spec=["model_dump"])
+        outer.model_dump.side_effect = lambda **kw: (
+            {
+                "type": "json_schema",
+                "json_schema": {"name": "s", "schema": schema},
+            }
+            if kw.get("by_alias")
+            else {
+                "type": "json_schema",
+                "json_schema": {"name": "s", "json_schema": schema},
+            }
+        )
+        model._resolve_structured_outputs(MagicMock(response_format=outer))
+        outer.model_dump.assert_called_once_with(by_alias=True)
+        assert StructuredOutputsParams.call_args.kwargs == {"json": schema}
+
+
+class TestBuildSamplingParamsStructuredOutputs:
+    """Tests for structured_outputs threading in _build_sampling_params_from_request."""
+
+    @staticmethod
+    def _request():
+        request = MagicMock()
+        request.max_tokens = None
+        request.temperature = None
+        request.top_p = None
+        request.top_k = None
+        request.presence_penalty = None
+        request.repetition_penalty = None
+        return request
+
+    def test_structured_outputs_passed_through(self, model):
+        from src.models.qwen36.model_server.model import SamplingParams
+
+        sentinel = MagicMock()
+        model._build_sampling_params_from_request(
+            self._request(), structured_outputs=sentinel
+        )
+        assert SamplingParams.call_args.kwargs["structured_outputs"] is sentinel
+
+    def test_structured_outputs_none_by_default(self, model):
+        from src.models.qwen36.model_server.model import SamplingParams
+
+        model._build_sampling_params_from_request(self._request())
+        assert SamplingParams.call_args.kwargs["structured_outputs"] is None
+
+
+class TestCreateCompletionStructuredOutputs:
+    """Tests for structured_outputs threading in create_completion."""
+
+    @staticmethod
+    async def _async_gen(items):
+        for item in items:
+            yield item
+
+    @staticmethod
+    def _request():
+        request = MagicMock()
+        request.prompt = "Hello"
+        request.max_tokens = None
+        request.temperature = None
+        request.top_p = None
+        request.top_k = None
+        request.presence_penalty = None
+        request.repetition_penalty = None
+        request.stream = False
+        request.request_id = None
+        request.model = "test-model"
+        return request
+
+    def _mock_output(self):
+        output = MagicMock()
+        output.index = 0
+        output.text = "Hello"
+        output.token_ids = [100, 200]
+        output.finish_reason = "stop"
+        request_output = MagicMock()
+        request_output.prompt_token_ids = [1, 2, 3]
+        request_output.outputs = [output]
+        return request_output
+
+    def test_threads_structured_outputs_to_sampling_params(self, model):
+        from src.models.qwen36.model_server.model import SamplingParams
+
+        model.model = MagicMock()
+        model.model.generate.return_value = self._async_gen([self._mock_output()])
+
+        sentinel = MagicMock()
+        import asyncio
+
+        asyncio.run(
+            model.create_completion(self._request(), structured_outputs=sentinel)
+        )
+        assert SamplingParams.call_args.kwargs["structured_outputs"] is sentinel
+
+    def test_valueerror_mapped_to_invalid_input(self, model):
+        async def _error_gen():
+            raise ValueError("unsupported schema feature")
+            yield  # pragma: no cover
+
+        model.model = MagicMock()
+        model.model.generate.return_value = _error_gen()
+
+        import asyncio
+
+        with pytest.raises(InvalidInput, match="Invalid structured output request"):
+            asyncio.run(
+                model.create_completion(self._request(), structured_outputs=MagicMock())
+            )
+
+
+class TestCreateChatCompletionStructuredOutputs:
+    """Tests that create_chat_completion resolves and threads structured outputs."""
+
+    @staticmethod
+    def _chat_request(stream):
+        request = MagicMock()
+        request.n = 1
+        request.stream = stream
+        request.tools = None
+        request.chat_template_kwargs = {}
+        request.thinking_token_budget = None
+        return request
+
+    def test_streaming_threads_structured_outputs(self, model):
+        import asyncio
+
+        import src.models.qwen36.model_server.model as model_module
+
+        sentinel = MagicMock()
+        request = self._chat_request(stream=True)
+
+        with patch.object(model, "_resolve_structured_outputs", return_value=sentinel):
+            with patch.object(
+                model, "apply_chat_template", return_value=MagicMock(prompt="t")
+            ):
+                with patch.object(
+                    model_module.OpenAIChatAdapterModel,
+                    "chat_completion_params_to_completion_params",
+                    return_value=_completion_request_mock(),
+                ):
+                    with patch.object(model, "_stream_chat_completion") as mock_stream:
+                        asyncio.run(model.create_chat_completion(request))
+
+        mock_stream.assert_called_once()
+        assert mock_stream.call_args.kwargs["structured_outputs"] is sentinel
+
+    def test_non_streaming_threads_structured_outputs(self, model):
+        import asyncio
+
+        import src.models.qwen36.model_server.model as model_module
+
+        sentinel = MagicMock()
+        request = self._chat_request(stream=False)
+
+        with patch.object(model, "_resolve_structured_outputs", return_value=sentinel):
+            with patch.object(
+                model, "apply_chat_template", return_value=MagicMock(prompt="t")
+            ):
+                with patch.object(
+                    model_module.OpenAIChatAdapterModel,
+                    "chat_completion_params_to_completion_params",
+                    return_value=_completion_request_mock(),
+                ):
+                    with _patched_chat_types(model_module):
+                        with patch.object(
+                            model, "create_completion", new=AsyncMock()
+                        ) as mock_cc:
+                            mock_cc.return_value = _FakeType(
+                                id="x",
+                                created=1,
+                                model="m",
+                                object="text_completion",
+                                choices=[
+                                    _FakeType(index=0, text="", finish_reason="stop")
+                                ],
+                                usage=_FakeType(),
+                            )
+                            with patch.object(
+                                model, "completion_to_chat_completion"
+                            ) as mock_c2c:
+                                mock_c2c.return_value = _FakeType(
+                                    choices=[
+                                        _FakeType(
+                                            message=_FakeType(
+                                                content=None, reasoning=None
+                                            )
+                                        )
+                                    ]
+                                )
+                                asyncio.run(model.create_chat_completion(request))
+
+        mock_cc.assert_awaited_once()
+        assert mock_cc.await_args.kwargs["structured_outputs"] is sentinel
+
+    def test_tools_with_structured_outputs_skips_tool_call_parsing(self, model):
+        import asyncio
+
+        import src.models.qwen36.model_server.model as model_module
+
+        model.tool_calling_enabled = True
+        request = self._chat_request(stream=False)
+        request.tools = [{"type": "function", "function": {}}]
+
+        # A Hermes tool call that WOULD parse if parse_tool_calls stayed True.
+        tool_text = '<tool_call>{"name": "x", "arguments": {}}</tool_call>'
+
+        completion = _FakeType(
+            id="x",
+            created=1,
+            model="m",
+            object="text_completion",
+            choices=[_FakeType(index=0, text=tool_text, finish_reason="stop")],
+            usage=_FakeType(),
+        )
+
+        with patch.object(
+            model, "_resolve_structured_outputs", return_value=MagicMock()
+        ):
+            with patch.object(
+                model, "apply_chat_template", return_value=MagicMock(prompt="t")
+            ):
+                with patch.object(
+                    model_module.OpenAIChatAdapterModel,
+                    "chat_completion_params_to_completion_params",
+                    return_value=_completion_request_mock(),
+                ):
+                    with _patched_chat_types(model_module):
+                        with patch.object(
+                            model, "create_completion", new=AsyncMock()
+                        ) as mock_cc:
+                            mock_cc.return_value = completion
+                            with patch.object(
+                                model, "completion_to_chat_completion"
+                            ) as mock_c2c:
+                                mock_c2c.return_value = _FakeType(
+                                    choices=[
+                                        _FakeType(
+                                            message=_FakeType(
+                                                content=None, reasoning=None
+                                            )
+                                        )
+                                    ]
+                                )
+                                with patch.object(
+                                    model, "_parse_hermes_tool_calls"
+                                ) as mock_parse:
+                                    result = asyncio.run(
+                                        model.create_chat_completion(request)
+                                    )
+
+        mock_parse.assert_not_called()
+        assert result.choices[0].message.content == tool_text

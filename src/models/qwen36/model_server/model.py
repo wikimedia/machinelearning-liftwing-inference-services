@@ -30,6 +30,7 @@ from vllm import RequestOutput, SamplingParams
 from vllm.engine.arg_utils import AsyncEngineArgs
 from vllm.engine.async_llm_engine import AsyncLLMEngine
 from vllm.reasoning import ReasoningParserManager
+from vllm.sampling_params import StructuredOutputsParams
 
 from python.type_utils import strtobool
 
@@ -167,6 +168,56 @@ class Qwen36Model(kserve.Model, OpenAIChatAdapterModel):
         except ValueError:
             raise InvalidInput("enable_thinking must be a boolean")
 
+    @staticmethod
+    def _resolve_structured_outputs(
+        request: ChatCompletionRequest,
+    ) -> StructuredOutputsParams | None:
+        """Resolve OpenAI ``response_format`` into vLLM structured outputs.
+
+        Returns None when no constraint is requested (field absent, or
+        ``{"type": "text"}``).  Maps ``json_schema`` to a JSON-schema
+        constraint and ``json_object`` to vLLM's valid-JSON flag.  ``strict``
+        is accepted and ignored: vLLM's json constraint always enforces the
+        schema exactly.  Raises InvalidInput for any other mode or a malformed
+        schema so callers get a 400 instead of a mid-generation failure.
+        """
+        response_format = getattr(request, "response_format", None)
+        if response_format is None:
+            return None
+        if not isinstance(response_format, dict) and hasattr(
+            response_format, "model_dump"
+        ):
+            # OpenAI's inner field is "schema"; pydantic reserves that name, so
+            # vLLM stores it under an alias. Dump by_alias to recover the wire
+            # key ("schema") instead of the internal field name ("json_schema").
+            response_format = response_format.model_dump(by_alias=True)
+        if not isinstance(response_format, dict):
+            return None
+
+        fmt_type = response_format.get("type", "text")
+        if fmt_type == "text":
+            return None
+        if fmt_type == "json_object":
+            return StructuredOutputsParams(json_object=True)
+        if fmt_type == "json_schema":
+            json_schema = response_format.get("json_schema")
+            if not isinstance(json_schema, dict) and hasattr(json_schema, "model_dump"):
+                json_schema = json_schema.model_dump(by_alias=True)
+            if not isinstance(json_schema, dict):
+                raise InvalidInput("response_format.json_schema must be an object")
+            schema = json_schema.get("schema", json_schema.get("json_schema"))
+            if schema is None:
+                raise InvalidInput("response_format.json_schema.schema is required")
+            if not isinstance(schema, dict):
+                raise InvalidInput(
+                    "response_format.json_schema.schema must be a JSON Schema object"
+                )
+            return StructuredOutputsParams(json=schema)
+        raise InvalidInput(
+            f"Unsupported response_format type: {fmt_type!r} "
+            "(supported: text, json_object, json_schema)"
+        )
+
     def _apply_chat_template(
         self, messages: list, enable_thinking: bool = True, tools: list | None = None
     ) -> str:
@@ -226,6 +277,7 @@ class Qwen36Model(kserve.Model, OpenAIChatAdapterModel):
         request: CompletionRequest,
         thinking: bool = True,
         thinking_token_budget: int | None = None,
+        structured_outputs: StructuredOutputsParams | None = None,
     ) -> SamplingParams:
         """Extract sampling parameters from a CompletionRequest with defaults.
 
@@ -252,6 +304,7 @@ class Qwen36Model(kserve.Model, OpenAIChatAdapterModel):
             ),
             repetition_penalty=request.repetition_penalty or 1.0,
             thinking_token_budget=thinking_token_budget,
+            structured_outputs=structured_outputs,
         )
 
     async def _collect_generator(self, results_generator) -> RequestOutput:
@@ -361,6 +414,7 @@ class Qwen36Model(kserve.Model, OpenAIChatAdapterModel):
         thinking_token_budget = self._validate_thinking_token_budget(
             getattr(request, "thinking_token_budget", None)
         )
+        structured_outputs = self._resolve_structured_outputs(request)
         if thinking_token_budget is not None and not enable_thinking:
             logging.warning(
                 "thinking_token_budget=%s received with thinking disabled; "
@@ -377,6 +431,13 @@ class Qwen36Model(kserve.Model, OpenAIChatAdapterModel):
 
         parse_tool_calls = self.tool_calling_enabled and bool(request.tools)
 
+        if structured_outputs is not None and parse_tool_calls:
+            logging.warning(
+                "response_format and tools both set; constrained output "
+                "cannot emit tool calls, tools will not be used"
+            )
+            parse_tool_calls = False
+
         if request.stream:
             return self._stream_chat_completion(
                 request,
@@ -385,6 +446,7 @@ class Qwen36Model(kserve.Model, OpenAIChatAdapterModel):
                 parse_tool_calls,
                 thinking=enable_thinking,
                 thinking_token_budget=thinking_token_budget,
+                structured_outputs=structured_outputs,
             )
 
         completion = await self.create_completion(
@@ -393,6 +455,7 @@ class Qwen36Model(kserve.Model, OpenAIChatAdapterModel):
             context,
             thinking=enable_thinking,
             thinking_token_budget=thinking_token_budget,
+            structured_outputs=structured_outputs,
         )
         assert isinstance(completion, Completion)
 
@@ -437,6 +500,7 @@ class Qwen36Model(kserve.Model, OpenAIChatAdapterModel):
         parse_tool_calls: bool = False,
         thinking: bool = True,
         thinking_token_budget: int | None = None,
+        structured_outputs: StructuredOutputsParams | None = None,
     ) -> AsyncGenerator[str, None]:
         """Stream chat completions as ``object:"chat.completion.chunk"`` chunks.
 
@@ -451,6 +515,7 @@ class Qwen36Model(kserve.Model, OpenAIChatAdapterModel):
             completion_request,
             thinking=thinking,
             thinking_token_budget=thinking_token_budget,
+            structured_outputs=structured_outputs,
         )
 
         try:
@@ -601,13 +666,17 @@ class Qwen36Model(kserve.Model, OpenAIChatAdapterModel):
         context: dict | None = None,
         thinking: bool = True,
         thinking_token_budget: int | None = None,
+        structured_outputs: StructuredOutputsParams | None = None,
     ) -> Union[AsyncGenerator[str, None], Completion]:
         prompt = request.prompt
         if isinstance(prompt, list):
             prompt = self.tokenizer.decode(prompt)
 
         sampling_params = self._build_sampling_params_from_request(
-            request, thinking=thinking, thinking_token_budget=thinking_token_budget
+            request,
+            thinking=thinking,
+            thinking_token_budget=thinking_token_budget,
+            structured_outputs=structured_outputs,
         )
         request_id = request.request_id or uuid.uuid4().hex
 
@@ -626,7 +695,12 @@ class Qwen36Model(kserve.Model, OpenAIChatAdapterModel):
                 results_generator, request_id, int(time.time()), request.model
             )
 
-        final_output = await self._collect_generator(results_generator)
+        try:
+            final_output = await self._collect_generator(results_generator)
+        except ValueError as e:
+            if structured_outputs is not None:
+                raise InvalidInput(f"Invalid structured output request: {e}") from e
+            raise
         return self._build_completion(
             final_output, request_id, int(time.time()), request.model
         )
