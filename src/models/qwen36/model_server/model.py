@@ -5,6 +5,7 @@ import re
 import time
 import uuid
 from collections.abc import AsyncGenerator
+from dataclasses import dataclass
 from typing import Any, Union
 
 import kserve
@@ -42,6 +43,24 @@ SAMPLING_DEFAULTS = {
     True: {"temperature": 1.0, "top_p": 0.95, "presence_penalty": 0.0},
     False: {"temperature": 0.7, "top_p": 0.8, "presence_penalty": 1.5},
 }
+
+
+@dataclass(frozen=True)
+class PerRequestOptions:
+    """Per-request options resolved once from a chat completions request.
+
+    Groups the threaded thinking / structured-output options so they travel
+    together instead of being passed as a growing list of positional args.
+    """
+
+    enable_thinking: bool = False
+    thinking_token_budget: int | None = None
+    structured_outputs: StructuredOutputsParams | None = None
+
+
+# The raw /openai/v1/completions endpoint keeps its historical thinking
+# default; chat completions resolves its own options per request.
+RAW_COMPLETIONS_DEFAULTS = PerRequestOptions(enable_thinking=True)
 
 
 class Qwen36Model(kserve.Model, OpenAIChatAdapterModel):
@@ -218,6 +237,21 @@ class Qwen36Model(kserve.Model, OpenAIChatAdapterModel):
             "(supported: text, json_object, json_schema)"
         )
 
+    def _resolve_request_options(
+        self, request: ChatCompletionRequest
+    ) -> PerRequestOptions:
+        """Resolve the per-request thinking / structured-output options once."""
+        enable_thinking = self._resolve_enable_thinking(request)
+        thinking_token_budget = self._validate_thinking_token_budget(
+            getattr(request, "thinking_token_budget", None)
+        )
+        structured_outputs = self._resolve_structured_outputs(request)
+        return PerRequestOptions(
+            enable_thinking=enable_thinking,
+            thinking_token_budget=thinking_token_budget,
+            structured_outputs=structured_outputs,
+        )
+
     def _apply_chat_template(
         self, messages: list, enable_thinking: bool = True, tools: list | None = None
     ) -> str:
@@ -275,19 +309,17 @@ class Qwen36Model(kserve.Model, OpenAIChatAdapterModel):
     def _build_sampling_params_from_request(
         self,
         request: CompletionRequest,
-        thinking: bool = True,
-        thinking_token_budget: int | None = None,
-        structured_outputs: StructuredOutputsParams | None = None,
+        options: PerRequestOptions,
     ) -> SamplingParams:
         """Extract sampling parameters from a CompletionRequest with defaults.
 
-        *thinking* selects the default temperature / top_p / presence_penalty
-        from SAMPLING_DEFAULTS.  The chat completions endpoint passes
-        ``False`` when thinking is off (the common case); the raw
-        /openai/v1/completions endpoint keeps its historical ``True``
+        ``options.enable_thinking`` selects the default temperature / top_p /
+        presence_penalty from SAMPLING_DEFAULTS.  The chat completions
+        endpoint passes ``False`` when thinking is off (the common case); the
+        raw /openai/v1/completions endpoint keeps its historical ``True``
         default because it has no chat-template concept.
         """
-        defaults = SAMPLING_DEFAULTS[thinking]
+        defaults = SAMPLING_DEFAULTS[options.enable_thinking]
         return SamplingParams(
             max_tokens=request.max_tokens or 32768,
             temperature=(
@@ -303,8 +335,8 @@ class Qwen36Model(kserve.Model, OpenAIChatAdapterModel):
                 else defaults["presence_penalty"]
             ),
             repetition_penalty=request.repetition_penalty or 1.0,
-            thinking_token_budget=thinking_token_budget,
-            structured_outputs=structured_outputs,
+            thinking_token_budget=options.thinking_token_budget,
+            structured_outputs=options.structured_outputs,
         )
 
     async def _collect_generator(self, results_generator) -> RequestOutput:
@@ -410,19 +442,17 @@ class Qwen36Model(kserve.Model, OpenAIChatAdapterModel):
         if request.n != 1:
             raise InvalidInput("n != 1 is not supported")
 
-        enable_thinking = self._resolve_enable_thinking(request)
-        thinking_token_budget = self._validate_thinking_token_budget(
-            getattr(request, "thinking_token_budget", None)
-        )
-        structured_outputs = self._resolve_structured_outputs(request)
-        if thinking_token_budget is not None and not enable_thinking:
+        options = self._resolve_request_options(request)
+        if options.thinking_token_budget is not None and not options.enable_thinking:
             logging.warning(
                 "thinking_token_budget=%s received with thinking disabled; "
                 "budget has no effect",
-                thinking_token_budget,
+                options.thinking_token_budget,
             )
 
-        chat_prompt = self.apply_chat_template(request, enable_thinking=enable_thinking)
+        chat_prompt = self.apply_chat_template(
+            request, enable_thinking=options.enable_thinking
+        )
         completion_request = (
             OpenAIChatAdapterModel.chat_completion_params_to_completion_params(
                 request, chat_prompt.prompt
@@ -431,7 +461,7 @@ class Qwen36Model(kserve.Model, OpenAIChatAdapterModel):
 
         parse_tool_calls = self.tool_calling_enabled and bool(request.tools)
 
-        if structured_outputs is not None and parse_tool_calls:
+        if options.structured_outputs is not None and parse_tool_calls:
             logging.warning(
                 "response_format and tools both set; constrained output "
                 "cannot emit tool calls, tools will not be used"
@@ -444,24 +474,20 @@ class Qwen36Model(kserve.Model, OpenAIChatAdapterModel):
                 chat_prompt,
                 completion_request,
                 parse_tool_calls,
-                thinking=enable_thinking,
-                thinking_token_budget=thinking_token_budget,
-                structured_outputs=structured_outputs,
+                options=options,
             )
 
         completion = await self.create_completion(
             completion_request,
             raw_request,
             context,
-            thinking=enable_thinking,
-            thinking_token_budget=thinking_token_budget,
-            structured_outputs=structured_outputs,
+            options=options,
         )
         assert isinstance(completion, Completion)
 
         text = completion.choices[0].text if completion.choices else ""
         reasoning_text = None
-        if enable_thinking:
+        if options.enable_thinking:
             reasoning_text, text = self.reasoning_parser.extract_reasoning(
                 text, request
             )
@@ -498,9 +524,8 @@ class Qwen36Model(kserve.Model, OpenAIChatAdapterModel):
         chat_prompt: ChatPrompt,
         completion_request: CompletionRequest,
         parse_tool_calls: bool = False,
-        thinking: bool = True,
-        thinking_token_budget: int | None = None,
-        structured_outputs: StructuredOutputsParams | None = None,
+        *,
+        options: PerRequestOptions,
     ) -> AsyncGenerator[str, None]:
         """Stream chat completions as ``object:"chat.completion.chunk"`` chunks.
 
@@ -513,9 +538,7 @@ class Qwen36Model(kserve.Model, OpenAIChatAdapterModel):
         request_id = completion_request.request_id or uuid.uuid4().hex
         sampling_params = self._build_sampling_params_from_request(
             completion_request,
-            thinking=thinking,
-            thinking_token_budget=thinking_token_budget,
-            structured_outputs=structured_outputs,
+            options,
         )
 
         try:
@@ -537,7 +560,7 @@ class Qwen36Model(kserve.Model, OpenAIChatAdapterModel):
         final_finish_reason: str | None = None
         final_completion_tokens = 0
 
-        parser = self.reasoning_parser if thinking else None
+        parser = self.reasoning_parser if options.enable_thinking else None
 
         try:
             async for request_output in results_generator:
@@ -664,20 +687,15 @@ class Qwen36Model(kserve.Model, OpenAIChatAdapterModel):
         request: CompletionRequest,
         raw_request=None,
         context: dict | None = None,
-        thinking: bool = True,
-        thinking_token_budget: int | None = None,
-        structured_outputs: StructuredOutputsParams | None = None,
+        options: PerRequestOptions | None = None,
     ) -> Union[AsyncGenerator[str, None], Completion]:
+        if options is None:
+            options = RAW_COMPLETIONS_DEFAULTS
         prompt = request.prompt
         if isinstance(prompt, list):
             prompt = self.tokenizer.decode(prompt)
 
-        sampling_params = self._build_sampling_params_from_request(
-            request,
-            thinking=thinking,
-            thinking_token_budget=thinking_token_budget,
-            structured_outputs=structured_outputs,
-        )
+        sampling_params = self._build_sampling_params_from_request(request, options)
         request_id = request.request_id or uuid.uuid4().hex
 
         try:
@@ -698,7 +716,7 @@ class Qwen36Model(kserve.Model, OpenAIChatAdapterModel):
         try:
             final_output = await self._collect_generator(results_generator)
         except ValueError as e:
-            if structured_outputs is not None:
+            if options.structured_outputs is not None:
                 raise InvalidInput(f"Invalid structured output request: {e}") from e
             raise
         return self._build_completion(

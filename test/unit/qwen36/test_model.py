@@ -48,7 +48,11 @@ sys.modules["vllm.outputs"] = MagicMock()
 sys.modules["vllm.reasoning"] = _make_mock_package("vllm.reasoning")
 sys.modules["vllm.sampling_params"] = MagicMock()
 
-from src.models.qwen36.model_server.model import Qwen36Model  # noqa: E402
+from src.models.qwen36.model_server.model import (  # noqa: E402
+    RAW_COMPLETIONS_DEFAULTS,
+    PerRequestOptions,
+    Qwen36Model,  # noqa: E402
+)
 
 
 class _FakeType:
@@ -418,7 +422,9 @@ class TestBuildSamplingParamsDefaultsByMode:
         request.presence_penalty = None
         request.repetition_penalty = None
 
-        model._build_sampling_params_from_request(request, thinking=False)
+        model._build_sampling_params_from_request(
+            request, options=PerRequestOptions(enable_thinking=False)
+        )
         kwargs = SamplingParams.call_args.kwargs
         assert kwargs["temperature"] == 0.7
         assert kwargs["top_p"] == 0.8
@@ -435,7 +441,9 @@ class TestBuildSamplingParamsDefaultsByMode:
         request.presence_penalty = None
         request.repetition_penalty = None
 
-        model._build_sampling_params_from_request(request, thinking=True)
+        model._build_sampling_params_from_request(
+            request, options=PerRequestOptions(enable_thinking=True)
+        )
         kwargs = SamplingParams.call_args.kwargs
         assert kwargs["temperature"] == 1.0
         assert kwargs["top_p"] == 0.95
@@ -452,7 +460,9 @@ class TestBuildSamplingParamsDefaultsByMode:
         request.presence_penalty = 0.2
         request.repetition_penalty = None
 
-        model._build_sampling_params_from_request(request, thinking=False)
+        model._build_sampling_params_from_request(
+            request, options=PerRequestOptions(enable_thinking=False)
+        )
         kwargs = SamplingParams.call_args.kwargs
         assert kwargs["temperature"] == 0.3
         assert kwargs["top_p"] == 0.5
@@ -469,7 +479,9 @@ class TestBuildSamplingParamsDefaultsByMode:
         request.presence_penalty = None
         request.repetition_penalty = None
 
-        model._build_sampling_params_from_request(request)
+        model._build_sampling_params_from_request(
+            request, options=RAW_COMPLETIONS_DEFAULTS
+        )
         kwargs = SamplingParams.call_args.kwargs
         assert kwargs["temperature"] == 1.0
 
@@ -485,7 +497,8 @@ class TestBuildSamplingParamsDefaultsByMode:
         request.repetition_penalty = None
 
         model._build_sampling_params_from_request(
-            request, thinking=True, thinking_token_budget=200
+            request,
+            options=PerRequestOptions(enable_thinking=True, thinking_token_budget=200),
         )
         assert SamplingParams.call_args.kwargs["thinking_token_budget"] == 200
 
@@ -500,8 +513,23 @@ class TestBuildSamplingParamsDefaultsByMode:
         request.presence_penalty = None
         request.repetition_penalty = None
 
-        model._build_sampling_params_from_request(request)
+        model._build_sampling_params_from_request(request, options=PerRequestOptions())
         assert SamplingParams.call_args.kwargs["thinking_token_budget"] is None
+
+
+class TestPerRequestOptions:
+    """Tests for the PerRequestOptions dataclass and its default constant."""
+
+    def test_dataclass_defaults(self):
+        options = PerRequestOptions()
+        assert options.enable_thinking is False
+        assert options.thinking_token_budget is None
+        assert options.structured_outputs is None
+
+    def test_raw_completions_defaults_keep_thinking(self):
+        assert RAW_COMPLETIONS_DEFAULTS.enable_thinking is True
+        assert RAW_COMPLETIONS_DEFAULTS.thinking_token_budget is None
+        assert RAW_COMPLETIONS_DEFAULTS.structured_outputs is None
 
 
 class TestApplyChatTemplate:
@@ -1285,7 +1313,7 @@ class TestReasoningExtractionStreaming:
                         request,
                         chat_prompt,
                         completion_request,
-                        thinking=thinking,
+                        options=PerRequestOptions(enable_thinking=thinking),
                     ):
                         chunks.append(chunk)
                     return chunks
@@ -1555,14 +1583,16 @@ class TestBuildSamplingParamsStructuredOutputs:
 
         sentinel = MagicMock()
         model._build_sampling_params_from_request(
-            self._request(), structured_outputs=sentinel
+            self._request(), options=PerRequestOptions(structured_outputs=sentinel)
         )
         assert SamplingParams.call_args.kwargs["structured_outputs"] is sentinel
 
     def test_structured_outputs_none_by_default(self, model):
         from src.models.qwen36.model_server.model import SamplingParams
 
-        model._build_sampling_params_from_request(self._request())
+        model._build_sampling_params_from_request(
+            self._request(), options=PerRequestOptions()
+        )
         assert SamplingParams.call_args.kwargs["structured_outputs"] is None
 
 
@@ -1610,7 +1640,9 @@ class TestCreateCompletionStructuredOutputs:
         import asyncio
 
         asyncio.run(
-            model.create_completion(self._request(), structured_outputs=sentinel)
+            model.create_completion(
+                self._request(), options=PerRequestOptions(structured_outputs=sentinel)
+            )
         )
         assert SamplingParams.call_args.kwargs["structured_outputs"] is sentinel
 
@@ -1626,7 +1658,10 @@ class TestCreateCompletionStructuredOutputs:
 
         with pytest.raises(InvalidInput, match="Invalid structured output request"):
             asyncio.run(
-                model.create_completion(self._request(), structured_outputs=MagicMock())
+                model.create_completion(
+                    self._request(),
+                    options=PerRequestOptions(structured_outputs=MagicMock()),
+                )
             )
 
 
@@ -1651,7 +1686,11 @@ class TestCreateChatCompletionStructuredOutputs:
         sentinel = MagicMock()
         request = self._chat_request(stream=True)
 
-        with patch.object(model, "_resolve_structured_outputs", return_value=sentinel):
+        with patch.object(
+            model,
+            "_resolve_request_options",
+            return_value=PerRequestOptions(structured_outputs=sentinel),
+        ):
             with patch.object(
                 model, "apply_chat_template", return_value=MagicMock(prompt="t")
             ):
@@ -1664,7 +1703,7 @@ class TestCreateChatCompletionStructuredOutputs:
                         asyncio.run(model.create_chat_completion(request))
 
         mock_stream.assert_called_once()
-        assert mock_stream.call_args.kwargs["structured_outputs"] is sentinel
+        assert mock_stream.call_args.kwargs["options"].structured_outputs is sentinel
 
     def test_non_streaming_threads_structured_outputs(self, model):
         import asyncio
@@ -1674,7 +1713,11 @@ class TestCreateChatCompletionStructuredOutputs:
         sentinel = MagicMock()
         request = self._chat_request(stream=False)
 
-        with patch.object(model, "_resolve_structured_outputs", return_value=sentinel):
+        with patch.object(
+            model,
+            "_resolve_request_options",
+            return_value=PerRequestOptions(structured_outputs=sentinel),
+        ):
             with patch.object(
                 model, "apply_chat_template", return_value=MagicMock(prompt="t")
             ):
@@ -1712,7 +1755,7 @@ class TestCreateChatCompletionStructuredOutputs:
                                 asyncio.run(model.create_chat_completion(request))
 
         mock_cc.assert_awaited_once()
-        assert mock_cc.await_args.kwargs["structured_outputs"] is sentinel
+        assert mock_cc.await_args.kwargs["options"].structured_outputs is sentinel
 
     def test_tools_with_structured_outputs_skips_tool_call_parsing(self, model):
         import asyncio
@@ -1736,7 +1779,9 @@ class TestCreateChatCompletionStructuredOutputs:
         )
 
         with patch.object(
-            model, "_resolve_structured_outputs", return_value=MagicMock()
+            model,
+            "_resolve_request_options",
+            return_value=PerRequestOptions(structured_outputs=MagicMock()),
         ):
             with patch.object(
                 model, "apply_chat_template", return_value=MagicMock(prompt="t")
