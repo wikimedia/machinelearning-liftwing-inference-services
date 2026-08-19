@@ -76,6 +76,23 @@ class _FakeType:
 
         return _json.dumps(_convert(self))
 
+    def model_dump(self, exclude_none=False):
+        """Serialize like pydantic's model_dump; exclude None when asked."""
+
+        def _convert(obj):
+            if isinstance(obj, _FakeType):
+                result = {}
+                for k, v in obj.__dict__.items():
+                    if exclude_none and v is None:
+                        continue
+                    result[k] = _convert(v)
+                return result
+            if isinstance(obj, list):
+                return [_convert(i) for i in obj]
+            return obj
+
+        return _convert(self)
+
 
 def _completion_request_mock(**overrides):
     """A completion-request mock with the attributes create_completion branches on.
@@ -196,6 +213,7 @@ class TestLoad:
 
             mock_get.assert_called_once_with("hermes")
             parser_cls.assert_called_once_with(m.tokenizer)
+            assert m.tool_parser_cls is parser_cls
             assert m.tool_parser is parser_instance
 
 
@@ -653,24 +671,6 @@ class TestApplyChatTemplate:
 
         kwargs = model.tokenizer.apply_chat_template.call_args.kwargs
         assert kwargs["enable_thinking"] is False
-
-
-class TestParseHermesToolCalls:
-    def test_none_returns_none(self, model):
-        assert model._parse_hermes_tool_calls(None) is None
-
-    def test_empty_string_returns_none(self, model):
-        assert model._parse_hermes_tool_calls("") is None
-
-    def test_valid_tool_call_parsed(self, model):
-        text = (
-            '<tool_call>\n{"name": "get_weather", "arguments": '
-            '{"city": "Kampala"}}\n</tool_call>'
-        )
-        result = model._parse_hermes_tool_calls(text)
-        assert result is not None
-        assert len(result) == 1
-        assert result[0]["function"]["name"] == "get_weather"
 
 
 class TestToolCallsToOpenai:
@@ -1242,8 +1242,8 @@ class TestReasoningExtractionNonStreaming:
         """Truncated mid-think output yields text=None and must not crash.
 
         Thinking + tools + a generation cut off before </think> makes the
-        reasoning parser return (reasoning, None). _parse_hermes_tool_calls
-        must then return None instead of running re.findall on None.
+        reasoning parser return (reasoning, None). The tool parser is then
+        skipped because there is no content text to parse.
         """
         model = model_with_parser
         model.tool_calling_enabled = True
@@ -1548,6 +1548,350 @@ class TestReasoningExtractionStreaming:
         assert final["usage"]["prompt_tokens"] == 3
         assert final["usage"]["completion_tokens"] == 3
         assert final["usage"]["total_tokens"] == 6
+
+
+class TestToolCallParsingStreaming:
+    """Tests for streamed tool calls routed through vLLM's streaming parser."""
+
+    @pytest.fixture
+    def model_with_tool_parser(self, model):
+        """Attach a stubbed tool-parser class to the model."""
+        model.tool_parser_cls = MagicMock()
+        model.reasoning_parser = None
+        return model
+
+    @staticmethod
+    def _make_tool_delta(content=None, tool_calls=None):
+        d = MagicMock()
+        d.content = content
+        d.tool_calls = tool_calls
+        return d
+
+    @staticmethod
+    def _make_reasoning_delta(reasoning=None, content=None):
+        d = MagicMock()
+        d.reasoning = reasoning
+        d.content = content
+        return d
+
+    @staticmethod
+    async def _async_gen(items):
+        for item in items:
+            yield item
+
+    @staticmethod
+    def _make_request_outputs(steps):
+        """Build outputs from a list of (text, token_ids, finished) tuples."""
+        outputs = []
+        for text, tokens, finished in steps:
+            out = MagicMock()
+            out.index = 0
+            out.text = text
+            out.token_ids = tokens
+            out.finish_reason = "stop" if finished else None
+            req = MagicMock()
+            req.prompt_token_ids = [1, 2, 3]
+            req.outputs = [out]
+            outputs.append(req)
+        return outputs
+
+    def _collect_stream(self, model, thinking=False, parse_tool_calls=True):
+        """Run _stream_chat_completion and return parsed data chunks."""
+        import asyncio
+        import json
+
+        import src.models.qwen36.model_server.model as model_module
+
+        with _patched_stream_types(model_module):
+            with patch.object(
+                model,
+                "_build_sampling_params_from_request",
+                return_value=MagicMock(),
+            ):
+                request = MagicMock()
+                request.model = "test-model"
+                chat_prompt = MagicMock()
+                chat_prompt.response_role = "assistant"
+                completion_request = MagicMock()
+                completion_request.request_id = None
+                completion_request.prompt = "test prompt"
+
+                async def _collect():
+                    chunks = []
+                    async for chunk in model._stream_chat_completion(
+                        request,
+                        chat_prompt,
+                        completion_request,
+                        parse_tool_calls,
+                        options=PerRequestOptions(enable_thinking=thinking),
+                    ):
+                        chunks.append(chunk)
+                    return chunks
+
+                chunks = asyncio.run(_collect())
+
+        return [
+            json.loads(c[len("data: ") :])
+            for c in chunks
+            if c.startswith("data: ") and "DONE" not in c
+        ]
+
+    def test_tool_call_streamed_as_delta_not_content(self, model_with_tool_parser):
+        model = model_with_tool_parser
+        tool_parser = MagicMock()
+        model.tool_parser_cls.return_value = tool_parser
+
+        tool_delta = _FakeType(
+            index=0,
+            id="call_abc12345",
+            type="function",
+            function=_FakeType(name="get_weather", arguments='{"city": "Kampala"}'),
+        )
+        tool_parser.extract_tool_calls_streaming.side_effect = [
+            None,  # <tool_call> tag boundary, suppressed
+            None,  # accumulating arguments, suppressed
+            self._make_tool_delta(content=None, tool_calls=[tool_delta]),
+        ]
+
+        steps = [
+            ("<tool_call>", [100], False),
+            ('<tool_call>{"name": "get_weather"', [100, 200], False),
+            (
+                '<tool_call>{"name": "get_weather", '
+                '"arguments": {"city": "Kampala"}}</tool_call>',
+                [100, 200, 300],
+                True,
+            ),
+        ]
+        model.model = MagicMock()
+        model.model.generate.return_value = self._async_gen(
+            self._make_request_outputs(steps)
+        )
+
+        data_chunks = self._collect_stream(model)
+
+        # Suppressed deltas collapse to one tool-call chunk plus the final
+        # chunk. No content chunk ever carried the raw tag text.
+        assert len(data_chunks) == 2
+        tool_chunk = data_chunks[0]
+        assert tool_chunk["choices"][0]["finish_reason"] is None
+        assert tool_chunk["choices"][0]["delta"]["tool_calls"] == [
+            {
+                "index": 0,
+                "id": "call_abc12345",
+                "type": "function",
+                "function": {
+                    "name": "get_weather",
+                    "arguments": '{"city": "Kampala"}',
+                },
+            }
+        ]
+        for chunk in data_chunks:
+            content = chunk["choices"][0]["delta"].get("content")
+            assert content is None or "<tool_call>" not in content
+
+        final = data_chunks[-1]
+        assert final["choices"][0]["finish_reason"] == "tool_calls"
+        assert final["usage"] is not None
+
+    def test_content_precedes_tool_call(self, model_with_tool_parser):
+        model = model_with_tool_parser
+        tool_parser = MagicMock()
+        model.tool_parser_cls.return_value = tool_parser
+
+        tool_delta = _FakeType(
+            index=0,
+            id="call_x",
+            type="function",
+            function=_FakeType(name="get_time", arguments='{"tz": "UTC"}'),
+        )
+        tool_parser.extract_tool_calls_streaming.side_effect = [
+            self._make_tool_delta(content="Let me check.\n"),
+            self._make_tool_delta(content=None, tool_calls=[tool_delta]),
+        ]
+
+        steps = [
+            ("Let me check.\n", [100], False),
+            (
+                'Let me check.\n<tool_call>{"name": "get_time", '
+                '"arguments": {"tz": "UTC"}}</tool_call>',
+                [100, 200],
+                True,
+            ),
+        ]
+        model.model = MagicMock()
+        model.model.generate.return_value = self._async_gen(
+            self._make_request_outputs(steps)
+        )
+
+        data_chunks = self._collect_stream(model)
+
+        assert data_chunks[0]["choices"][0]["delta"]["content"] == "Let me check.\n"
+        assert data_chunks[0]["choices"][0]["delta"].get("tool_calls") is None
+        tool_call = data_chunks[1]["choices"][0]["delta"]["tool_calls"][0]
+        assert tool_call["function"]["name"] == "get_time"
+        assert data_chunks[-1]["choices"][0]["finish_reason"] == "tool_calls"
+
+    def test_parser_none_on_finish_preserves_finish_reason(
+        self, model_with_tool_parser
+    ):
+        model = model_with_tool_parser
+        tool_parser = MagicMock()
+        model.tool_parser_cls.return_value = tool_parser
+
+        tool_parser.extract_tool_calls_streaming.side_effect = [
+            self._make_tool_delta(content="some text"),
+            None,  # trailing tag boundary on the final delta
+        ]
+
+        steps = [
+            ("some text", [100, 200], False),
+            ("some text</tool_call>", [100, 200, 300], True),
+        ]
+        model.model = MagicMock()
+        model.model.generate.return_value = self._async_gen(
+            self._make_request_outputs(steps)
+        )
+
+        data_chunks = self._collect_stream(model)
+
+        assert data_chunks[0]["choices"][0]["delta"]["content"] == "some text"
+        final = data_chunks[-1]
+        assert final["choices"][0]["finish_reason"] == "stop"
+        assert final["usage"]["prompt_tokens"] == 3
+        assert final["usage"]["completion_tokens"] == 3
+        assert final["usage"]["total_tokens"] == 6
+
+    def test_thinking_and_tools_routed_separately(self, model):
+        model.reasoning_parser = MagicMock()
+        model.tool_parser_cls = MagicMock()
+        tool_parser = MagicMock()
+        model.tool_parser_cls.return_value = tool_parser
+
+        model.reasoning_parser.extract_reasoning_streaming.side_effect = [
+            self._make_reasoning_delta(reasoning="think trace", content=None),
+            self._make_reasoning_delta(
+                reasoning=None,
+                content=(
+                    '<tool_call>{"name": "get_weather", '
+                    '"arguments": {"city": "Kampala"}}</tool_call>'
+                ),
+            ),
+        ]
+        tool_delta = _FakeType(
+            index=0,
+            id="call_x",
+            type="function",
+            function=_FakeType(name="get_weather", arguments='{"city": "Kampala"}'),
+        )
+        tool_parser.extract_tool_calls_streaming.side_effect = [
+            self._make_tool_delta(content=None, tool_calls=[tool_delta]),
+        ]
+
+        steps = [
+            ("<think>\nthink trace", [100], False),
+            (
+                "<think>\nthink trace</think>\n\n"
+                '<tool_call>{"name": "get_weather", '
+                '"arguments": {"city": "Kampala"}}</tool_call>',
+                [100, 200],
+                True,
+            ),
+        ]
+        model.model = MagicMock()
+        model.model.generate.return_value = self._async_gen(
+            self._make_request_outputs(steps)
+        )
+
+        data_chunks = self._collect_stream(model, thinking=True)
+
+        assert data_chunks[0]["choices"][0]["delta"]["reasoning"] == "think trace"
+        assert data_chunks[0]["choices"][0]["delta"]["content"] is None
+        tool_call = data_chunks[1]["choices"][0]["delta"]["tool_calls"][0]
+        assert tool_call["function"]["name"] == "get_weather"
+        assert data_chunks[-1]["choices"][0]["finish_reason"] == "tool_calls"
+
+    def test_suppressed_tool_delta_keeps_reasoning(self, model):
+        """A suppressed content head must not swallow a reasoning fragment.
+
+        When a delta spans </think>, the reasoning parser can return both a
+        reasoning tail and a content head. If the tool parser suppresses that
+        content head (a <tool_call> tag boundary), the reasoning fragment must
+        still be emitted as a reasoning-only chunk.
+        """
+        model.reasoning_parser = MagicMock()
+        model.tool_parser_cls = MagicMock()
+        tool_parser = MagicMock()
+        model.tool_parser_cls.return_value = tool_parser
+
+        model.reasoning_parser.extract_reasoning_streaming.side_effect = [
+            self._make_reasoning_delta(reasoning="tail", content="<tool_call>"),
+        ]
+        tool_parser.extract_tool_calls_streaming.side_effect = [None]
+
+        steps = [("tail<tool_call>", [100], True)]
+        model.model = MagicMock()
+        model.model.generate.return_value = self._async_gen(
+            self._make_request_outputs(steps)
+        )
+
+        data_chunks = self._collect_stream(model, thinking=True)
+
+        assert data_chunks[0]["choices"][0]["delta"]["reasoning"] == "tail"
+        assert data_chunks[0]["choices"][0]["delta"]["content"] is None
+        assert data_chunks[0]["choices"][0]["delta"].get("tool_calls") is None
+        assert data_chunks[-1]["choices"][0]["finish_reason"] == "stop"
+
+    def test_no_tool_emitted_streams_content_normally(self, model_with_tool_parser):
+        model = model_with_tool_parser
+        tool_parser = MagicMock()
+        model.tool_parser_cls.return_value = tool_parser
+
+        tool_parser.extract_tool_calls_streaming.side_effect = [
+            self._make_tool_delta(content="just a normal answer"),
+        ]
+
+        steps = [("just a normal answer", [100, 200], True)]
+        model.model = MagicMock()
+        model.model.generate.return_value = self._async_gen(
+            self._make_request_outputs(steps)
+        )
+
+        data_chunks = self._collect_stream(model)
+
+        assert (
+            data_chunks[0]["choices"][0]["delta"]["content"] == "just a normal answer"
+        )
+        assert data_chunks[0]["choices"][0]["delta"].get("tool_calls") is None
+        assert data_chunks[-1]["choices"][0]["finish_reason"] == "stop"
+
+    def test_fresh_parser_constructed_per_stream(self, model):
+        model.reasoning_parser = None
+        model.tool_parser_cls = MagicMock()
+        parser_instance = MagicMock()
+        parser_instance.extract_tool_calls_streaming.return_value = (
+            self._make_tool_delta(content="answer")
+        )
+        model.tool_parser_cls.return_value = parser_instance
+
+        def _run_once():
+            model.model = MagicMock()
+            out = MagicMock()
+            out.index = 0
+            out.text = "answer"
+            out.token_ids = [100]
+            out.finish_reason = "stop"
+            req = MagicMock()
+            req.prompt_token_ids = [1, 2, 3]
+            req.outputs = [out]
+            model.model.generate.return_value = self._async_gen([req])
+            return self._collect_stream(model)
+
+        _run_once()
+        _run_once()
+
+        assert model.tool_parser_cls.call_count == 2
+        model.tool_parser_cls.assert_called_with(model.tokenizer)
 
 
 class TestResolveStructuredOutputs:

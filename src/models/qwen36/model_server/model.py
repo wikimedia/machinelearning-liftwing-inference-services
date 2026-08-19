@@ -1,7 +1,6 @@
 import json
 import logging
 import os
-import re
 import time
 import uuid
 from collections.abc import AsyncGenerator
@@ -114,6 +113,7 @@ class Qwen36Model(kserve.Model, OpenAIChatAdapterModel):
         self.tokenizer = None
         self.reasoning_parser = None
         self.tool_parser = None
+        self.tool_parser_cls = None
         self.ready = False
 
     def load(self) -> None:
@@ -150,9 +150,10 @@ class Qwen36Model(kserve.Model, OpenAIChatAdapterModel):
             self.reasoning_parser = ReasoningParserManager.get_reasoning_parser(
                 "qwen3"
             )(self.tokenizer)
-            self.tool_parser = ToolParserManager.get_tool_parser(self.tool_call_parser)(
-                self.tokenizer
+            self.tool_parser_cls = ToolParserManager.get_tool_parser(
+                self.tool_call_parser
             )
+            self.tool_parser = self.tool_parser_cls(self.tokenizer)
             self.ready = True
             logging.info("Model loaded successfully!")
         except Exception as e:
@@ -396,44 +397,6 @@ class Qwen36Model(kserve.Model, OpenAIChatAdapterModel):
         )
 
     @staticmethod
-    def _parse_hermes_tool_calls(text: str | None) -> list[dict[str, Any]] | None:
-        """Parse Hermes-format tool calls from generated text.
-
-        ``text`` may be None when thinking output was truncated before the
-        think block closed (the reasoning parser then returns all output as
-        reasoning and no content).
-
-        Qwen3 outputs tool calls wrapped in <tool_call>...</tool_call> tags,
-        with a JSON object containing ``name`` and ``arguments``.
-        """
-        if not text:
-            return None
-        pattern = r"<tool_call>\s*(.*?)\s*</tool_call>"
-        matches = re.findall(pattern, text, re.DOTALL)
-        if not matches:
-            return None
-        tool_calls: list[dict[str, Any]] = []
-        for match in matches:
-            try:
-                data = json.loads(match)
-            except json.JSONDecodeError:
-                continue
-            args = data.get("arguments", {})
-            if isinstance(args, dict):
-                args = json.dumps(args, ensure_ascii=False)
-            tool_calls.append(
-                {
-                    "id": f"call_{uuid.uuid4().hex[:8]}",
-                    "type": "function",
-                    "function": {
-                        "name": data.get("name", ""),
-                        "arguments": args,
-                    },
-                }
-            )
-        return tool_calls if tool_calls else None
-
-    @staticmethod
     def _tool_calls_to_openai(tool_calls: list[Any]) -> list[dict[str, Any]]:
         """Map vLLM ToolCall objects to OpenAI tool_calls dicts.
 
@@ -562,11 +525,13 @@ class Qwen36Model(kserve.Model, OpenAIChatAdapterModel):
     ) -> AsyncGenerator[str, None]:
         """Stream chat completions as ``object:"chat.completion.chunk"`` chunks.
 
-        Per-token chunks carry ``delta.content`` with ``finish_reason=None``.
-        Exactly one final chunk is emitted after the stream ends: either a
-        ``delta.tool_calls`` chunk (finish_reason "tool_calls") or an empty
-        delta with the engine's finish_reason.  Usage is sent on the final
-        chunk only, matching OpenAI streaming semantics.
+        Per-token chunks carry ``delta.content`` (and ``delta.reasoning`` when
+        thinking is enabled) with ``finish_reason=None``.  With tool calling
+        active, streamed tool calls arrive as incremental ``delta.tool_calls``
+        deltas and the raw tool-call tag text is never emitted as content.
+        Exactly one final chunk follows the stream, carrying usage and either
+        finish_reason "tool_calls" (when a tool call was streamed) or the
+        engine's finish_reason.
         """
         request_id = completion_request.request_id or uuid.uuid4().hex
         sampling_params = self._build_sampling_params_from_request(
@@ -584,27 +549,36 @@ class Qwen36Model(kserve.Model, OpenAIChatAdapterModel):
             logging.error("Error during streaming inference: %s", e)
             raise InferenceError(f"Error during streaming inference: {e}")
 
-        full_content = ""
         previous_texts: list[str] = [""]
         previous_num_tokens: list[int] = [0]
         previous_token_ids: list[list[int]] = [[]]
+        previous_contents: list[str] = [""]
         created_time = int(time.time())
         prompt_tokens = 0
         final_finish_reason: str | None = None
         final_completion_tokens = 0
+        tools_streamed = False
 
         parser = self.reasoning_parser if options.enable_thinking else None
+        # The streaming tool parsers keep per-request state, so a fresh
+        # instance is built per stream; the shared self.tool_parser is only
+        # safe for the stateless non-streaming call.
+        tool_parser = self.tool_parser_cls(self.tokenizer) if parse_tool_calls else None
 
         try:
             async for request_output in results_generator:
                 for output in request_output.outputs:
                     i = output.index
+                    track_tokens = parser is not None or tool_parser is not None
                     self._ensure_output_capacity(
                         previous_texts,
                         previous_num_tokens,
                         i,
                         previous_token_ids=(
-                            previous_token_ids if parser is not None else None
+                            previous_token_ids if track_tokens else None
+                        ),
+                        previous_contents=(
+                            previous_contents if tool_parser is not None else None
                         ),
                     )
 
@@ -621,10 +595,15 @@ class Qwen36Model(kserve.Model, OpenAIChatAdapterModel):
                         final_finish_reason = output.finish_reason
                         final_completion_tokens = len(curr_tokens)
 
-                    if parser is not None:
+                    if track_tokens:
                         prev_tokens = previous_token_ids[i]
                         delta_tokens = curr_tokens[len(prev_tokens) :]
                         previous_token_ids[i] = list(curr_tokens)
+                    else:
+                        prev_tokens = None
+                        delta_tokens = None
+
+                    if parser is not None:
                         d = parser.extract_reasoning_streaming(
                             prev_text,
                             curr_text,
@@ -637,12 +616,49 @@ class Qwen36Model(kserve.Model, OpenAIChatAdapterModel):
                             continue
                         delta_reasoning = d.reasoning
                         delta_content = d.content
-                        if delta_content:
-                            full_content += delta_content
                     else:
-                        full_content += delta_text
                         delta_reasoning = None
                         delta_content = delta_text
+
+                    tool_calls = None
+                    if tool_parser is not None and delta_content:
+                        prev_content = previous_contents[i]
+                        curr_content = prev_content + delta_content
+                        previous_contents[i] = curr_content
+                        d = tool_parser.extract_tool_calls_streaming(
+                            prev_content,
+                            curr_content,
+                            delta_content,
+                            prev_tokens,
+                            curr_tokens,
+                            delta_tokens,
+                            request,
+                        )
+                        if d is None:
+                            # The tool parser suppresses only the content side;
+                            # a delta that still carries a reasoning fragment
+                            # (e.g. spanning the </think> boundary) must emit
+                            # as a reasoning-only chunk rather than be dropped.
+                            if not delta_reasoning:
+                                continue
+                            delta_content = None
+                        else:
+                            delta_content = d.content
+                            raw_tool_calls = d.tool_calls
+                            if raw_tool_calls:
+                                tools_streamed = True
+                                tool_calls = [
+                                    tc.model_dump(exclude_none=True)
+                                    for tc in raw_tool_calls
+                                ]
+
+                    delta_kwargs: dict[str, Any] = {
+                        "role": chat_prompt.response_role,
+                        "content": delta_content,
+                        "reasoning": delta_reasoning,
+                    }
+                    if tool_calls:
+                        delta_kwargs["tool_calls"] = tool_calls
 
                     chunk = ChatCompletionChunk(
                         id=request_id,
@@ -652,11 +668,7 @@ class Qwen36Model(kserve.Model, OpenAIChatAdapterModel):
                         choices=[
                             ChunkChoice(
                                 index=i,
-                                delta=ChoiceDelta(
-                                    role=chat_prompt.response_role,
-                                    content=delta_content,
-                                    reasoning=delta_reasoning,
-                                ),
+                                delta=ChoiceDelta(**delta_kwargs),
                                 finish_reason=None,
                             )
                         ],
@@ -669,48 +681,27 @@ class Qwen36Model(kserve.Model, OpenAIChatAdapterModel):
             yield "data: [DONE]\n\n"
             return
 
-        # Emit exactly one final chunk with finish_reason and usage.
-        tool_calls = (
-            self._parse_hermes_tool_calls(full_content) if parse_tool_calls else None
-        )
         usage = UsageInfo(
             prompt_tokens=prompt_tokens,
             completion_tokens=final_completion_tokens,
             total_tokens=prompt_tokens + final_completion_tokens,
         )
-
-        if tool_calls:
-            for idx, tc in enumerate(tool_calls):
-                tc["index"] = idx
-            final_chunk = ChatCompletionChunk(
-                id=request_id,
-                created=created_time,
-                model=request.model,
-                object="chat.completion.chunk",
-                choices=[
-                    ChunkChoice(
-                        index=0,
-                        delta=ChoiceDelta(tool_calls=tool_calls),
-                        finish_reason="tool_calls",
-                    )
-                ],
-                usage=usage,
-            )
-        else:
-            final_chunk = ChatCompletionChunk(
-                id=request_id,
-                created=created_time,
-                model=request.model,
-                object="chat.completion.chunk",
-                choices=[
-                    ChunkChoice(
-                        index=0,
-                        delta=ChoiceDelta(),
-                        finish_reason=final_finish_reason,
-                    )
-                ],
-                usage=usage,
-            )
+        final_chunk = ChatCompletionChunk(
+            id=request_id,
+            created=created_time,
+            model=request.model,
+            object="chat.completion.chunk",
+            choices=[
+                ChunkChoice(
+                    index=0,
+                    delta=ChoiceDelta(),
+                    finish_reason=(
+                        "tool_calls" if tools_streamed else final_finish_reason
+                    ),
+                )
+            ],
+            usage=usage,
+        )
 
         yield f"data: {final_chunk.model_dump_json()}\n\n"
         yield "data: [DONE]\n\n"
@@ -762,6 +753,7 @@ class Qwen36Model(kserve.Model, OpenAIChatAdapterModel):
         previous_num_tokens: list,
         index: int,
         previous_token_ids: list | None = None,
+        previous_contents: list | None = None,
     ) -> None:
         """Grow tracking lists to accommodate output at the given index.
 
@@ -774,6 +766,8 @@ class Qwen36Model(kserve.Model, OpenAIChatAdapterModel):
             previous_num_tokens.extend([0] * gap)
             if previous_token_ids is not None:
                 previous_token_ids.extend([[]] * gap)
+            if previous_contents is not None:
+                previous_contents.extend([""] * gap)
 
     @staticmethod
     def _build_stream_chunk(
