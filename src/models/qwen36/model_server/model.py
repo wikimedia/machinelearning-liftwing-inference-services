@@ -5,7 +5,7 @@ import re
 import time
 import uuid
 from collections.abc import AsyncGenerator
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any, Union
 
 import kserve
@@ -32,6 +32,7 @@ from vllm.engine.arg_utils import AsyncEngineArgs
 from vllm.engine.async_llm_engine import AsyncLLMEngine
 from vllm.reasoning import ReasoningParserManager
 from vllm.sampling_params import StructuredOutputsParams
+from vllm.tool_parsers import ToolParserManager
 
 from python.type_utils import strtobool
 
@@ -56,6 +57,9 @@ class PerRequestOptions:
     enable_thinking: bool = False
     thinking_token_budget: int | None = None
     structured_outputs: StructuredOutputsParams | None = None
+    # Derived (not client-sent): set to False when tool calls are active so
+    # the tool-call special tokens survive decoding for the parser.
+    skip_special_tokens: bool | None = None
 
 
 # The raw /openai/v1/completions endpoint keeps its historical thinking
@@ -84,6 +88,7 @@ class Qwen36Model(kserve.Model, OpenAIChatAdapterModel):
         enforce_eager: bool = False,
         disable_log_stats: bool = False,
         tool_calling_enabled: bool = False,
+        tool_call_parser: str = "hermes",
     ) -> None:
         super().__init__(name)
         self.name = name
@@ -104,9 +109,11 @@ class Qwen36Model(kserve.Model, OpenAIChatAdapterModel):
         self.enforce_eager = enforce_eager
         self.disable_log_stats = disable_log_stats
         self.tool_calling_enabled = tool_calling_enabled
+        self.tool_call_parser = tool_call_parser
         self.model = None
         self.tokenizer = None
         self.reasoning_parser = None
+        self.tool_parser = None
         self.ready = False
 
     def load(self) -> None:
@@ -143,6 +150,9 @@ class Qwen36Model(kserve.Model, OpenAIChatAdapterModel):
             self.reasoning_parser = ReasoningParserManager.get_reasoning_parser(
                 "qwen3"
             )(self.tokenizer)
+            self.tool_parser = ToolParserManager.get_tool_parser(self.tool_call_parser)(
+                self.tokenizer
+            )
             self.ready = True
             logging.info("Model loaded successfully!")
         except Exception as e:
@@ -318,9 +328,14 @@ class Qwen36Model(kserve.Model, OpenAIChatAdapterModel):
         endpoint passes ``False`` when thinking is off (the common case); the
         raw /openai/v1/completions endpoint keeps its historical ``True``
         default because it has no chat-template concept.
+
+        ``options.skip_special_tokens`` is passed through only when it is not
+        None; tool-calling chat requests set it to False so the model's
+        tool-call special tokens are preserved in the decoded text for the
+        parser.
         """
         defaults = SAMPLING_DEFAULTS[options.enable_thinking]
-        return SamplingParams(
+        params: dict[str, Any] = dict(
             max_tokens=request.max_tokens or 32768,
             temperature=(
                 request.temperature
@@ -338,6 +353,9 @@ class Qwen36Model(kserve.Model, OpenAIChatAdapterModel):
             thinking_token_budget=options.thinking_token_budget,
             structured_outputs=options.structured_outputs,
         )
+        if options.skip_special_tokens is not None:
+            params["skip_special_tokens"] = options.skip_special_tokens
+        return SamplingParams(**params)
 
     async def _collect_generator(self, results_generator) -> RequestOutput:
         """Consume the async generator and return the final RequestOutput."""
@@ -416,22 +434,27 @@ class Qwen36Model(kserve.Model, OpenAIChatAdapterModel):
         return tool_calls if tool_calls else None
 
     @staticmethod
-    def _build_chat_message_with_tool_calls(
-        text: str, tool_calls: list[dict[str, Any]]
-    ) -> ChatMessage:
-        """Build a ChatMessage that has tool_calls instead of the raw text content.
+    def _tool_calls_to_openai(tool_calls: list[Any]) -> list[dict[str, Any]]:
+        """Map vLLM ToolCall objects to OpenAI tool_calls dicts.
 
-        Strips the <tool_call> blocks from the content so only the
-        non-tool-call text (if any) shows as the message content.
+        vLLM's parsers return ToolCall objects whose ``function`` carries the
+        name and a JSON-string ``arguments``. The ``id`` may already be minted
+        by the parser; fall back to generating one when absent.
         """
-        clean_text = re.sub(
-            r"<tool_call>.*?</tool_call>", "", text, flags=re.DOTALL
-        ).strip()
-        return ChatMessage(
-            role="assistant",
-            content=clean_text or None,
-            tool_calls=tool_calls,
-        )
+        converted: list[dict[str, Any]] = []
+        for tc in tool_calls:
+            fn = tc.function
+            converted.append(
+                {
+                    "id": getattr(tc, "id", None) or f"call_{uuid.uuid4().hex[:8]}",
+                    "type": getattr(tc, "type", "function"),
+                    "function": {
+                        "name": fn.name,
+                        "arguments": fn.arguments,
+                    },
+                }
+            )
+        return converted
 
     async def create_chat_completion(
         self,
@@ -468,6 +491,11 @@ class Qwen36Model(kserve.Model, OpenAIChatAdapterModel):
             )
             parse_tool_calls = False
 
+        if parse_tool_calls:
+            # Tool-call tags are special tokens in some tokenizers and would
+            # be stripped from the decoded output before the parser sees them.
+            options = replace(options, skip_special_tokens=False)
+
         if request.stream:
             return self._stream_chat_completion(
                 request,
@@ -491,25 +519,30 @@ class Qwen36Model(kserve.Model, OpenAIChatAdapterModel):
             reasoning_text, text = self.reasoning_parser.extract_reasoning(
                 text, request
             )
-        tool_calls = self._parse_hermes_tool_calls(text) if parse_tool_calls else None
 
-        if tool_calls:
-            message = self._build_chat_message_with_tool_calls(text, tool_calls)
-            message.reasoning = reasoning_text
-            return ChatCompletion(
-                id=completion.id,
-                created=completion.created,
-                model=completion.model,
-                object="chat.completion",
-                choices=[
-                    ChatCompletionChoice(
-                        index=0,
-                        message=message,
-                        finish_reason="tool_calls",
-                    )
-                ],
-                usage=completion.usage,
-            )
+        if parse_tool_calls and text:
+            tool_call_info = self.tool_parser.extract_tool_calls(text, request)
+            if tool_call_info.tools_called:
+                message = ChatMessage(
+                    role="assistant",
+                    content=tool_call_info.content,
+                    tool_calls=self._tool_calls_to_openai(tool_call_info.tool_calls),
+                )
+                message.reasoning = reasoning_text
+                return ChatCompletion(
+                    id=completion.id,
+                    created=completion.created,
+                    model=completion.model,
+                    object="chat.completion",
+                    choices=[
+                        ChatCompletionChoice(
+                            index=0,
+                            message=message,
+                            finish_reason="tool_calls",
+                        )
+                    ],
+                    usage=completion.usage,
+                )
 
         chat_completion = self.completion_to_chat_completion(
             completion, chat_prompt.response_role
@@ -908,6 +941,7 @@ if __name__ == "__main__":
     enforce_eager = strtobool(os.environ.get("ENFORCE_EAGER", "False"))
     disable_log_stats = strtobool(os.environ.get("DISABLE_LOG_STATS", "False"))
     tool_calling_enabled = strtobool(os.environ.get("TOOL_CALLING_ENABLED", "False"))
+    tool_call_parser = os.environ.get("TOOL_CALL_PARSER", "hermes")
 
     model = Qwen36Model(
         name=model_name,
@@ -928,6 +962,7 @@ if __name__ == "__main__":
         enforce_eager=enforce_eager,
         disable_log_stats=disable_log_stats,
         tool_calling_enabled=tool_calling_enabled,
+        tool_call_parser=tool_call_parser,
     )
 
     model.load()

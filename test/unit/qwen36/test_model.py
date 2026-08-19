@@ -47,6 +47,7 @@ sys.modules["vllm.entrypoints.chat_utils"] = MagicMock()
 sys.modules["vllm.outputs"] = MagicMock()
 sys.modules["vllm.reasoning"] = _make_mock_package("vllm.reasoning")
 sys.modules["vllm.sampling_params"] = MagicMock()
+sys.modules["vllm.tool_parsers"] = _make_mock_package("vllm.tool_parsers")
 
 from src.models.qwen36.model_server.model import (  # noqa: E402
     RAW_COMPLETIONS_DEFAULTS,
@@ -177,6 +178,25 @@ class TestLoad:
             mock_get.assert_called_once_with("qwen3")
             parser_cls.assert_called_once_with(m.tokenizer)
             assert m.reasoning_parser is parser_instance
+
+    def test_tool_parser_initialized_with_tokenizer(self):
+        import src.models.qwen36.model_server.model as model_module
+
+        parser_cls = MagicMock()
+        parser_instance = MagicMock()
+        parser_cls.return_value = parser_instance
+
+        with patch.object(
+            model_module.ToolParserManager,
+            "get_tool_parser",
+            return_value=parser_cls,
+        ) as mock_get:
+            m = self._make_model()
+            m.load()
+
+            mock_get.assert_called_once_with("hermes")
+            parser_cls.assert_called_once_with(m.tokenizer)
+            assert m.tool_parser is parser_instance
 
 
 class TestBuildMessages:
@@ -516,6 +536,36 @@ class TestBuildSamplingParamsDefaultsByMode:
         model._build_sampling_params_from_request(request, options=PerRequestOptions())
         assert SamplingParams.call_args.kwargs["thinking_token_budget"] is None
 
+    def test_skip_special_tokens_passed_through_when_set(self, model):
+        from src.models.qwen36.model_server.model import SamplingParams
+
+        request = MagicMock()
+        request.max_tokens = None
+        request.temperature = None
+        request.top_p = None
+        request.top_k = None
+        request.presence_penalty = None
+        request.repetition_penalty = None
+
+        model._build_sampling_params_from_request(
+            request, options=PerRequestOptions(skip_special_tokens=False)
+        )
+        assert SamplingParams.call_args.kwargs["skip_special_tokens"] is False
+
+    def test_skip_special_tokens_absent_by_default(self, model):
+        from src.models.qwen36.model_server.model import SamplingParams
+
+        request = MagicMock()
+        request.max_tokens = None
+        request.temperature = None
+        request.top_p = None
+        request.top_k = None
+        request.presence_penalty = None
+        request.repetition_penalty = None
+
+        model._build_sampling_params_from_request(request, options=PerRequestOptions())
+        assert "skip_special_tokens" not in SamplingParams.call_args.kwargs
+
 
 class TestPerRequestOptions:
     """Tests for the PerRequestOptions dataclass and its default constant."""
@@ -525,11 +575,13 @@ class TestPerRequestOptions:
         assert options.enable_thinking is False
         assert options.thinking_token_budget is None
         assert options.structured_outputs is None
+        assert options.skip_special_tokens is None
 
     def test_raw_completions_defaults_keep_thinking(self):
         assert RAW_COMPLETIONS_DEFAULTS.enable_thinking is True
         assert RAW_COMPLETIONS_DEFAULTS.thinking_token_budget is None
         assert RAW_COMPLETIONS_DEFAULTS.structured_outputs is None
+        assert RAW_COMPLETIONS_DEFAULTS.skip_special_tokens is None
 
 
 class TestApplyChatTemplate:
@@ -619,6 +671,36 @@ class TestParseHermesToolCalls:
         assert result is not None
         assert len(result) == 1
         assert result[0]["function"]["name"] == "get_weather"
+
+
+class TestToolCallsToOpenai:
+    def test_maps_function_name_and_arguments(self, model):
+        tool_call = _FakeType(
+            id="call_abc12345",
+            type="function",
+            function=_FakeType(name="get_weather", arguments='{"city": "Kampala"}'),
+        )
+        result = model._tool_calls_to_openai([tool_call])
+        assert result == [
+            {
+                "id": "call_abc12345",
+                "type": "function",
+                "function": {
+                    "name": "get_weather",
+                    "arguments": '{"city": "Kampala"}',
+                },
+            }
+        ]
+
+    def test_generates_id_when_absent(self, model):
+        tool_call = _FakeType(
+            function=_FakeType(name="get_time", arguments='{"timezone": "UTC"}')
+        )
+        result = model._tool_calls_to_openai([tool_call])
+        assert len(result) == 1
+        assert result[0]["id"].startswith("call_")
+        assert result[0]["type"] == "function"
+        assert result[0]["function"]["name"] == "get_time"
 
 
 class TestCreateCompletion:
@@ -1098,6 +1180,18 @@ class TestReasoningExtractionNonStreaming:
     def test_tool_calls_with_reasoning(self, model_with_parser):
         model = model_with_parser
         model.tool_calling_enabled = True
+
+        tool_call = _FakeType(
+            id="call_abc12345",
+            type="function",
+            function=_FakeType(name="get_weather", arguments='{"city": "Kampala"}'),
+        )
+        model.tool_parser = MagicMock()
+        model.tool_parser.extract_tool_calls.return_value = _FakeType(
+            tools_called=True,
+            tool_calls=[tool_call],
+            content="\n\n",
+        )
 
         text_with_tools = '<tool_call>\n{"name": "get_weather", "arguments": {"city": "Kampala"}}\n</tool_call>'
         # The real parser keeps tool-call text on the content side (probe
@@ -1763,10 +1857,11 @@ class TestCreateChatCompletionStructuredOutputs:
         import src.models.qwen36.model_server.model as model_module
 
         model.tool_calling_enabled = True
+        model.tool_parser = MagicMock()
         request = self._chat_request(stream=False)
         request.tools = [{"type": "function", "function": {}}]
 
-        # A Hermes tool call that WOULD parse if parse_tool_calls stayed True.
+        # A tool call that WOULD parse if parse_tool_calls stayed True.
         tool_text = '<tool_call>{"name": "x", "arguments": {}}</tool_call>'
 
         completion = _FakeType(
@@ -1808,12 +1903,191 @@ class TestCreateChatCompletionStructuredOutputs:
                                         )
                                     ]
                                 )
-                                with patch.object(
-                                    model, "_parse_hermes_tool_calls"
-                                ) as mock_parse:
-                                    result = asyncio.run(
-                                        model.create_chat_completion(request)
-                                    )
+                                result = asyncio.run(
+                                    model.create_chat_completion(request)
+                                )
 
-        mock_parse.assert_not_called()
+        model.tool_parser.extract_tool_calls.assert_not_called()
         assert result.choices[0].message.content == tool_text
+
+
+class TestChatCompletionToolCallParsing:
+    """Tests for non-streaming tool-call parsing via vLLM's tool parser."""
+
+    @staticmethod
+    def _chat_request():
+        request = MagicMock()
+        request.n = 1
+        request.stream = False
+        request.tools = [{"type": "function", "function": {}}]
+        request.chat_template_kwargs = {}
+        request.thinking_token_budget = None
+        request.response_format = None
+        return request
+
+    @staticmethod
+    def _completion(text):
+        return _FakeType(
+            id="x",
+            created=1,
+            model="m",
+            object="text_completion",
+            choices=[_FakeType(index=0, text=text, finish_reason="stop")],
+            usage=_FakeType(),
+        )
+
+    def test_tool_calls_routed_to_openai_message(self, model):
+        import asyncio
+
+        import src.models.qwen36.model_server.model as model_module
+
+        model.tool_calling_enabled = True
+        tool_call = _FakeType(
+            id="call_abc12345",
+            type="function",
+            function=_FakeType(name="get_weather", arguments='{"city": "Kampala"}'),
+        )
+        model.tool_parser = MagicMock()
+        model.tool_parser.extract_tool_calls.return_value = _FakeType(
+            tools_called=True,
+            tool_calls=[tool_call],
+            content="Let me check.\n",
+        )
+
+        request = self._chat_request()
+        completion = self._completion(
+            '<tool_call>\n{"name": "get_weather", '
+            '"arguments": {"city": "Kampala"}}\n</tool_call>'
+        )
+
+        with patch.object(
+            model, "_resolve_request_options", return_value=PerRequestOptions()
+        ):
+            with patch.object(
+                model, "apply_chat_template", return_value=MagicMock(prompt="t")
+            ):
+                with patch.object(
+                    model_module.OpenAIChatAdapterModel,
+                    "chat_completion_params_to_completion_params",
+                    return_value=_completion_request_mock(),
+                ):
+                    with _patched_chat_types(model_module):
+                        with patch.object(
+                            model, "create_completion", new=AsyncMock()
+                        ) as mock_cc:
+                            mock_cc.return_value = completion
+                            result = asyncio.run(model.create_chat_completion(request))
+
+        model.tool_parser.extract_tool_calls.assert_called_once()
+        call_args = model.tool_parser.extract_tool_calls.call_args.args
+        assert call_args[0] == completion.choices[0].text
+        assert call_args[1] is request
+        assert mock_cc.await_args.kwargs["options"].skip_special_tokens is False
+
+        msg = result.choices[0].message
+        assert msg.tool_calls == [
+            {
+                "id": "call_abc12345",
+                "type": "function",
+                "function": {
+                    "name": "get_weather",
+                    "arguments": '{"city": "Kampala"}',
+                },
+            }
+        ]
+        assert msg.content == "Let me check.\n"
+        assert result.choices[0].finish_reason == "tool_calls"
+
+    def test_no_tool_calls_falls_back_to_normal_completion(self, model):
+        import asyncio
+
+        import src.models.qwen36.model_server.model as model_module
+
+        model.tool_calling_enabled = True
+        model.tool_parser = MagicMock()
+        model.tool_parser.extract_tool_calls.return_value = _FakeType(
+            tools_called=False,
+            tool_calls=[],
+            content=None,
+        )
+
+        request = self._chat_request()
+        completion = self._completion("just a normal answer")
+
+        with patch.object(
+            model, "_resolve_request_options", return_value=PerRequestOptions()
+        ):
+            with patch.object(
+                model, "apply_chat_template", return_value=MagicMock(prompt="t")
+            ):
+                with patch.object(
+                    model_module.OpenAIChatAdapterModel,
+                    "chat_completion_params_to_completion_params",
+                    return_value=_completion_request_mock(),
+                ):
+                    with _patched_chat_types(model_module):
+                        with patch.object(
+                            model, "create_completion", new=AsyncMock()
+                        ) as mock_cc:
+                            mock_cc.return_value = completion
+                            with patch.object(
+                                model, "completion_to_chat_completion"
+                            ) as mock_c2c:
+                                mock_c2c.return_value = _FakeType(
+                                    choices=[
+                                        _FakeType(
+                                            message=_FakeType(
+                                                content=None, reasoning=None
+                                            )
+                                        )
+                                    ]
+                                )
+                                result = asyncio.run(
+                                    model.create_chat_completion(request)
+                                )
+
+        assert getattr(result.choices[0].message, "tool_calls", None) is None
+        assert result.choices[0].message.content == "just a normal answer"
+        assert mock_cc.await_args.kwargs["options"].skip_special_tokens is False
+
+    def test_no_tools_leaves_skip_special_tokens_unset(self, model):
+        import asyncio
+
+        import src.models.qwen36.model_server.model as model_module
+
+        model.tool_calling_enabled = True
+        request = self._chat_request()
+        request.tools = None
+        completion = self._completion("plain answer")
+
+        with patch.object(
+            model, "_resolve_request_options", return_value=PerRequestOptions()
+        ):
+            with patch.object(
+                model, "apply_chat_template", return_value=MagicMock(prompt="t")
+            ):
+                with patch.object(
+                    model_module.OpenAIChatAdapterModel,
+                    "chat_completion_params_to_completion_params",
+                    return_value=_completion_request_mock(),
+                ):
+                    with _patched_chat_types(model_module):
+                        with patch.object(
+                            model, "create_completion", new=AsyncMock()
+                        ) as mock_cc:
+                            mock_cc.return_value = completion
+                            with patch.object(
+                                model, "completion_to_chat_completion"
+                            ) as mock_c2c:
+                                mock_c2c.return_value = _FakeType(
+                                    choices=[
+                                        _FakeType(
+                                            message=_FakeType(
+                                                content=None, reasoning=None
+                                            )
+                                        )
+                                    ]
+                                )
+                                asyncio.run(model.create_chat_completion(request))
+
+        assert mock_cc.await_args.kwargs["options"].skip_special_tokens is None
