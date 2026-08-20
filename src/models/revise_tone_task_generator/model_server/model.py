@@ -28,7 +28,19 @@ from python.preprocess_utils import (
 
 logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
 
-SUPPORTED_LANG_CODE = ("en", "fr", "ar", "pt", "test")
+SUPPORTED_LANG_CODE = (
+    "en",
+    "fr",
+    "ar",
+    "pt",
+    "es",
+    "ru",
+    "ja",
+    "nl",
+    "zh",
+    "de",
+    "test",
+)
 
 # Model constants
 BATCH_SIZE = 200  # Batch size for the model pipeline
