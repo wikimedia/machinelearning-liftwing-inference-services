@@ -250,6 +250,23 @@ class Qwen36Model(kserve.Model, OpenAIChatAdapterModel):
             "(supported: text, json_object, json_schema)"
         )
 
+    @staticmethod
+    def _resolve_tool_choice(request: ChatCompletionRequest) -> str:
+        """Resolve tool_choice; only "auto" and "none" are supported.
+
+        "required" and named-function forcing are rejected until they can
+        be implemented properly (named forcing maps to structured outputs).
+        """
+        tool_choice = getattr(request, "tool_choice", None)
+        if tool_choice is None or tool_choice == "auto":
+            return "auto"
+        if tool_choice == "none":
+            return "none"
+        raise InvalidInput(
+            'tool_choice must be "auto" or "none"; "required" and named '
+            "functions are not supported"
+        )
+
     def _resolve_request_options(
         self, request: ChatCompletionRequest
     ) -> PerRequestOptions:
@@ -293,11 +310,14 @@ class Qwen36Model(kserve.Model, OpenAIChatAdapterModel):
             )
 
     def apply_chat_template(
-        self, request: ChatCompletionRequest, enable_thinking: bool = False
+        self,
+        request: ChatCompletionRequest,
+        enable_thinking: bool = False,
+        tool_choice: str = "auto",
     ) -> ChatPrompt:
         messages = [dict(msg) for msg in request.messages]
         tools = None
-        if request.tools:
+        if request.tools and tool_choice != "none":
             if self.tool_calling_enabled:
                 tools = [
                     tool.model_dump() if hasattr(tool, "model_dump") else tool
@@ -308,9 +328,6 @@ class Qwen36Model(kserve.Model, OpenAIChatAdapterModel):
                     "Request included tools but tool calling is disabled "
                     "(TOOL_CALLING_ENABLED); ignoring them."
                 )
-        # NOTE: tool_choice is ignored — "none" and forced-function behave
-        # like "auto".  The Qwen3 chat template renders all supplied tools
-        # into the system prompt and the model decides whether to call one.
         # TODO: pass through arbitrary chat_template_kwargs instead of only
         # enable_thinking, so that preserve_thinking (27B) and future
         # template kwargs are honoured without per-field plumbing.
@@ -430,6 +447,8 @@ class Qwen36Model(kserve.Model, OpenAIChatAdapterModel):
         if request.n != 1:
             raise InvalidInput("n != 1 is not supported")
 
+        tool_choice = self._resolve_tool_choice(request)
+
         options = self._resolve_request_options(request)
         if options.thinking_token_budget is not None and not options.enable_thinking:
             logging.warning(
@@ -439,7 +458,9 @@ class Qwen36Model(kserve.Model, OpenAIChatAdapterModel):
             )
 
         chat_prompt = self.apply_chat_template(
-            request, enable_thinking=options.enable_thinking
+            request,
+            enable_thinking=options.enable_thinking,
+            tool_choice=tool_choice,
         )
         completion_request = (
             OpenAIChatAdapterModel.chat_completion_params_to_completion_params(
@@ -447,7 +468,9 @@ class Qwen36Model(kserve.Model, OpenAIChatAdapterModel):
             )
         )
 
-        parse_tool_calls = self.tool_calling_enabled and bool(request.tools)
+        parse_tool_calls = (
+            self.tool_calling_enabled and bool(request.tools) and tool_choice != "none"
+        )
 
         if options.structured_outputs is not None and parse_tool_calls:
             logging.warning(

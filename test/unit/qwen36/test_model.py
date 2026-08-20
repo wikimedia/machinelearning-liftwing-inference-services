@@ -669,6 +669,39 @@ class TestApplyChatTemplate:
         kwargs = model.tokenizer.apply_chat_template.call_args.kwargs
         assert kwargs["enable_thinking"] is False
 
+    def test_tool_choice_auto_renders_tools(self, model):
+        model.tool_calling_enabled = True
+        request = MagicMock()
+        request.tools = [{"type": "function", "function": {}}]
+        request.messages = [MagicMock(role="user", content="Hi")]
+
+        model.apply_chat_template(request, tool_choice="auto")
+
+        kwargs = model.tokenizer.apply_chat_template.call_args.kwargs
+        assert kwargs["tools"] == [{"type": "function", "function": {}}]
+
+    def test_tool_choice_none_does_not_render_tools(self, model):
+        model.tool_calling_enabled = True
+        request = MagicMock()
+        request.tools = [{"type": "function", "function": {}}]
+        request.messages = [MagicMock(role="user", content="Hi")]
+
+        model.apply_chat_template(request, tool_choice="none")
+
+        kwargs = model.tokenizer.apply_chat_template.call_args.kwargs
+        assert "tools" not in kwargs
+
+    def test_tool_choice_none_without_tools_is_noop(self, model):
+        model.tool_calling_enabled = False
+        request = MagicMock()
+        request.tools = None
+        request.messages = [MagicMock(role="user", content="Hi")]
+
+        model.apply_chat_template(request, tool_choice="none")
+
+        kwargs = model.tokenizer.apply_chat_template.call_args.kwargs
+        assert "tools" not in kwargs
+
 
 class TestToolCallsToOpenai:
     def test_maps_function_name_and_arguments(self, model):
@@ -1038,6 +1071,7 @@ class TestReasoningExtractionNonStreaming:
         request.n = 1
         request.stream = False
         request.tools = tools
+        request.tool_choice = None
         request.chat_template_kwargs = {"enable_thinking": True} if thinking else {}
         return request
 
@@ -2000,6 +2034,28 @@ class TestResolveStructuredOutputs:
         assert StructuredOutputsParams.call_args.kwargs == {"json": schema}
 
 
+class TestResolveToolChoice:
+    """Tests for _resolve_tool_choice."""
+
+    def test_absent_returns_auto(self, model):
+        assert model._resolve_tool_choice(MagicMock(tool_choice=None)) == "auto"
+
+    def test_auto_returns_auto(self, model):
+        assert model._resolve_tool_choice(MagicMock(tool_choice="auto")) == "auto"
+
+    def test_none_returns_none(self, model):
+        assert model._resolve_tool_choice(MagicMock(tool_choice="none")) == "none"
+
+    def test_required_raises(self, model):
+        with pytest.raises(InvalidInput, match='tool_choice must be "auto" or "none"'):
+            model._resolve_tool_choice(MagicMock(tool_choice="required"))
+
+    def test_named_function_raises(self, model):
+        named = _FakeType(type="function", function=_FakeType(name="get_weather"))
+        with pytest.raises(InvalidInput, match="named functions are not supported"):
+            model._resolve_tool_choice(MagicMock(tool_choice=named))
+
+
 class TestBuildSamplingParamsStructuredOutputs:
     """Tests for structured_outputs threading in _build_sampling_params_from_request."""
 
@@ -2110,6 +2166,7 @@ class TestCreateChatCompletionStructuredOutputs:
         request.n = 1
         request.stream = stream
         request.tools = None
+        request.tool_choice = None
         request.chat_template_kwargs = {}
         request.thinking_token_budget = None
         return request
@@ -2263,6 +2320,7 @@ class TestChatCompletionToolCallParsing:
         request.n = 1
         request.stream = False
         request.tools = [{"type": "function", "function": {}}]
+        request.tool_choice = None
         request.chat_template_kwargs = {}
         request.thinking_token_budget = None
         request.response_format = None
@@ -2437,3 +2495,150 @@ class TestChatCompletionToolCallParsing:
                                 asyncio.run(model.create_chat_completion(request))
 
         assert mock_cc.await_args.kwargs["options"].skip_special_tokens is None
+
+    def test_tool_choice_none_skips_tool_parsing(self, model):
+        import asyncio
+
+        import src.models.qwen36.model_server.model as model_module
+
+        model.tool_calling_enabled = True
+        model.tool_parser_cls = MagicMock()
+        request = self._chat_request()
+        request.tool_choice = "none"
+        completion = self._completion("just an answer")
+
+        with patch.object(
+            model, "_resolve_request_options", return_value=PerRequestOptions()
+        ):
+            with patch.object(
+                model, "apply_chat_template", return_value=MagicMock(prompt="t")
+            ):
+                with patch.object(
+                    model_module.OpenAIChatAdapterModel,
+                    "chat_completion_params_to_completion_params",
+                    return_value=_completion_request_mock(),
+                ):
+                    with _patched_chat_types(model_module):
+                        with patch.object(
+                            model, "create_completion", new=AsyncMock()
+                        ) as mock_cc:
+                            mock_cc.return_value = completion
+                            with patch.object(
+                                model, "completion_to_chat_completion"
+                            ) as mock_c2c:
+                                mock_c2c.return_value = _FakeType(
+                                    choices=[
+                                        _FakeType(
+                                            message=_FakeType(
+                                                content=None, reasoning=None
+                                            )
+                                        )
+                                    ]
+                                )
+                                result = asyncio.run(
+                                    model.create_chat_completion(request)
+                                )
+
+        model.tool_parser_cls.assert_not_called()
+        assert mock_cc.await_args.kwargs["options"].skip_special_tokens is None
+        assert result.choices[0].message.content == "just an answer"
+
+    def test_tool_choice_auto_parses_tools(self, model):
+        import asyncio
+
+        import src.models.qwen36.model_server.model as model_module
+
+        model.tool_calling_enabled = True
+        tool_parser = MagicMock()
+        model.tool_parser_cls = MagicMock(return_value=tool_parser)
+        tool_call = _FakeType(
+            id="call_abc12345",
+            type="function",
+            function=_FakeType(name="get_weather", arguments='{"city": "Kampala"}'),
+        )
+        tool_parser.extract_tool_calls.return_value = _FakeType(
+            tools_called=True,
+            tool_calls=[tool_call],
+            content="Let me check.\n",
+        )
+
+        request = self._chat_request()
+        request.tool_choice = "auto"
+        completion = self._completion(
+            '<tool_call>\n{"name": "get_weather", '
+            '"arguments": {"city": "Kampala"}}\n</tool_call>'
+        )
+
+        with patch.object(
+            model, "_resolve_request_options", return_value=PerRequestOptions()
+        ):
+            with patch.object(
+                model, "apply_chat_template", return_value=MagicMock(prompt="t")
+            ):
+                with patch.object(
+                    model_module.OpenAIChatAdapterModel,
+                    "chat_completion_params_to_completion_params",
+                    return_value=_completion_request_mock(),
+                ):
+                    with _patched_chat_types(model_module):
+                        with patch.object(
+                            model, "create_completion", new=AsyncMock()
+                        ) as mock_cc:
+                            mock_cc.return_value = completion
+                            result = asyncio.run(model.create_chat_completion(request))
+
+        tool_parser.extract_tool_calls.assert_called_once()
+        assert mock_cc.await_args.kwargs["options"].skip_special_tokens is False
+        assert result.choices[0].finish_reason == "tool_calls"
+
+    def test_tool_choice_none_with_schema_no_warning(self, model):
+        import asyncio
+
+        import src.models.qwen36.model_server.model as model_module
+
+        model.tool_calling_enabled = True
+        model.tool_parser_cls = MagicMock()
+        request = self._chat_request()
+        request.tool_choice = "none"
+        completion = self._completion("just an answer")
+
+        with patch.object(
+            model,
+            "_resolve_request_options",
+            return_value=PerRequestOptions(structured_outputs=MagicMock()),
+        ):
+            with patch.object(
+                model, "apply_chat_template", return_value=MagicMock(prompt="t")
+            ):
+                with patch.object(
+                    model_module.OpenAIChatAdapterModel,
+                    "chat_completion_params_to_completion_params",
+                    return_value=_completion_request_mock(),
+                ):
+                    with _patched_chat_types(model_module):
+                        with patch.object(
+                            model, "create_completion", new=AsyncMock()
+                        ) as mock_cc:
+                            mock_cc.return_value = completion
+                            with patch.object(
+                                model, "completion_to_chat_completion"
+                            ) as mock_c2c:
+                                mock_c2c.return_value = _FakeType(
+                                    choices=[
+                                        _FakeType(
+                                            message=_FakeType(
+                                                content=None, reasoning=None
+                                            )
+                                        )
+                                    ]
+                                )
+                                with patch.object(
+                                    model_module.logging, "warning"
+                                ) as mock_warning:
+                                    result = asyncio.run(
+                                        model.create_chat_completion(request)
+                                    )
+
+        mock_warning.assert_not_called()
+        model.tool_parser_cls.assert_not_called()
+        assert result.choices[0].message.content == "just an answer"
