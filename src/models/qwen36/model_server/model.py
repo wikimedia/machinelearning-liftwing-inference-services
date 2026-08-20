@@ -112,7 +112,6 @@ class Qwen36Model(kserve.Model, OpenAIChatAdapterModel):
         self.model = None
         self.tokenizer = None
         self.reasoning_parser = None
-        self.tool_parser = None
         self.tool_parser_cls = None
         self.ready = False
 
@@ -153,7 +152,10 @@ class Qwen36Model(kserve.Model, OpenAIChatAdapterModel):
             self.tool_parser_cls = ToolParserManager.get_tool_parser(
                 self.tool_call_parser
             )
-            self.tool_parser = self.tool_parser_cls(self.tokenizer)
+            # Construct one instance and discard it: fail fast at startup if
+            # the parser is incompatible with this tokenizer. Serving paths
+            # build fresh instances per request.
+            self.tool_parser_cls(self.tokenizer)
             self.ready = True
             logging.info("Model loaded successfully!")
         except Exception as e:
@@ -484,7 +486,8 @@ class Qwen36Model(kserve.Model, OpenAIChatAdapterModel):
             )
 
         if parse_tool_calls and text:
-            tool_call_info = self.tool_parser.extract_tool_calls(text, request)
+            tool_parser = self.tool_parser_cls(self.tokenizer)
+            tool_call_info = tool_parser.extract_tool_calls(text, request)
             if tool_call_info.tools_called:
                 message = ChatMessage(
                     role="assistant",
@@ -560,9 +563,6 @@ class Qwen36Model(kserve.Model, OpenAIChatAdapterModel):
         tools_streamed = False
 
         parser = self.reasoning_parser if options.enable_thinking else None
-        # The streaming tool parsers keep per-request state, so a fresh
-        # instance is built per stream; the shared self.tool_parser is only
-        # safe for the stateless non-streaming call.
         tool_parser = self.tool_parser_cls(self.tokenizer) if parse_tool_calls else None
 
         try:

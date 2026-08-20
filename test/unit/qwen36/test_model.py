@@ -196,12 +196,10 @@ class TestLoad:
             parser_cls.assert_called_once_with(m.tokenizer)
             assert m.reasoning_parser is parser_instance
 
-    def test_tool_parser_initialized_with_tokenizer(self):
+    def test_tool_parser_smoke_constructed_at_load(self):
         import src.models.qwen36.model_server.model as model_module
 
         parser_cls = MagicMock()
-        parser_instance = MagicMock()
-        parser_cls.return_value = parser_instance
 
         with patch.object(
             model_module.ToolParserManager,
@@ -212,9 +210,8 @@ class TestLoad:
             m.load()
 
             mock_get.assert_called_once_with("hermes")
-            parser_cls.assert_called_once_with(m.tokenizer)
             assert m.tool_parser_cls is parser_cls
-            assert m.tool_parser is parser_instance
+            parser_cls.assert_called_once_with(m.tokenizer)
 
 
 class TestBuildMessages:
@@ -1186,8 +1183,9 @@ class TestReasoningExtractionNonStreaming:
             type="function",
             function=_FakeType(name="get_weather", arguments='{"city": "Kampala"}'),
         )
-        model.tool_parser = MagicMock()
-        model.tool_parser.extract_tool_calls.return_value = _FakeType(
+        tool_parser = MagicMock()
+        model.tool_parser_cls = MagicMock(return_value=tool_parser)
+        tool_parser.extract_tool_calls.return_value = _FakeType(
             tools_called=True,
             tool_calls=[tool_call],
             content="\n\n",
@@ -2201,7 +2199,8 @@ class TestCreateChatCompletionStructuredOutputs:
         import src.models.qwen36.model_server.model as model_module
 
         model.tool_calling_enabled = True
-        model.tool_parser = MagicMock()
+        tool_parser = MagicMock()
+        model.tool_parser_cls = MagicMock(return_value=tool_parser)
         request = self._chat_request(stream=False)
         request.tools = [{"type": "function", "function": {}}]
 
@@ -2251,7 +2250,7 @@ class TestCreateChatCompletionStructuredOutputs:
                                     model.create_chat_completion(request)
                                 )
 
-        model.tool_parser.extract_tool_calls.assert_not_called()
+        tool_parser.extract_tool_calls.assert_not_called()
         assert result.choices[0].message.content == tool_text
 
 
@@ -2291,8 +2290,9 @@ class TestChatCompletionToolCallParsing:
             type="function",
             function=_FakeType(name="get_weather", arguments='{"city": "Kampala"}'),
         )
-        model.tool_parser = MagicMock()
-        model.tool_parser.extract_tool_calls.return_value = _FakeType(
+        tool_parser = MagicMock()
+        model.tool_parser_cls = MagicMock(return_value=tool_parser)
+        tool_parser.extract_tool_calls.return_value = _FakeType(
             tools_called=True,
             tool_calls=[tool_call],
             content="Let me check.\n",
@@ -2322,8 +2322,9 @@ class TestChatCompletionToolCallParsing:
                             mock_cc.return_value = completion
                             result = asyncio.run(model.create_chat_completion(request))
 
-        model.tool_parser.extract_tool_calls.assert_called_once()
-        call_args = model.tool_parser.extract_tool_calls.call_args.args
+        tool_parser.extract_tool_calls.assert_called_once()
+        model.tool_parser_cls.assert_called_once_with(model.tokenizer)
+        call_args = tool_parser.extract_tool_calls.call_args.args
         assert call_args[0] == completion.choices[0].text
         assert call_args[1] is request
         assert mock_cc.await_args.kwargs["options"].skip_special_tokens is False
@@ -2348,8 +2349,9 @@ class TestChatCompletionToolCallParsing:
         import src.models.qwen36.model_server.model as model_module
 
         model.tool_calling_enabled = True
-        model.tool_parser = MagicMock()
-        model.tool_parser.extract_tool_calls.return_value = _FakeType(
+        tool_parser = MagicMock()
+        model.tool_parser_cls = MagicMock(return_value=tool_parser)
+        tool_parser.extract_tool_calls.return_value = _FakeType(
             tools_called=False,
             tool_calls=[],
             content=None,
