@@ -4,7 +4,7 @@ acewiki	ace
 adywiki	ady
 afwiki	af
 akwiki	ak
-alswiki	gsw
+alswiki	als
 altwiki	alt
 amiwiki	ami
 amwiki	am
@@ -27,7 +27,7 @@ azbwiki	azb
 azwiki	az
 banwiki	ban
 barwiki	bar
-bat_smgwiki	sgs
+bat_smgwiki	bat-smg
 bawiki	ba
 bbcwiki	bbc
 bclwiki	bcl
@@ -42,6 +42,7 @@ bjnwiki	bjn
 blkwiki	blk
 bmwiki	bm
 bnwiki	bn
+bolwiki	bol
 bowiki	bo
 bpywiki	bpy
 brwiki	br
@@ -90,7 +91,7 @@ extwiki	ext
 fatwiki	fat
 fawiki	fa
 ffwiki	ff
-fiu_vrowiki	vro
+fiu_vrowiki	fiu-vro
 fiwiki	fi
 fjwiki	fj
 fonwiki	fon
@@ -142,6 +143,7 @@ ikwiki	ik
 ilowiki	ilo
 inhwiki	inh
 iowiki	io
+isvwiki	isv
 iswiki	is
 itwiki	it
 iuwiki	iu
@@ -151,6 +153,8 @@ jbowiki	jbo
 jvwiki	jv
 kaawiki	kaa
 kabwiki	kab
+kaiwiki	kai
+kajwiki	kaj
 kawiki	ka
 kbdwiki	kbd
 kbpwiki	kbp
@@ -193,6 +197,7 @@ ltgwiki	ltg
 ltwiki	lt
 lvwiki	lv
 madwiki	mad
+magwiki	mag
 maiwiki	mai
 map_bmswiki	map-bms
 mdfwiki	mdf
@@ -233,6 +238,7 @@ nqowiki	nqo
 nrmwiki	nrm
 nrwiki	nr
 nsowiki	nso
+nupwiki	nup
 nvwiki	nv
 nywiki	ny
 ocwiki	oc
@@ -254,14 +260,16 @@ plwiki	pl
 pmswiki	pms
 pnbwiki	pnb
 pntwiki	pnt
+pplwiki	ppl
 pswiki	ps
 ptwiki	pt
 pwnwiki	pwn
 quwiki	qu
+rkiwiki	rki
 rmwiki	rm
 rmywiki	rmy
 rnwiki	rn
-roa_rupwiki	rup
+roa_rupwiki	roa-rup
 roa_tarawiki	roa-tara
 rowiki	ro
 rskwiki	rsk
@@ -315,6 +323,7 @@ tkwiki	tk
 tlwiki	tl
 tlywiki	tly
 tnwiki	tn
+tokwiki	tok
 towiki	to
 tpiwiki	tpi
 trvwiki	trv
@@ -348,8 +357,8 @@ yowiki	yo
 zawiki	za
 zeawiki	zea
 zghwiki	zgh
-zh_classicalwiki	lzh
-zh_min_nanwiki	nan
-zh_yuewiki	yue
+zh_classicalwiki	zh-classical
+zh_min_nanwiki	zh-min-nan
+zh_yuewiki	zh-yue
 zhwiki	zh
 zuwiki	zu
