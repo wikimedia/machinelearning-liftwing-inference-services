@@ -3,7 +3,6 @@ from unittest.mock import AsyncMock, patch
 import aiohttp
 import mwapi.errors
 import pytest
-from fastapi import HTTPException
 from kserve.errors import InvalidInput
 
 from src.models.outlink_topic_model.model_server.model import OutlinksTopicModel
@@ -281,9 +280,8 @@ class TestMwApiRetries:
             "nosuchrevid: There is no revision with ID 123 -- ."
         )
         with patch("mwapi.AsyncSession", return_value=session):
-            with pytest.raises(HTTPException) as exc_info:
+            with pytest.raises(InvalidInput, match="nosuchrevid"):
                 await fast_model.get_outlinks_by_revision(123, "en")
-        assert exc_info.value.status_code == 400
         assert session.get.call_count == 1
 
     @pytest.mark.asyncio
@@ -338,3 +336,21 @@ class TestPreprocessWikiId:
             await model.preprocess(inputs)
 
         assert inputs["lang"] == "en"
+
+
+class TestPreprocessEventDomain:
+    """The model rejects events from non-Wikipedia projects (e.g. Wiktionary)."""
+
+    @pytest.mark.asyncio
+    async def test_non_wikipedia_event_raises_invalid_input(self, model):
+        inputs = {
+            "event": {
+                "$schema": "/mediawiki/page/change/1.0",
+                "wiki_id": "enwiki",
+                "page": {"page_id": 123, "page_title": "Test"},
+                "meta": {"domain": "en.wiktionary.org"},
+            }
+        }
+
+        with pytest.raises(InvalidInput, match="outside of Wikipedia"):
+            await model.preprocess(inputs)

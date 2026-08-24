@@ -5,7 +5,6 @@ import logging
 import os
 import uuid
 from collections.abc import Awaitable
-from http import HTTPStatus
 from typing import Callable, Union
 
 import aiohttp
@@ -13,7 +12,6 @@ import fasttext
 import kserve
 import mwapi
 import mwapi.errors
-from fastapi import HTTPException
 from kserve.errors import InferenceError, InvalidInput
 from kserve.protocol.infer_type import InferOutput, InferRequest, InferResponse
 
@@ -364,12 +362,9 @@ class OutlinksTopicModel(kserve.Model):
         except (mwapi.errors.RequestError, mwapi.errors.APIError) as e:
             code = _mwapi_api_error_code(e)
             if code in PERMANENT_MW_ERROR_CODES:
-                raise HTTPException(
-                    status_code=HTTPStatus.BAD_REQUEST,
-                    detail=(
-                        f"Cannot fetch revision {revision_id} on "
-                        f"{lang}.wikipedia.org: MediaWiki API error '{code}'."
-                    ),
+                raise InvalidInput(
+                    f"Cannot fetch revision {revision_id} on "
+                    f"{lang}.wikipedia.org: MediaWiki API error '{code}'."
                 )
             raise
         links = parse_result.get("parse", {}).get("links", [])
@@ -501,12 +496,9 @@ class OutlinksTopicModel(kserve.Model):
         if self.EVENT_KEY in inputs:
             self.source_event = inputs[self.EVENT_KEY]
             if not is_domain_wikipedia(self.source_event):
-                raise HTTPException(
-                    status_code=HTTPStatus.BAD_REQUEST,
-                    detail=(
-                        "This model is not recommended for use in projects outside of Wikipedia"
-                        " — e.g. Wiktionary, Wikinews, etc."
-                    ),
+                raise InvalidInput(
+                    "This model is not recommended for use in projects outside of Wikipedia"
+                    " e.g. Wiktionary, Wikinews, etc."
                 )
         # Extract revision_id if provided (optional parameter)
         revision_id = inputs.get("revision_id")
@@ -533,9 +525,10 @@ class OutlinksTopicModel(kserve.Model):
                 else:
                     # Use fast query for current page state
                     outlinks = await self.get_outlinks(page_id=page_id, lang=lang)
-            except HTTPException:
+            except InvalidInput:
                 # Client-side problem (e.g. a deleted/nonexistent revision_id);
-                # let the HTTP 400 through instead of masking it as a 500.
+                # let the client error propagate (HTTP 400 / gRPC INVALID_ARGUMENT)
+                # instead of masking it as a server error.
                 raise
             except Exception:
                 if self.EVENT_KEY in inputs:
