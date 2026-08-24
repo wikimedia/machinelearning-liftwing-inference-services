@@ -2,3 +2,6 @@
 kserve==0.15.2
 fasttext-wheel==0.9.2
 mwapi==0.6.1
+
+# fasttext-wheel 0.9.2 predict() uses np.array(copy=False), incompatible with NumPy 2.x.
+numpy<2
