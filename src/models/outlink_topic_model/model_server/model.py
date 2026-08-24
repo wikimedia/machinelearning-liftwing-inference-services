@@ -3,6 +3,7 @@ import csv
 import json
 import logging
 import os
+import urllib.parse
 import uuid
 from collections.abc import Awaitable
 from typing import Callable, Union
@@ -294,27 +295,34 @@ class OutlinksTopicModel(kserve.Model):
 
     @staticmethod
     def _batch_titles_by_length(
-        titles: list[str], max_bytes: int = 6000, max_titles: int = 50
+        titles: list[str], max_encoded_chars: int = 6000, max_titles: int = 50
     ) -> list[list[str]]:
-        """Batch titles ensuring total encoded length stays under max_bytes.
+        """Batch titles ensuring the encoded query length stays under budget.
 
         MediaWiki API has two limits:
         - Max 50 titles per request
-        - URL length limit (~8KB, we use 6KB to be safe)
+        - Request-URI length limit, enforced at the traffic layer (~8KB;
+          we budget 6KB to leave room for the fixed query parameters)
 
-        This batches dynamically to maximize titles per request while
-        respecting both limits.
+        Lengths are measured on the percent-encoded form, since that is
+        what travels on the wire: each non-ASCII UTF-8 byte encodes to 3
+        characters, so e.g. a CJK title is 3x longer encoded than raw.
+        Measuring raw UTF-8 here previously under-counted CJK-heavy
+        batches by ~3x and produced HTTP 414 responses (T435586).
+
+        A single title can never exceed the budget on its own: MediaWiki
+        titles are capped at 255 bytes, i.e. at most ~768 encoded chars.
         """
         batches = []
         current_batch = []
         current_length = 0
 
         for title in titles:
-            # Account for URL encoding: pipe becomes %7C (3 chars)
-            title_length = len(title.encode("utf-8")) + 3
+            # Measure the wire form; +3 accounts for the encoded pipe (%7C).
+            title_length = len(urllib.parse.quote(title, safe="")) + 3
 
             if current_batch and (
-                current_length + title_length > max_bytes
+                current_length + title_length > max_encoded_chars
                 or len(current_batch) >= max_titles
             ):
                 batches.append(current_batch)

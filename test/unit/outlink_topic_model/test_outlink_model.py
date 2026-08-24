@@ -1,3 +1,4 @@
+import urllib.parse
 from unittest.mock import AsyncMock, patch
 
 import aiohttp
@@ -374,3 +375,23 @@ class TestPreprocessEventDomain:
 
         with pytest.raises(InvalidInput, match="outside of Wikipedia"):
             await model.preprocess(inputs)
+
+
+class TestBatchTitlesByLength:
+    def test_encoded_length_budget_holds_for_cjk_titles(self):
+        # 17 CJK chars + 4 ASCII digits per title: 55 raw UTF-8 bytes but 157
+        # percent-encoded chars each. The pre-fix raw-byte measurement judged
+        # 50 of these "safe" (~2900 bytes) while the wire form shipped ~8000
+        # encoded chars, causing HTTP 414 (T435586).
+        titles = [f"中华人民共和国国家机构组成部门第{i:04d}号" for i in range(200)]
+        batches = OutlinksTopicModel._batch_titles_by_length(titles)
+        for batch in batches:
+            encoded = sum(len(urllib.parse.quote(t, safe="")) + 3 for t in batch)
+            assert encoded <= 6000
+        # No titles lost or duplicated by batching
+        assert [t for b in batches for t in b] == titles
+
+    def test_latin_titles_still_batch_at_title_cap(self):
+        titles = [f"Some_Article_{i}" for i in range(120)]
+        batches = OutlinksTopicModel._batch_titles_by_length(titles)
+        assert [len(b) for b in batches] == [50, 50, 20]
