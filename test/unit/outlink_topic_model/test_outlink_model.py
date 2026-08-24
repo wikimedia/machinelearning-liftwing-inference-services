@@ -316,6 +316,26 @@ class TestPreprocessWikiId:
         assert inputs["lang"] == "en"
 
     @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("wiki_id", "expected_lang"),
+        [("nbwiki", "no"), ("be-taraskwiki", "be-tarask")],
+    )
+    async def test_non_canonical_wiki_id_resolves_to_lang(
+        self, model, wiki_id, expected_lang
+    ):
+        inputs = {"page_id": 5355, "wiki_id": wiki_id}
+
+        with (
+            patch.object(
+                model, "retrieve_page_id_and_title", return_value=(5355, None)
+            ),
+            patch.object(model, "get_outlinks", return_value=set()),
+        ):
+            await model.preprocess(inputs)
+
+        assert inputs["lang"] == expected_lang
+
+    @pytest.mark.asyncio
     async def test_unknown_wiki_id_raises_invalid_input(self, model):
         inputs = {"page_id": 5355, "wiki_id": "nonexistentwiki"}
 

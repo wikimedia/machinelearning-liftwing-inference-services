@@ -479,7 +479,10 @@ class OutlinksTopicModel(kserve.Model):
             wiki_id = inputs["wiki_id"]
             lang = self.wiki_languages.get(wiki_id)
             if lang is None:
-                raise InvalidInput(f"Unknown wiki_id: {wiki_id}")
+                raise InvalidInput(
+                    f"Unknown wiki_id: {wiki_id}. wiki_id must be a canonical MediaWiki "
+                    "dbname (e.g. enwiki, nowiki, be_x_oldwiki); see action=sitematrix."
+                )
             inputs["lang"] = lang
         lang = get_lang(inputs, self.EVENT_KEY)
         page_id, page_title = await self.retrieve_page_id_and_title(inputs, lang=lang)
