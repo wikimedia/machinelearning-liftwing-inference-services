@@ -649,6 +649,53 @@ class TestApplyChatTemplate:
         assert messages_arg[0]["role"] == "system"
         assert messages_arg[0]["content"] == "You are helpful."
 
+    def test_normalizes_string_tool_call_arguments(self, model):
+        tool_call = _FakeType(
+            id="call_1",
+            type="function",
+            function=_FakeType(name="get_weather", arguments='{"city": "Kampala"}'),
+        )
+        request = MagicMock()
+        request.tools = None
+        request.messages = [
+            _FakeType(role="assistant", content=None, tool_calls=[tool_call])
+        ]
+
+        model.apply_chat_template(request)
+
+        messages_arg = model.tokenizer.apply_chat_template.call_args.args[0]
+        function = messages_arg[0]["tool_calls"][0]["function"]
+        assert function["arguments"] == {"city": "Kampala"}
+
+    def test_leaves_unparseable_tool_call_arguments_untouched(self, model):
+        tool_call = _FakeType(
+            id="call_2",
+            type="function",
+            function=_FakeType(name="get_time", arguments="{not valid json"),
+        )
+        request = MagicMock()
+        request.tools = None
+        request.messages = [
+            _FakeType(role="assistant", content=None, tool_calls=[tool_call])
+        ]
+
+        model.apply_chat_template(request)
+
+        messages_arg = model.tokenizer.apply_chat_template.call_args.args[0]
+        function = messages_arg[0]["tool_calls"][0]["function"]
+        assert function["arguments"] == "{not valid json"
+
+    def test_no_tool_history_messages_untouched(self, model):
+        request = MagicMock()
+        request.tools = None
+        request.messages = [_FakeType(role="user", content="Hello")]
+
+        model.apply_chat_template(request)
+
+        messages_arg = model.tokenizer.apply_chat_template.call_args.args[0]
+        assert messages_arg[0]["role"] == "user"
+        assert messages_arg[0]["content"] == "Hello"
+
     def test_enable_thinking_true_passed_to_template(self, model):
         request = MagicMock()
         request.tools = None

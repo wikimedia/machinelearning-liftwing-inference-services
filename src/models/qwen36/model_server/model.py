@@ -309,13 +309,40 @@ class Qwen36Model(kserve.Model, OpenAIChatAdapterModel):
                 **kwargs,
             )
 
+    @staticmethod
+    def _normalize_tool_call_arguments(
+        messages: list[dict[str, Any]],
+    ) -> list[dict[str, Any]]:
+        """Parse tool-call arguments from JSON string to dict for the template.
+
+        OpenAI clients send ``function.arguments`` as a JSON string; templates
+        that iterate arguments as a mapping (Qwen3.6) raise on strings.
+        Unparseable arguments are left untouched.
+        """
+        for message in messages:
+            for tool_call in message.get("tool_calls") or []:
+                function = tool_call.get("function")
+                if function is None:
+                    continue
+                arguments = function.get("arguments")
+                if isinstance(arguments, str):
+                    try:
+                        function["arguments"] = json.loads(arguments)
+                    except ValueError:
+                        pass
+        return messages
+
     def apply_chat_template(
         self,
         request: ChatCompletionRequest,
         enable_thinking: bool = False,
         tool_choice: str = "auto",
     ) -> ChatPrompt:
-        messages = [dict(msg) for msg in request.messages]
+        messages = [
+            msg.model_dump() if hasattr(msg, "model_dump") else dict(msg)
+            for msg in request.messages
+        ]
+        messages = self._normalize_tool_call_arguments(messages)
         tools = None
         if request.tools and tool_choice != "none":
             if self.tool_calling_enabled:
