@@ -1,0 +1,361 @@
+openapi: "3.0.0"
+info:
+  title: Large Language Models (chat completions) — Lift Wing inference service
+  version: v1
+servers:
+  - url: https://api.wikimedia.org
+paths:
+  /service/lw/inference/v1/models/{model}/openai/v1/chat/completions:
+    post:
+      summary: Create a chat completion with a public Lift Wing LLM
+      description: |
+        Generates a model response for a chat conversation using one of the
+        public general-purpose `llm-*` models. The interface is
+        **OpenAI Chat Completions-compatible** (served by
+        [vLLM's OpenAI-compatible server](https://docs.vllm.ai/en/latest/serving/openai_compatible_server.html)),
+        so any OpenAI client library works by pointing `base_url` at
+        `https://api.wikimedia.org/service/lw/inference/v1/models/<model>/openai/v1`.
+
+        The schemas below document the commonly used fields; the endpoint
+        accepts additional parameters from the
+        [OpenAI Chat Completions API](https://platform.openai.com/docs/api-reference/chat)
+        and vLLM extensions.
+
+        Notes:
+        - The `model` field in the request body must match the model name in
+          the URL path.
+        - The Qwen models are reasoning models and may prefix the response
+          content with their chain-of-thought wrapped in `<think>…</think>`
+          tags. Strip or handle these tags if you only want the final answer.
+        - Public `llm-*` endpoints are rate limited (shared per-client budget
+          across all `llm-*` models). See
+          [Lift Wing LLM docs on Wikitech](https://wikitech.wikimedia.org/wiki/Machine_Learning/LiftWing/Large_Language_Models).
+      operationId: llmChatCompletions
+      tags:
+        - Large language models
+      parameters:
+        - name: model
+          in: path
+          required: true
+          description: |
+            Name of the public LLM inference service. Only public
+            general-purpose `llm-*` models are routed through this endpoint.
+          schema:
+            type: string
+            enum:
+              - llm-qwen3-14b
+              - llm-qwen36-27b
+          example: llm-qwen3-14b
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatCompletionRequest"
+            example:
+              model: llm-qwen3-14b
+              messages:
+                - role: user
+                  content: "In two sentences, what is the Wikimedia Foundation?"
+      responses:
+        "200":
+          description: |
+            Successful completion. With `stream: false` (default), a single
+            JSON chat completion object is returned. With `stream: true`, the
+            response is a `text/event-stream` of chat completion chunk objects,
+            terminated by a `data: [DONE]` event.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatCompletionResponse"
+              example:
+                id: "chatcmpl-abc123"
+                object: "chat.completion"
+                created: 1756200000
+                model: "llm-qwen3-14b"
+                choices:
+                  - index: 0
+                    message:
+                      role: "assistant"
+                      content: "The Wikimedia Foundation is the nonprofit organization that hosts Wikipedia and its sister free-knowledge projects. It provides the technical infrastructure and support that allow volunteers around the world to collect and share free educational content."
+                    finish_reason: "stop"
+                usage:
+                  prompt_tokens: 21
+                  completion_tokens: 42
+                  total_tokens: 63
+            text/event-stream:
+              example: |
+                data: {"id":"b07e725afafbba4d","object":"chat.completion.chunk",
+                "created":1787936634,"model":"llm-qwen3-14b","choices":[{"index":0,
+                "delta":{"role":"assistant","content":"The","reasoning":null,"tool_calls":[]},
+                "logprobs":null,"finish_reason":null,"stop_reason":null,"token_ids":null}],
+                "usage":null,"system_fingerprint":null,"prompt_token_ids":null,"prompt_text":null}
+
+                data: [DONE]
+              schema:
+                $ref: "#/components/schemas/ChatCompletionChunk"
+        "400":
+          description: Invalid request (e.g. malformed body or unknown parameter value)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Unknown model name
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "429":
+          description: |
+            Rate limit exceeded. Public `llm-*` endpoints share a per-client
+            request budget across all models.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+components:
+  schemas:
+    ChatCompletionRequest:
+      type: object
+      description: |
+        OpenAI Chat Completions-compatible request. Additional parameters from
+        the [OpenAI API](https://platform.openai.com/docs/api-reference/chat/create)
+        and [vLLM extensions](https://docs.vllm.ai/en/latest/serving/openai_compatible_server.html)
+        are accepted.
+      additionalProperties: true
+      required: [model, messages]
+      properties:
+        model:
+          type: string
+          description: Model name; must match the model in the URL path.
+          example: "llm-qwen3-14b"
+        messages:
+          type: array
+          minItems: 1
+          description: The conversation so far, as a list of chat messages.
+          items:
+            $ref: "#/components/schemas/ChatMessage"
+        max_completion_tokens:
+          type: integer
+          nullable: true
+          description: |
+            Upper bound on the number of tokens generated for a completion.
+            (`max_tokens` is also accepted for backwards compatibility.)
+        temperature:
+          type: number
+          nullable: true
+          minimum: 0
+          maximum: 2
+          description: Sampling temperature. Higher values make output more random.
+        top_p:
+          type: number
+          nullable: true
+          minimum: 0
+          maximum: 1
+          description: Nucleus sampling probability mass.
+        n:
+          type: integer
+          nullable: true
+          minimum: 1
+          description: Number of choices to generate.
+        stream:
+          type: boolean
+          default: false
+          description: |
+            If true, partial deltas are sent as server-sent events
+            (`text/event-stream`), terminated by `data: [DONE]`.
+        stream_options:
+          type: object
+          nullable: true
+          description: Streaming options (e.g. `include_usage`).
+          properties:
+            include_usage:
+              type: boolean
+        stop:
+          description: Up to 4 sequences where generation stops (null to disable).
+          nullable: true
+          oneOf:
+            - type: string
+            - type: array
+              items:
+                type: string
+        presence_penalty:
+          type: number
+          nullable: true
+          minimum: -2
+          maximum: 2
+        frequency_penalty:
+          type: number
+          nullable: true
+          minimum: -2
+          maximum: 2
+        seed:
+          type: integer
+          nullable: true
+          description: Best-effort deterministic sampling seed.
+        logprobs:
+          type: boolean
+          nullable: true
+          description: Whether to return log probabilities of output tokens.
+        top_logprobs:
+          type: integer
+          nullable: true
+          minimum: 0
+          maximum: 20
+          description: "Number of most likely tokens to return per position (requires `logprobs: true`)."
+        response_format:
+          type: object
+          nullable: true
+          description: "Output format constraint, e.g. `{\"type\": \"json_object\"}`."
+          properties:
+            type:
+              type: string
+              enum: [text, json_object, json_schema]
+        user:
+          type: string
+          nullable: true
+          description: Opaque end-user identifier.
+    ChatMessage:
+      type: object
+      required: [role, content]
+      properties:
+        role:
+          type: string
+          description: Role of the message author.
+          enum: [system, user, assistant, tool]
+          example: "user"
+        content:
+          type: string
+          nullable: true
+          description: Message text content.
+          example: "In two sentences, what is the Wikimedia Foundation?"
+        name:
+          type: string
+          description: Optional name for the participant.
+    ChatCompletionResponse:
+      type: object
+      description: OpenAI-compatible chat completion object.
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the completion.
+          example: "chatcmpl-abc123"
+        object:
+          type: string
+          enum: [chat.completion]
+        created:
+          type: integer
+          description: Unix timestamp (seconds) of creation.
+          example: 1756200000
+        model:
+          type: string
+          example: "llm-qwen3-14b"
+        system_fingerprint:
+          type: string
+          nullable: true
+        choices:
+          type: array
+          items:
+            type: object
+            properties:
+              index:
+                type: integer
+                example: 0
+              message:
+                type: object
+                properties:
+                  role:
+                    type: string
+                    example: "assistant"
+                  content:
+                    type: string
+                    nullable: true
+                    description: |
+                      Generated message text. Depending on server configuration,
+                      reasoning may instead be embedded here wrapped in
+                      `<think>…</think>` tags.
+                  reasoning:
+                    type: string
+                    nullable: true
+                    description: |
+                      Chain-of-thought produced by the reasoning models (vLLM
+                      extension), when the server separates it from `content`.
+              finish_reason:
+                type: string
+                nullable: true
+                description: Why generation stopped.
+                enum: [stop, length, content_filter, tool_calls]
+                example: "stop"
+              logprobs:
+                type: object
+                nullable: true
+                description: Log probability information (when requested).
+        usage:
+          $ref: "#/components/schemas/Usage"
+    ChatCompletionChunk:
+      type: object
+      description: |
+        One streamed chunk (`stream: true`). Each server-sent event carries a
+        `data:` line with one JSON chunk; the stream ends with `data: [DONE]`.
+      properties:
+        id:
+          type: string
+        object:
+          type: string
+          enum: [chat.completion.chunk]
+        created:
+          type: integer
+        model:
+          type: string
+        choices:
+          type: array
+          items:
+            type: object
+            properties:
+              index:
+                type: integer
+              delta:
+                type: object
+                description: Incremental part of the message being generated.
+                properties:
+                  role:
+                    type: string
+                  content:
+                    type: string
+                    nullable: true
+              finish_reason:
+                type: string
+                nullable: true
+        usage:
+          allOf:
+            - $ref: "#/components/schemas/Usage"
+          description: Present only on the final chunk, when `stream_options.include_usage` is true.
+    Usage:
+      type: object
+      description: Token usage statistics for the request.
+      properties:
+        prompt_tokens:
+          type: integer
+          example: 21
+        completion_tokens:
+          type: integer
+          example: 42
+        total_tokens:
+          type: integer
+          example: 63
+    Error:
+      type: object
+      description: OpenAI-compatible error object.
+      properties:
+        error:
+          type: object
+          properties:
+            message:
+              type: string
+            type:
+              type: string
+            code:
+              oneOf:
+                - type: string
+                - type: integer

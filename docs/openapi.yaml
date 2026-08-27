@@ -6,9 +6,10 @@ info:
     services for Wikimedia projects. Each model is exposed as a separate
     endpoint under the common `/service/lw/inference/v1/models/` prefix.
 
-    All endpoints use the KServe v1 REST protocol (`POST` with JSON
-    request/response bodies). See individual model specs for detailed
-    schemas and examples.
+    Most endpoints use the KServe v1 REST protocol (`POST` with JSON
+    request/response bodies). The public large language models (`llm-*`)
+    expose an OpenAI Chat Completions-compatible interface instead. See
+    individual model specs for detailed schemas and examples.
 
     For more information:
     - [Lift Wing API on Wikitech](https://wikitech.wikimedia.org/wiki/Machine_Learning/LiftWing/API)
@@ -21,11 +22,14 @@ info:
 servers:
   - url: https://api.wikimedia.org
 tags:
+  - name: Large language models
   - name: Revision quality
   - name: Topics and descriptions
   - name: Countries, language, and translation
   - name: Revscoring (formerly ORES)
 paths:
+  /service/lw/inference/v1/models/{model}/openai/v1/chat/completions:
+    $ref: ./llm-chat-completions.yaml#/paths/~1service~1lw~1inference~1v1~1models~1{model}~1openai~1v1~1chat~1completions
   /service/lw/inference/v1/models/langid:predict:
     $ref: ./langid.yaml#/paths/~1service~1lw~1inference~1v1~1models~1langid:predict
   /service/lw/inference/v1/models/article-descriptions:predict:
