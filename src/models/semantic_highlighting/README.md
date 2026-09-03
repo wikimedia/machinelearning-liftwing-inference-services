@@ -29,6 +29,7 @@ imported.
 | `model_server/highlighter.py` | Request body → spans → response envelope. No serving deps |
 | `model_server/spans.py` | UTF-16 offset conversion and the span constraints OpenSearch enforces |
 | `model_server/qa.py` | Tokenizer + model loading and batched answer-span decoding |
+| `model_server/boundaries.py` | Moves a raw answer edge onto a word and grapheme boundary. No serving deps |
 | `model_server/config.py` | Env-var settings (`pydantic-settings`) |
 | `model_server/request_model.py` | Pydantic request schemas |
 
@@ -44,7 +45,10 @@ imported.
 ```
 
 ```json
-{"highlights": [[{"start": 19, "end": 33}], []]}
+{"highlights": [
+  [{"start": 19, "end": 33, "answer": "Gustave Eiffel", "score": 0.9670594424630774}],
+  []
+]}
 ```
 
 One inner list per input, **in the same order**, with `[]` where the model
@@ -53,11 +57,30 @@ with no `inputs` — including the single-document shape 3.0–3.2 sent — answ
 `{"highlights": []}` rather than a 4xx, so an older caller degrades to
 unhighlighted hits instead of a failed `_search`.
 
+`answer` is the text those offsets select and `score` is the model's confidence
+in it, carried so a response can be read — and calibrated — without slicing
+passages by hand. Both are on every span or on none: a span exists only when the
+model found an answer, so `answer` is never empty and `score` is always the
+answer's own probability, never the `[CLS]` null probability an abstention
+reports. `score` is the exact number `SH_MIN_SCORE` is compared against,
+unrounded, so a recorded response can be replayed against a candidate threshold
+— see [Abstention](#abstention) for why that matters here.
+
+Neither field is bounded by the passage. `answer` is bounded by
+`SH_MAX_ANSWER_LEN`: over 6000 real retrieval passages it was 31 characters at
+the median and 97 at p90. Together they take a span from 23 to about 105 bytes,
+so a ten-passage page's `highlights` grows from roughly 100 bytes to 380 — under
+8% of the request that had just carried those passages, and nothing at all for
+the two thirds of passages that answer `[]`.
+
 That example shows the wire shape, not a live response: both contexts are well
 under the default `SH_MIN_CONTEXT_TOKENS`, so a real server would skip them and
-answer `{"highlights": [[], []]}`.
+answer `{"highlights": [[], []]}`. The score is the real one for that pair, but
+it is high because the context is one contrived sentence whose answer is
+unambiguous — on actual retrieval passages the whole distribution sits far lower,
+which is what [Abstention](#abstention) is about.
 
-Two contract details that are easy to break:
+Three contract details that are easy to break:
 
 - **The body must be an object with `highlights` at the top level.** ml-commons
   stores the response in `dataAsMap` and neural-search reads
@@ -72,6 +95,10 @@ Two contract details that are easy to break:
   `spans.harden()`. Offsets were checked against Arabic, Japanese, Thai,
   Devanagari, emoji and NFKC traps; the one case that drifts is NFD-decomposed
   text, which MediaWiki's NFC-on-save keeps out of the index.
+- **`answer` and `score` are additive keys inside the span object.** opensearch
+  stores the whole remote response as an untyped `dataAsMap` and neural-search
+  plugin reads `start`/`end` out of it, so unknown keys alongside them should
+  simply be ignored.
 
 ## Configuration
 
@@ -158,6 +185,28 @@ Recorded so they are not undone by accident.
   shape returns `{"highlights": []}` rather than a 4xx. This sits in the search
   hot path: an empty result leaves hits unhighlighted, whereas an error fails the
   caller's entire `_search`.
+- **An answer edge inside a word moves out to the tokenizer's word.** The model
+  answers with whole tokens, and a token can cut a word.  The new answer_span
+  method adjusts the highlight to word boundaries:
+  - It stops at whitespace or Unicode punctuation. It gives `Gustave Eiffel`
+    where the pipeline gave `" Gustave Eiffel,"`, and `iron` rather than
+    `wrought-iron`.
+  - It does not run when the word holds a character from a spaceless script.
+    The tokenizer splits on whitespace first, so in Japanese, Chinese, Thai and
+    other scripts one "word" is a whole clause.
+
+  There is deliberately no cap in characters. We are instead bounded by the
+  tokenizer's word. A long compound aligns in full and a space-free run does
+  not align at all.
+
+- **An answer edge is never left inside a character.** A token edge can land
+  between a base character and its combining marks: a Thai vowel or tone mark,
+  an Indic matra, Arabic harakat, an NFD accent. A highlight that opens on a
+  bare mark, or that drops the marks off its last character, shows a broken
+  glyph. `boundaries._extend_to_graphemes` moves both edges out to
+  grapheme-cluster boundaries. It finds them with `regex`'s `\X`, which applies
+  the UAX #29 rules, so that module keeps no table of its own. Unlike word
+  alignment, this correction holds in every script. It has no gate and no cap.
 
 ## Local development
 
@@ -263,6 +312,38 @@ docker run --rm -v "$PWD":/srv/app:ro -w /srv/app \
 
 Mount read-only (`:ro`) and pass `-p no:cacheprovider` / `RUFF_CACHE_DIR` so
 neither tool tries to write a cache into the repo.
+
+#### The real-tokenizer tests
+
+`test_real_tokenizer.py` checks `boundaries.py` against the tokenizer the
+service really loads, which is the one thing the CI suite cannot do: it stubs
+transformers, so it supplies `word_ids()` by hand. The module is **skipped
+unless `SH_REAL_MODEL=1`**, which is also what tells `conftest.py` to leave the
+real torch and transformers in place instead of stubbing them.
+
+It needs the tokenizer, not the weights — word alignment is a property of the
+tokenizer — so it wants 16 MB and about 15 seconds on a CPU, not 1.1 GB and a
+GPU. Run it in the service image, which already carries transformers:
+
+```bash
+docker run --rm --user "$(id -u):$(id -g)" \
+  -v "$PWD":/srv/app:ro -w /srv/app \
+  -v "$HOME/.cache/huggingface":/hf:ro -e HF_HOME=/hf \
+  -e USER="$USER" -e HOME=/tmp -e SH_REAL_MODEL=1 \
+  -e PYTHONPATH=/srv/overlay/lib/python3.12/site-packages:/srv/venv/lib/python3.12/site-packages:/srv/app \
+  --entrypoint python semantic-highlighting:prod \
+  -m pytest test/unit/semantic_highlighting/test_real_tokenizer.py -q
+```
+
+Three flags are not optional. `--user` keeps the files the run touches owned by
+you; without it torch also fails at import with
+`KeyError: getpwuid(): uid not found`, which `-e USER` is what settles. `HF_HOME`
+points at a cache you already have, and `HF_HUB_OFFLINE=1` can be added once the
+tokenizer is in it.
+
+`SH_TOKENIZER` points the same assertions at a different checkpoint, which is
+the check to run before swapping `MODEL_PATH`: word alignment is the part of
+this server that a new tokenizer can quietly change.
 
 ### Load testing
 

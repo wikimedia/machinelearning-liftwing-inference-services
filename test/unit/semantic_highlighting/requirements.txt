@@ -9,3 +9,7 @@ kserve==0.20.0
 # that copy. Use the same version here, to test the code that production runs.
 # If the base image changes, change this pin also.
 pydantic-settings==2.14.2
+# boundaries.py imports this directly for its \X grapheme-cluster matching,
+# and the stubs cannot replace it. In the image it arrives with transformers,
+# which the tests do not install.
+regex>=2023.0.0

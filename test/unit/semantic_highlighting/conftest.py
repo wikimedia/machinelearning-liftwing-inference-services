@@ -2,9 +2,16 @@
 
 `qa.py` reads torch while it is imported, to build `DTYPES`, and imports two
 classes from transformers. The tests need neither for real: the model is
-monkeypatched out and the boundary code is pure Python, so CI does not pull a
-multi-hundred-MB wheel to test span arithmetic and the response envelope. This
-follows test/unit/qwen36, which stubs vLLM the same way.
+monkeypatched out, so CI does not pull a multi-hundred-MB wheel to test span
+arithmetic and the response envelope. This follows test/unit/qwen36, which stubs
+vLLM the same way.
+
+`test_boundaries.py` needs none of this. `boundaries.py` reads no torch and no
+transformers, so it imports on any Python. The stubs are here for the modules
+that reach `qa.py`: `test_model.py` and `test_highlighter.py`.
+
+`test_real_tokenizer.py` needs the opposite -- the real transformers -- so
+`SH_REAL_MODEL=1` turns the stubs off. See that module for how to run it.
 
 The stubs live here rather than in each test module so that there is one copy.
 
@@ -29,8 +36,16 @@ them assign `sys.modules[...]` unconditionally rather than with `setdefault`.
    other directory set, it keeps.
 """
 
+import os
 import sys
 from unittest.mock import MagicMock
+
+# `test_real_tokenizer.py` runs against the tokenizer the service really loads,
+# so it needs the real transformers rather than a stub. It is skipped unless
+# this is set, and when it is set nothing here installs a stub: an image that
+# carries torch and transformers keeps them, and one that does not still runs
+# every other module here because those import neither at module level.
+_REAL = os.environ.get("SH_REAL_MODEL") == "1"
 
 # What qa.py reads from each module while it is being imported. Anything the
 # stubs are missing is added; nothing already there is replaced.
@@ -49,6 +64,8 @@ def _stub_package(name):
 
 
 def _install_stubs():
+    if _REAL:
+        return
     for name, attributes in _REQUIRED.items():
         module = sys.modules.setdefault(name, _stub_package(name))
         for attribute in attributes:

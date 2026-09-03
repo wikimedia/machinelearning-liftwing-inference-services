@@ -18,13 +18,18 @@ weight precision as ``torch_dtype`` only, and a ``dtype`` keyword reaches the
 model constructor and raises ``TypeError``.
 
 ``answer_question_batch`` runs a single padded forward pass over many
-(question, context) pairs.
+(question, context) pairs. What it does with the winning token edges lives in
+``boundaries.py``, which reads no torch and is therefore tested in CI. That
+module keeps a pipeline behaviour the answers depend on: moving an answer edge
+out of the middle of a word, which the pipeline called ``align_to_words``.
 """
 
 from typing import Optional
 
 import torch
 from transformers import AutoModelForQuestionAnswering, AutoTokenizer
+
+from src.models.semantic_highlighting.model_server import boundaries
 
 MODEL_NAME = "timpal0l/mdeberta-v3-base-squad2"
 
@@ -94,6 +99,7 @@ def _decode_answer(
     attention_mask,
     sequence_ids,
     offsets,
+    token_words,
     context: str,
     max_answer_len: int,
     top_k: int,
@@ -102,6 +108,11 @@ def _decode_answer(
 
     ``attention_mask`` masks padding tokens out of the softmax so a padded
     (batched) item scores identically to the same item run on its own.
+
+    ``token_words`` holds one entry per token -- the span of the word that token
+    belongs to, from :func:`boundaries.word_spans`. It carries the tokenizer's
+    word boundaries through to :func:`boundaries.answer_span`, which turns the
+    winning token span into the characters a reader sees.
     """
     neg_inf = torch.finfo(start_logits.dtype).min
     pad = ~attention_mask.bool()
@@ -121,7 +132,7 @@ def _decode_answer(
     top_ends = sorted(context_tokens, key=lambda i: end_probs[i], reverse=True)[:top_k]
 
     best_prob = 0.0
-    best_span = None  # (char_start, char_end)
+    best_tokens = None  # (start token, end token)
     for s in top_starts:
         for e in top_ends:
             if e < s or (e - s + 1) > max_answer_len:
@@ -129,18 +140,19 @@ def _decode_answer(
             prob = (start_probs[s] * end_probs[e]).item()
             if prob > best_prob:
                 best_prob = prob
-                best_span = (int(offsets[s][0]), int(offsets[e][1]))
+                best_tokens = (s, e)
 
-    if best_span is None or null_prob >= best_prob:
+    if best_tokens is None or null_prob >= best_prob:
         return {"answer": "", "score": null_prob, "start": 0, "end": 0}
 
-    char_start, char_end = best_span
-    # SentencePiece tokens carry a leading space, so a span can start/end on
-    # whitespace; trim it so offsets line up with the visible answer text.
-    while char_start < char_end and context[char_start].isspace():
-        char_start += 1
-    while char_end > char_start and context[char_end - 1].isspace():
-        char_end -= 1
+    token_start, token_end = best_tokens
+    char_start, char_end = boundaries.answer_span(
+        context,
+        int(offsets[token_start][0]),
+        int(offsets[token_end][1]),
+        token_words[token_start],
+        token_words[token_end],
+    )
     return {
         "answer": context[char_start:char_end],
         "score": best_prob,
@@ -177,6 +189,13 @@ def answer_question_batch(
     )
     offset_mapping = enc["offset_mapping"]
     attention_mask = enc["attention_mask"]
+    try:
+        # One call per item, and the only tokenizer feature `word_spans` needs.
+        word_ids = [enc.word_ids(i) for i in range(len(pairs))]
+    except ValueError:
+        # Raised by a slow tokenizer, which reports no words. `load_model`
+        # rejects one, so this covers a caller that brought its own.
+        word_ids = [None] * len(pairs)
     inputs = {k: v.to(model.device) for k, v in enc.items() if k != "offset_mapping"}
 
     with torch.inference_mode():
@@ -189,16 +208,20 @@ def answer_question_batch(
     start_logits = out.start_logits.float().cpu()
     end_logits = out.end_logits.float().cpu()
 
-    return [
-        _decode_answer(
-            start_logits[i],
-            end_logits[i],
-            attention_mask[i],
-            enc.sequence_ids(i),
-            offset_mapping[i],
-            context,
-            max_answer_len,
-            top_k,
+    results = []
+    for i, context in enumerate(contexts):
+        sequence_ids = enc.sequence_ids(i)
+        results.append(
+            _decode_answer(
+                start_logits[i],
+                end_logits[i],
+                attention_mask[i],
+                sequence_ids,
+                offset_mapping[i],
+                boundaries.word_spans(word_ids[i], sequence_ids, offset_mapping[i]),
+                context,
+                max_answer_len,
+                top_k,
+            )
         )
-        for i, context in enumerate(contexts)
-    ]
+    return results

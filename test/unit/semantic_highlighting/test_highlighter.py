@@ -149,7 +149,11 @@ def test_run_batch_preserves_order_across_chunks(hl):
             ("who?", "Gustave first"),  # index 0
         ]
     )
-    assert spans == [[{"start": 4, "end": 11}], [], [{"start": 0, "end": 7}]]
+    assert spans == [
+        [{"start": 4, "end": 11, "answer": "Gustave", "score": 0.9}],
+        [],
+        [{"start": 0, "end": 7, "answer": "Gustave", "score": 0.9}],
+    ]
 
 
 def test_run_batch_empty_input(hl):
@@ -158,7 +162,9 @@ def test_run_batch_empty_input(hl):
 
 def test_run_batch_converts_offsets_to_utf16(hl):
     # The emoji shifts the UTF-16 offset one unit past the code-point offset.
-    assert hl.run_batch([("who?", "😀 Gustave Eiffel")]) == [[{"start": 3, "end": 10}]]
+    assert hl.run_batch([("who?", "😀 Gustave Eiffel")]) == [
+        [{"start": 3, "end": 10, "answer": "Gustave", "score": 0.9}]
+    ]
 
 
 def test_run_batch_applies_min_score():
@@ -180,7 +186,7 @@ def test_passage_at_the_threshold_is_highlighted():
     # not. Both contexts hold "Gustave" at index 3.
     hl = _skipping(min_context_tokens=5)
     assert hl.run_batch([("who?", _tokens("aa Gustave bb", 5))]) == [
-        [{"start": 3, "end": 10}]
+        [{"start": 3, "end": 10, "answer": "Gustave", "score": 0.9}]
     ]
     assert hl.run_batch([("who?", _tokens("aa Gustave bb", 4))]) == [[]]
 
@@ -197,7 +203,13 @@ def test_skip_preserves_order_in_a_mixed_batch():
             ("who?", _tokens("no name here", 8)),  # long, but abstains -> []
         ]
     )
-    assert spans == [[], [{"start": 3, "end": 10}], [], [{"start": 0, "end": 7}], []]
+    assert spans == [
+        [],
+        [{"start": 3, "end": 10, "answer": "Gustave", "score": 0.9}],
+        [],
+        [{"start": 0, "end": 7, "answer": "Gustave", "score": 0.9}],
+        [],
+    ]
 
 
 def test_skipped_passages_never_reach_the_model(monkeypatch):
@@ -258,7 +270,9 @@ def test_zero_disables_the_skip_without_a_tokenizer():
     # skip must not go anywhere near it.
     hl = Highlighter(Settings(min_context_tokens=0))
     assert hl.tokenizer is None
-    assert hl.run_batch([("who?", "aa Gustave bb")]) == [[{"start": 3, "end": 10}]]
+    assert hl.run_batch([("who?", "aa Gustave bb")]) == [
+        [{"start": 3, "end": 10, "answer": "Gustave", "score": 0.9}]
+    ]
 
 
 def test_default_threshold_is_40_tokens():
@@ -347,7 +361,11 @@ def test_full_pipeline_batch(hl):
         }
     )
     assert hl.envelope(hl.run_batch(pairs)) == {
-        "highlights": [[{"start": 3, "end": 10}], [], [{"start": 0, "end": 7}]]
+        "highlights": [
+            [{"start": 3, "end": 10, "answer": "Gustave", "score": 0.9}],
+            [],
+            [{"start": 0, "end": 7, "answer": "Gustave", "score": 0.9}],
+        ]
     }
 
 

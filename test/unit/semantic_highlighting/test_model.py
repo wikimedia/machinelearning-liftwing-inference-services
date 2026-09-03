@@ -65,9 +65,9 @@ async def test_batch_response_shape_order_and_empty(model):
     assert isinstance(body, dict)
     assert set(body) == {"highlights"}
     assert body["highlights"] == [
-        [{"start": 3, "end": 10}],
+        [{"start": 3, "end": 10, "answer": "Gustave", "score": 0.9}],
         [],
-        [{"start": 0, "end": 7}],
+        [{"start": 0, "end": 7, "answer": "Gustave", "score": 0.9}],
     ]
 
 
@@ -81,7 +81,9 @@ async def test_bytes_body_is_decoded(model):
     body = await _infer(
         model, b'{"inputs": [{"question": "who?", "context": "Gustave"}]}'
     )
-    assert body == {"highlights": [[{"start": 0, "end": 7}]]}
+    assert body == {
+        "highlights": [[{"start": 0, "end": 7, "answer": "Gustave", "score": 0.9}]]
+    }
 
 
 @pytest.mark.asyncio

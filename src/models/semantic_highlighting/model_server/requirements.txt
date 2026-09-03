@@ -25,3 +25,7 @@ anyio>=4.0
 # not installed on this base image; see the comment in
 # .pipeline/semantic_highlighting/blubber.yaml for why.
 pyopencl==2025.2.7
+# boundaries.py uses `regex`'s \X to keep an answer edge off the inside of a
+# grapheme cluster; the stdlib `re` has no cluster support. transformers depends
+# on it, so this pins nothing new into the image -- it records a direct import.
+regex>=2023.0.0
