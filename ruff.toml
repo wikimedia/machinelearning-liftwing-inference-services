@@ -25,7 +25,7 @@ line-ending = "auto"
 skip-magic-trailing-comma = false
 
 [lint.isort]
-known-first-party = ["python"] # Add your packages here if needed
+known-first-party = ["python", "tool_server"] # Add your packages here if needed
 known-third-party = [] # Add third party packages here if needed
 section-order = [
     "future",

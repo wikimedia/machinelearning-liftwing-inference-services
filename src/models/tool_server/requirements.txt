@@ -1,0 +1,11 @@
+# Service
+fastapi==0.136.1
+uvicorn==0.46.0
+pydantic>=2.5
+
+# MCP endpoint (derived from the FastAPI routes; see service.py)
+fastmcp==2.14.7
+
+# Tools: MediaWiki access
+requests==2.32.5
+urllib3==2.7.0
