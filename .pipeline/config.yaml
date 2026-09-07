@@ -351,3 +351,22 @@ pipelines:
           image:
             name: '${setup.project}-tts-section-generator'
             tags: [stable]
+
+  tool-server:
+    blubberfile: tool_server/blubber.yaml
+    stages:
+      - name: run-test
+        build: test
+        run: true
+      - name: production
+        build: production
+
+  tool-server-publish:
+    blubberfile: tool_server/blubber.yaml
+    stages:
+      - name: publish
+        build: production
+        publish:
+          image:
+            name: '${setup.project}-tool-server'
+            tags: [stable]

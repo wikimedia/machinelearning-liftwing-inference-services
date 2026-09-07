@@ -350,3 +350,12 @@ services:
     image: tts:prod
     ports:
       - "8080:8080"
+  tool-server:
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: .pipeline/tool_server/blubber.yaml
+      target: production
+    image: tool-server:prod
+    ports:
+      - "8080:8080"

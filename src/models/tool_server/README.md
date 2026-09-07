@@ -2,7 +2,7 @@
 
 A limited toolbelt of universal, read-only tools for LiftWing clients.
 
-Since it's an anti-pattern to run tools inside the model-server, clients own the tool-calling loop ([T434274#12256418](https://phabricator.wikimedia.org/T434274#12256418)) and call this service to execute tools ((T434274#12280495)[https://phabricator.wikimedia.org/T434274#12280495]).
+Since it's an anti-pattern to run tools inside the model-server, clients own the tool-calling loop ([T434274#12256418](https://phabricator.wikimedia.org/T434274#12256418)) and call this service to execute tools ([T434274#12280495](https://phabricator.wikimedia.org/T434274#12280495)).
 
 This service supports two protocols that serve the same tool functions:
 
@@ -13,9 +13,39 @@ There is no static `openapi.yaml`: the contract is generated from the code and s
 
 ## How to run locally
 
-In order to run the tool-server locally, please follow the steps below:
+In order to run the tool-server locally, please choose one of the two options below.
 
-### 1. Build Python venv and install dependencies
+<details>
+<summary>1. Automated setup using docker compose</summary>
+
+### 1.1. Build
+
+From the repo root, run:
+```console
+docker compose build tool-server
+```
+
+### 1.2. Run
+
+Then run the service:
+```console
+docker compose up tool-server
+```
+
+The service listens on `http://localhost:8080`.
+
+### 1.3. Remove
+
+If you would like to remove the setup run:
+```console
+docker compose down -v --rmi all
+```
+</details>
+
+<details>
+<summary>2. Manual setup</summary>
+
+### 2.1. Build Python venv and install dependencies
 
 First add the top level directory of the repo to the PYTHONPATH:
 ```console
@@ -29,24 +59,25 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 2. Run the server
+### 2.2. Run the server
 
 We can run the server locally with:
 ```console
 uvicorn tool_server.service:app --port 8080
 ```
+</details>
 
-### 3. Query the service
+## Query the service
 
 Access tools using:
 
-3.1. REST endpoint
+### REST endpoint
 ```console
 curl 'localhost:8080/v1/tools/current-date?timezone=Africa/Kampala'
 curl 'localhost:8080/v1/tools/wikipedia-semantic-search?query=CRISPR'
 ```
 
-3.2. MCP endpoint
+### MCP endpoint
 ```console
 python3 - <<'PY'
 import asyncio
@@ -67,7 +98,7 @@ asyncio.run(main())
 PY
 ```
 
-3.3. TODO: add example that shows full tool-calling loop.
+TODO: add example that shows full tool-calling loop.
 
 
 ## Tools:
