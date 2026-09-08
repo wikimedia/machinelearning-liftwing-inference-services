@@ -98,8 +98,37 @@ asyncio.run(main())
 PY
 ```
 
-TODO: add example that shows full tool-calling loop.
+### Tool-calling loop
 
+For a [full tool-calling loop](https://developers.openai.com/api/docs/guides/function-calling?api-mode=responses#the-tool-calling-flow), the model asks for a tool, this client runs it on the tool-server, and the model answers grounded in the result, see `examples/tool_calling_loop.py`. Install its two dependencies and run the example tool-calling loop:
+
+```console
+pip install httpx==0.28.1 fastmcp==2.14.7
+```
+
+Against a local tool-server and model-server (e.g running on ML-Lab):
+
+```console
+python3 examples/tool_calling_loop.py \
+    --tools-url http://localhost:8080/mcp/ \
+    --model-url http://localhost:8585/openai/v1/chat/completions \
+    --model qwen3-0.6b \
+    "What day is it today in Kampala?"
+```
+
+Against a LiftWing inference service (addressed by cluster URL and routed by Host header):
+
+```console
+python3 examples/tool_calling_loop.py \
+    --model-url https://inference.svc.eqiad.wmnet:30443/openai/v1/chat/completions \
+    --model-host llm-qwen36-27b.llm.wikimedia.org \
+    --model llm-qwen36-27b \
+    "What time and day is it right now in Kampala?"
+```
+
+`--tools-url` is the tool-server's MCP endpoint. It defaults to `http://localhost:8080/mcp/` for local runs. Once the tool-server is hosted on LiftWing, point `--tools-url` at its hosted URL instead.
+
+Every option has an environment variable equivalent, run `python examples/tool_calling_loop.py --help` to see the full list.
 
 ## Tools:
 
