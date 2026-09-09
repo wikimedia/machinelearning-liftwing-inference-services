@@ -2,7 +2,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from src.models.revertrisk_wikidata.model_server.model import RevertRiskWikidataModel
+from src.models.revertrisk_wikidata.model_server.model import (
+    DEFAULT_USER_AGENT,
+    RevertRiskWikidataModel,
+)
 
 SAMPLE_PAGE_CHANGE_EVENT = {
     "$schema": "/mediawiki/page/change/1.2.0",
@@ -519,3 +522,50 @@ async def test_send_event_calls_eventgate(model_server):
         prediction_results,
     )
     mock_events.send_event.assert_awaited_once()
+
+
+def build_model(**kwargs):
+    """
+    Construct the model without loading anything from disk.
+
+    Unlike the `model_server` fixture this runs the real __init__, which is what
+    the user-agent wiring needs to be tested through.
+    """
+    with (
+        patch.object(RevertRiskWikidataModel, "lazy_model_loading"),
+        patch("src.models.revertrisk_wikidata.model_server.model.Cache"),
+    ):
+        return RevertRiskWikidataModel(
+            name="revertrisk-wikidata",
+            model_path="/mnt/models/test-model.pkl",
+            force_http=False,
+            aiohttp_client_timeout=5,
+            **kwargs,
+        )
+
+
+def test_user_agent_defaults_to_liftwing_string():
+    """The default UA must stay byte-identical, so production is unaffected."""
+    assert build_model().custom_user_agent == DEFAULT_USER_AGENT
+    assert DEFAULT_USER_AGENT == (
+        "WMF ML Team revertrisk-wikidata model inference (LiftWing)"
+    )
+
+
+@pytest.mark.asyncio
+async def test_user_agent_can_be_overridden():
+    """
+    CUSTOM_UA lets the service run outside LiftWing's allowlisted network, where
+    Wikimedia rejects a UA with no contact details (T400119). Assert it reaches
+    the mwapi session, not just the attribute.
+    """
+    ua = "revertrisk-wikidata-localtest/1.0 (https://example.org; me@example.org)"
+
+    model = build_model(custom_user_agent=ua)
+
+    assert model.custom_user_agent == ua
+    session = model.create_mwapi_session()
+    try:
+        assert session.headers["User-Agent"] == ua
+    finally:
+        await session.session.close()

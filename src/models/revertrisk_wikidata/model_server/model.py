@@ -5,10 +5,11 @@ import multiprocessing
 import os
 import re
 import sys
+import uuid
 from dataclasses import dataclass
 from datetime import datetime
 from distutils.util import strtobool
-from typing import Any, Optional
+from typing import Any, Optional, Union
 
 import aiohttp
 import catboost as catb
@@ -22,6 +23,7 @@ import transformers
 from diskcache import Cache
 from fastapi import HTTPException
 from kserve.errors import InferenceError
+from kserve.protocol.infer_type import InferOutput, InferRequest, InferResponse
 from tenacity import retry, stop_after_attempt, wait_exponential
 from utils import (
     fetch_labels_from_api,
@@ -35,6 +37,7 @@ from utils import (
 from python import events
 from python.preprocess_utils import (
     check_input_param,
+    extract_v2_input,
     get_rev_id,
     is_wikidata_event,
     validate_json_input,
@@ -45,6 +48,14 @@ logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
 
 NUMERIC_NaN = -999
 CATEGORICAL_NaN = "nan"
+# Key used to carry the request's inference protocol from preprocess to predict.
+# It is kept on the request itself rather than on the model instance so that
+# concurrent v1 and v2 requests cannot observe each other's protocol.
+V2_PROTOCOL_KEY = "_v2_protocol"
+# Overridable via CUSTOM_UA. Wikimedia rejects requests whose User-Agent carries
+# no contact details (T400119), so running this service from outside LiftWing's
+# allowlisted network requires setting one that does.
+DEFAULT_USER_AGENT = "WMF ML Team revertrisk-wikidata model inference (LiftWing)"
 # Determine the device to run the model on.
 # This makes the code portable between GPU and CPU environments.
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -67,15 +78,14 @@ class RevertRiskWikidataModel(kserve.Model):
         aiohttp_client_timeout: int,
         eventgate_url: str | None = None,
         eventgate_stream: str | None = None,
+        custom_user_agent: str = DEFAULT_USER_AGENT,
     ):
         super().__init__(name)
         self.name = name
         self.model_path = model_path
         self.force_http = force_http
         self.aiohttp_client_timeout = aiohttp_client_timeout
-        self.custom_user_agent = (
-            "WMF ML Team revertrisk-wikidata model inference (LiftWing)"
-        )
+        self.custom_user_agent = custom_user_agent
         self.event_key = "event"
         self.eventgate_url = eventgate_url
         self.eventgate_stream = eventgate_stream
@@ -91,6 +101,35 @@ class RevertRiskWikidataModel(kserve.Model):
         self.api_cache = Cache(
             "/tmp/revertrisk_wikidata_disk_cache", size_limit=1024 * 1024 * 256
         )
+
+    def _normalize_cache_input(self, inputs: dict[str, Any]) -> None:
+        """Accept the payload shape sent by the Linked Artifacts Cache (hoarde).
+
+        hoarde keys artifacts on a fixed (wiki, page, revision) triple and sends
+        it as {"wiki_id": ..., "page_id": ..., "revision_id": ...}; there is no
+        per-table field mapping on its side, so the translation happens here.
+        This mirrors the wiki_id handling in outlink-topic-model.
+
+        Mutates ``inputs`` in place: sets "rev_id" from "revision_id" and drops
+        the cache-only keys. Event payloads are left untouched. "page_id" is
+        unused -- the page is derived from the revision by the MW API.
+        """
+        if self.event_key in inputs or "revision_id" not in inputs:
+            return
+
+        wiki_id = inputs.pop("wiki_id", None)
+        if wiki_id is not None and wiki_id != "wikidatawiki":
+            error_message = (
+                f"Invalid wiki_id: {wiki_id}. This model only handles Wikidata "
+                "edits (wiki_id must be 'wikidatawiki')."
+            )
+            logging.error(error_message)
+            raise HTTPException(status_code=400, detail=error_message)
+
+        inputs.pop("page_id", None)
+        revision_id = inputs.pop("revision_id")
+        # An explicit rev_id wins, so a caller sending both is not silently overridden.
+        inputs.setdefault("rev_id", revision_id)
 
     def create_mwapi_session(self):
         """
@@ -395,16 +434,25 @@ class RevertRiskWikidataModel(kserve.Model):
             raise InferenceError(error_message)
 
     async def preprocess(
-        self, inputs: dict[str, Any], headers: dict[str, str] = None
+        self,
+        inputs: Union[dict[str, Any], InferRequest],
+        headers: dict[str, str] = None,
     ) -> dict[str, Any]:
         """
         Preprocess the input request to fetch features.
 
-        Accepts either a plain {"rev_id": ...} payload or an event-based payload
-        {"event": { ...mediawiki.page_change... }} for stream consumption.
+        Accepts a plain {"rev_id": ...} payload, an event-based payload
+        {"event": { ...mediawiki.page_change... }} for stream consumption, or the
+        {"wiki_id": ..., "page_id": ..., "revision_id": ...} payload that the
+        Linked Artifacts Cache sends (see _normalize_cache_input), over either the
+        KServe v1 or v2 (REST and gRPC) inference protocol.
         """
         await self.lazy_model_loading()
+        is_v2 = isinstance(inputs, InferRequest)
+        if is_v2:
+            inputs = extract_v2_input(inputs)
         inputs = validate_json_input(inputs)
+        self._normalize_cache_input(inputs)
 
         if self.event_key in inputs:
             source_event = inputs[self.event_key]
@@ -454,11 +502,13 @@ class RevertRiskWikidataModel(kserve.Model):
         }
         if self.event_key in inputs:
             result[self.event_key] = inputs[self.event_key]
+        if is_v2:
+            result[V2_PROTOCOL_KEY] = True
         return result
 
     async def predict(
         self, inputs: dict[str, Any], headers: dict[str, str] = None
-    ) -> dict[str, Any]:
+    ) -> Union[dict[str, Any], InferResponse]:
         """
         Make a prediction with the model.
         """
@@ -559,7 +609,21 @@ class RevertRiskWikidataModel(kserve.Model):
                 prediction["model_version"],
             )
 
-        return prediction
+        if not inputs.get(V2_PROTOCOL_KEY):
+            return prediction
+
+        # KServe's default postprocess passes the InferResponse through unchanged.
+        output = InferOutput(
+            name="output",
+            shape=[1],
+            datatype="BYTES",
+            data=[json.dumps(prediction)],
+        )
+        return InferResponse(
+            response_id=str(uuid.uuid4()),
+            model_name=self.name,
+            infer_outputs=[output],
+        )
 
     async def send_event(
         self,
@@ -607,6 +671,7 @@ if __name__ == "__main__":
     )
     eventgate_url = os.environ.get("EVENTGATE_URL")
     eventgate_stream = os.environ.get("EVENTGATE_STREAM")
+    custom_user_agent = os.environ.get("CUSTOM_UA", DEFAULT_USER_AGENT)
 
     model = RevertRiskWikidataModel(
         name=model_name,
@@ -615,6 +680,7 @@ if __name__ == "__main__":
         aiohttp_client_timeout=aiohttp_client_timeout,
         eventgate_url=eventgate_url,
         eventgate_stream=eventgate_stream,
+        custom_user_agent=custom_user_agent,
     )
 
     # Start the KServe ModelServer with multiple workers and asyncio workers

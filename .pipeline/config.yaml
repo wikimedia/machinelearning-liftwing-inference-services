@@ -47,6 +47,15 @@ pipelines:
             name: '${setup.project}-revertrisk-multilingual'
             tags: [stable]
 
+  revertrisk-wikidata:
+    blubberfile: revertrisk_wikidata/blubber.yaml
+    stages:
+      - name: run-test
+        build: test
+        run: true
+      - name: production
+        build: production
+
   revertrisk-wikidata-publish:
     blubberfile: revertrisk_wikidata/blubber.yaml
     stages:

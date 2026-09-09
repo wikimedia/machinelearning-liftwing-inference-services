@@ -167,6 +167,7 @@ services:
     image: revertrisk-wikidata:prod
     ports:
       - "8080:8080"
+      - "8081:8081"
     environment:
       MODEL_NAME: "revertrisk-wikidata"
     volumes:

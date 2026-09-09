@@ -4,6 +4,7 @@ import re
 from typing import Any, Union
 
 from kserve.errors import InvalidInput
+from kserve.protocol.infer_type import InferRequest
 
 
 def is_domain_wikipedia(event: dict) -> bool:
@@ -164,6 +165,41 @@ def validate_json_input(inputs: Union[dict, bytes]) -> dict:
         except (AttributeError, json.decoder.JSONDecodeError):
             raise InvalidInput("Please verify that request input is a json dict")
     return inputs
+
+
+def extract_v2_input(infer_request: InferRequest) -> dict:
+    """Extract the JSON payload from a KServe v2 InferRequest.
+
+    gRPC and REST v2 differ in how they encode the payload:
+    - gRPC: bytes in a flat list
+    - REST v2: string, possibly nested in another list
+    """
+    inputs = infer_request.inputs
+    if not inputs:
+        raise InvalidInput("No inputs in v2 request")
+
+    data = inputs[0].data
+    if not data:
+        raise InvalidInput("No data in v2 request input tensor")
+
+    # REST may wrap data in an extra list layer
+    payload = data[0]
+    if isinstance(payload, list):
+        if not payload:
+            raise InvalidInput("Empty list in v2 request data")
+        payload = payload[0]
+
+    # gRPC sends bytes, REST sends string
+    if infer_request.from_grpc:
+        if not isinstance(payload, bytes):
+            raise InvalidInput("Expected bytes for gRPC request")
+        json_str = payload.decode("utf-8")
+    else:
+        if isinstance(payload, bytes):
+            raise InvalidInput("Expected string for REST request")
+        json_str = payload
+
+    return json.loads(json_str)
 
 
 def check_wiki_suffix(lang: str) -> None:
