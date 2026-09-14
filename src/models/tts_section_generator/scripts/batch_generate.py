@@ -15,9 +15,17 @@ New over the pilot:
 * Artifacts pinned to the v1 experiment delivery set: MP3 + WebVTT (the
   service default leads with Opus; an unpinned driver would generate the
   wrong codec corpus-wide).
-* REQUIRES a writing sink on the generator (s3 in the real run, file for
-  local smoke): responses must carry blob_uri, and inline bytes_b64 is a
-  hard error. A batch whose artifacts evaporate is not a batch.
+* REQUIRES that the bytes land somewhere. Either the generator writes
+  them (its s3/file sink, response carries blob_uri) or this script
+  writes them (--artifact-dir, response carries bytes_b64). Exactly one
+  of the two must be configured: a batch whose artifacts evaporate is
+  not a batch, so an inline response with no --artifact-dir is a hard,
+  non-retryable error, and so is a missing payload of either kind.
+* --sections limits generation to named sections (e.g. "lead" for the
+  v1 experiment's lead-only corpus). The completeness rule and the
+  manifest follow the same selection: a manifest means "every REQUESTED
+  generatable section of this article is present", and records its
+  scope so the reader knows which.
 * Per-article manifest writer: after every generatable section of an
   article settles ok (deterministic skips do not block completeness; any
   fail does), writes {wiki}/{page}/{rev}/manifest.json. Manifest presence
@@ -41,12 +49,26 @@ Usage (from a deploy host, generator reachable with an s3 sink):
     # Pin it FIRST if the product list arrives as titles:
     python3 batch_generate.py --resolve titles.txt --dataset articles.json
 
-Manifest destination: --manifest-dir DIR (local, for smoke tests) or S3
-via TTS_GEN_S3_ENDPOINT / TTS_GEN_S3_BUCKET + AWS env credentials (the
-same pattern as the generator's sink; boto3 path-style).
+Manifest destination: --manifest-dir DIR (local; also the analytics
+published tree) or S3 via TTS_GEN_S3_ENDPOINT / TTS_GEN_S3_BUCKET + AWS
+env credentials (the same pattern as the generator's sink; boto3
+path-style).
+
+Analytics published-tree run (T436758), venv on a stat host:
+
+    python3 batch_generate.py \\
+        --dataset articles.json --sections lead \\
+        --base https://tts-section-generator.discovery.wmnet:31443 \\
+        --artifact-dir /srv/published/wmf-ml-models/tts/experiment-v1 \\
+        --manifest-dir /srv/published/wmf-ml-models/tts/experiment-v1 \\
+        --log ~/tts/batch_results.jsonl --concurrency 4
+
+Keep the log and dataset OUTSIDE the published tree: everything under it
+is served publicly.
 """
 
 import argparse
+import base64
 import concurrent.futures
 import datetime
 import json
@@ -58,9 +80,18 @@ from pathlib import Path
 
 import requests
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2  # 2 adds "scope" (which sections a manifest covers)
+
+# Published-tree modes. Files inherit the process umask otherwise, and a
+# group-only-readable file under /srv/published is invisible to Apache:
+# the failure mode is a 403 in the app, not an error in this script.
+FILE_MODE = 0o644
+DIR_MODE = 0o755
 ARTIFACTS = ["audio_mp3", "captions_vtt"]  # the Apps codec decision; do not widen
 ART_FIELD = {"audio_mp3": "audio", "captions_vtt": "captions"}
+# Mirrors tts_generator.sinks._EXT: the tree this script writes must be
+# byte-for-byte the layout the generator's own file sink would produce.
+_ARTIFACT_EXT = {"audio_mp3": "mp3", "captions_vtt": "vtt"}
 
 TRANSIENT_RETRIES = 2
 BACKOFF_S = 10.0
@@ -98,6 +129,20 @@ def _done_keys(records: list[dict]) -> set[str]:
     return {r["key"] for r in records if r.get("status") in ("ok", "skip")}
 
 
+def _write_public(path: Path, data: bytes) -> None:
+    """Write atomically with world-readable modes.
+
+    Dot-prefixed temp name: a partially written file under the published
+    tree must never be fetchable, and ".lead.mp3.tmp" is both hidden and
+    outside the {section}.{ext} naming the app composes.
+    """
+    path.parent.mkdir(parents=True, exist_ok=True, mode=DIR_MODE)
+    tmp = path.with_name("." + path.name + ".tmp")
+    tmp.write_bytes(data)
+    tmp.chmod(FILE_MODE)
+    tmp.rename(path)  # atomic publish within one filesystem
+
+
 def _key_from_uri(blob_uri: str) -> str:
     """Relative object key from a sink blob_uri.
 
@@ -114,19 +159,38 @@ def _key_from_uri(blob_uri: str) -> str:
 # ── Manifest sinks ──────────────────────────────────────────────────────────
 
 
-class DirManifestSink:
-    """Write manifests under a local directory (smoke tests, file-sink runs)."""
+class ArtifactWriter:
+    """Write inline artifact bytes into a local tree (the analytics
+    published directory, or any local root).
+
+    Used when the generator cannot reach the destination filesystem, which
+    is the case for the published tree: the deployed service returns
+    bytes_b64 and this script is the writer. Keys are the canonical
+    {wiki}/{page}/{rev}/{section}.{ext} layout, so the tree is identical
+    to what the generator's own file sink would produce.
+    """
 
     def __init__(self, root: str):
         self.root = Path(root)
-        self.root.mkdir(parents=True, exist_ok=True)
+        self.root.mkdir(parents=True, exist_ok=True, mode=DIR_MODE)
+
+    def write(self, key: str, data: bytes) -> str:
+        path = self.root / key
+        _write_public(path, data)
+        return path.as_uri()
+
+
+class DirManifestSink:
+    """Write manifests under a local directory (smoke tests, file-sink runs,
+    and the analytics published tree)."""
+
+    def __init__(self, root: str):
+        self.root = Path(root)
+        self.root.mkdir(parents=True, exist_ok=True, mode=DIR_MODE)
 
     def put(self, key: str, body: bytes) -> str:
         path = self.root / key
-        path.parent.mkdir(parents=True, exist_ok=True)
-        tmp = path.with_suffix(path.suffix + ".tmp")
-        tmp.write_bytes(body)
-        tmp.rename(path)
+        _write_public(path, body)
         return path.as_uri()
 
 
@@ -205,6 +269,7 @@ def generate_one(
     doc_index: int,
     log_path: Path,
     session: requests.Session,
+    artifact_writer: "ArtifactWriter | None" = None,
 ) -> dict:
     """Generate one section; append exactly one record; return it.
 
@@ -250,17 +315,44 @@ def generate_one(
         if r.status_code == 200:
             body = r.json()
             arts = {a["artifact_type"]: a for a in body["artifacts"]}
-            missing_uri = [k for k, a in arts.items() if "blob_uri" not in a]
-            if missing_uri:
-                # Inline sink on the generator: the batch's artifacts would
-                # evaporate. Hard, non-retryable operator error.
+            # The bytes must land somewhere: either the generator already
+            # wrote them (blob_uri) or we write them here (bytes_b64 +
+            # --artifact-dir). Anything else is a hard, non-retryable
+            # operator error: artifacts would evaporate.
+            unplaceable = [
+                k
+                for k, a in arts.items()
+                if "blob_uri" not in a
+                and not (artifact_writer is not None and "bytes_b64" in a)
+            ]
+            if unplaceable:
                 record.update(
                     status="fail",
-                    error=f"generator sink is inline (no blob_uri on "
-                    f"{missing_uri}); configure a writing sink",
+                    error=(
+                        f"nowhere to put artifacts {unplaceable}: the "
+                        "response carries neither blob_uri (generator sink) "
+                        "nor bytes_b64 with --artifact-dir configured"
+                    ),
                 )
                 _append(log_path, record)
                 return record
+
+            written: dict[str, str] = {}
+            if artifact_writer is not None:
+                try:
+                    for k, a in arts.items():
+                        if "blob_uri" in a:
+                            continue  # generator already placed it
+                        akey = f"{key}.{_ARTIFACT_EXT[k]}"
+                        artifact_writer.write(akey, base64.b64decode(a["bytes_b64"]))
+                        written[k] = akey
+                except (OSError, ValueError) as e:
+                    # Disk full, permissions, corrupt payload: transient
+                    # from the batch's point of view (fix and re-run;
+                    # resume skips what already settled).
+                    record.update(status="fail", error=f"artifact write failed: {e}")
+                    _append(log_path, record)
+                    return record
             any_art = body["artifacts"][0]
             record.update(
                 status="ok",
@@ -276,7 +368,9 @@ def generate_one(
                 ),
                 artifacts={
                     k: {
-                        "key": _key_from_uri(a["blob_uri"]),
+                        "key": (
+                            written[k] if k in written else _key_from_uri(a["blob_uri"])
+                        ),
                         "media_type": a["media_type"],
                         "size_bytes": a.get("size_bytes"),
                     }
@@ -312,7 +406,9 @@ def generate_one(
 # ── Manifest ────────────────────────────────────────────────────────────────
 
 
-def build_manifest(art: dict, enum: dict, ok_records: list[dict]) -> dict | None:
+def build_manifest(
+    art: dict, enum: dict, ok_records: list[dict], scope: str = "all"
+) -> dict | None:
     """Assemble one article's manifest from its ok section records, or None
     with a reason printed if the article does not qualify."""
     versions = {r["generation_version"] for r in ok_records}
@@ -339,6 +435,10 @@ def build_manifest(art: dict, enum: dict, ok_records: list[dict]) -> dict | None
         )
     manifest = {
         "schema_version": SCHEMA_VERSION,
+        # Which sections this manifest claims to cover. "all" = every
+        # generatable section of the article; "lead" = the lead only (the
+        # v1 experiment). Readers must not assume completeness beyond it.
+        "scope": scope,
         "wiki_id": "enwiki",
         "page_id": art["page_id"],
         "rev_id": art["rev_id"],
@@ -355,11 +455,32 @@ def build_manifest(art: dict, enum: dict, ok_records: list[dict]) -> dict | None
 
 
 def settle_article(
-    art: dict, enum: dict, records_by_key: dict, manifest_sink, log_path: Path
+    art: dict,
+    enum: dict,
+    records_by_key: dict,
+    manifest_sink,
+    log_path: Path,
+    wanted: "set[str] | None" = None,
+    scope: str = "all",
 ) -> str:
     """Evaluate one article's completeness; write its manifest if earned.
-    Returns 'manifest' | 'incomplete' | 'no_sections'."""
-    gen_ids = [s["section_id"] for s in enum["sections"] if s["generatable"]]
+    Returns 'manifest' | 'incomplete' | 'no_sections'.
+
+    Completeness is scoped to the REQUESTED sections: under --sections
+    lead, an article is complete when its lead is present, and the other
+    sections' absence is by design rather than a dead letter.
+    """
+    gen_ids = [
+        s["section_id"]
+        for s in enum["sections"]
+        if s["generatable"] and (wanted is None or s["section_id"] in wanted)
+    ]
+    if wanted is not None:
+        # A requested section the article does not have at all: main() has
+        # already written the fail record; refuse the manifest here too.
+        present = {s["section_id"] for s in enum["sections"]}
+        if wanted - present:
+            return "incomplete"
     if not gen_ids:
         return "no_sections"
     recs = []
@@ -372,7 +493,7 @@ def settle_article(
         # status == "skip": deterministic, does not block, not in manifest
     if not recs:
         return "no_sections"  # every generatable section skipped at POST time
-    manifest = build_manifest(art, enum, recs)
+    manifest = build_manifest(art, enum, recs, scope=scope)
     if manifest is None:
         return "incomplete"
     key = f"enwiki/{art['page_id']}/{art['rev_id']}/manifest.json"
@@ -417,7 +538,21 @@ def main() -> int:
         "--concurrency", type=int, default=1, help="size to the isvc replica count"
     )
     ap.add_argument(
-        "--manifest-dir", help="write manifests under a local dir (smoke tests)"
+        "--sections",
+        default="",
+        help='comma-separated section ids to generate (e.g. "lead"); '
+        "default: every generatable section. The completeness rule and "
+        "the manifest scope follow this selection.",
+    )
+    ap.add_argument(
+        "--artifact-dir",
+        help="write artifact bytes under this local root (required when the "
+        "generator runs with an inline sink, e.g. the analytics published "
+        "tree run from a stat host)",
+    )
+    ap.add_argument(
+        "--manifest-dir",
+        help="write manifests under a local dir (smoke tests, published tree)",
     )
     ap.add_argument(
         "--s3-endpoint",
@@ -452,6 +587,10 @@ def main() -> int:
             return 2
         manifest_sink = S3ManifestSink(endpoint, bucket)
 
+    wanted = {s.strip() for s in args.sections.split(",") if s.strip()} or None
+    scope = ",".join(sorted(wanted)) if wanted else "all"
+    artifact_writer = ArtifactWriter(args.artifact_dir) if args.artifact_dir else None
+
     articles = json.loads(Path(args.dataset).read_text())
     log_path = Path(args.log)
     prior = _read_log(log_path)
@@ -462,7 +601,9 @@ def main() -> int:
     print(
         f"Batch: {len(articles)} articles from {args.dataset} (pinned "
         f"revisions); {len(done)} sections already settled in {log_path}; "
-        f"concurrency {args.concurrency}; artifacts {ARTIFACTS}"
+        f"concurrency {args.concurrency}; artifacts {ARTIFACTS}; "
+        f"scope {scope}"
+        + (f"; writing artifacts to {args.artifact_dir}" if artifact_writer else "")
     )
 
     # Enumerate first (serial, fast), then generate (bounded pool).
@@ -486,7 +627,29 @@ def main() -> int:
             print(f"  ENUM FAIL {art['title']}: {e}")
             continue
         enums[akey] = enum
+        if wanted is not None:
+            missing = wanted - {s["section_id"] for s in enum["sections"]}
+            if missing:
+                # Requested section absent from this revision. Recorded
+                # loudly: silently generating nothing would leave the
+                # corpus quietly short by however many articles.
+                _append(
+                    log_path,
+                    {
+                        "ts": _now(),
+                        "status": "fail",
+                        "key": f"enwiki/{art['page_id']}/{art['rev_id']}/"
+                        f"{sorted(missing)[0]}",
+                        "title": art["title"],
+                        "error": f"requested section(s) {sorted(missing)} not "
+                        f"present in this revision",
+                        "attempts": 1,
+                    },
+                )
+                print(f"  MISSING SECTION {art['title']}: {sorted(missing)}")
         for i, s in enumerate(enum["sections"]):
+            if wanted is not None and s["section_id"] not in wanted:
+                continue
             key = f"enwiki/{art['page_id']}/{art['rev_id']}/{s['section_id']}"
             if key in done:
                 continue
@@ -515,7 +678,16 @@ def main() -> int:
     counts = {"ok": 0, "skip": 0, "fail": 0}
     with concurrent.futures.ThreadPoolExecutor(max_workers=args.concurrency) as ex:
         futs = {
-            ex.submit(generate_one, args.base, art, s, i, log_path, session): (art, s)
+            ex.submit(
+                generate_one,
+                args.base,
+                art,
+                s,
+                i,
+                log_path,
+                session,
+                artifact_writer,
+            ): (art, s)
             for art, s, i in tasks
         }
         for n, fut in enumerate(concurrent.futures.as_completed(futs), 1):
@@ -541,7 +713,15 @@ def main() -> int:
             outcomes["incomplete"] += 1
             continue
         outcomes[
-            settle_article(art, enum, records_by_key, manifest_sink, log_path)
+            settle_article(
+                art,
+                enum,
+                records_by_key,
+                manifest_sink,
+                log_path,
+                wanted=wanted,
+                scope=scope,
+            )
         ] += 1
 
     print(

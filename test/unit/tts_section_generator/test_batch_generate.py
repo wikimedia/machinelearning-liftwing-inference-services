@@ -210,7 +210,8 @@ def test_clean_article_gets_manifest_with_correct_shape(stub, tmp_path):
     assert proc.returncode == 0, proc.stdout + proc.stderr
     m = _manifest(mdir, 9, 90)
     assert m is not None
-    assert m["schema_version"] == 1
+    assert m["schema_version"] == 2
+    assert m["scope"] == "all"  # no --sections: full-corpus path unchanged
     assert m["generation_version"] == GV1
     assert m["render_id"] == "rid-9"
     assert [s["section_id"] for s in m["sections"]] == ["lead"]  # skip absent
