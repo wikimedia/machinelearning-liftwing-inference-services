@@ -226,81 +226,173 @@ def _assign_frames_to_words(
     clean_words: list[str],
     total_frames: int,
 ) -> list[dict]:
-    """Map CTC segments → alignment → word timestamps."""
+    """Map CTC segments -> alignment -> word timestamps.
 
-    word_timestamps: list[dict] = []
-    word_idx = 0
-    char_in_word = 0
-    word_start_global: int | None = None
+    Each entry of ``alignment`` says which REFERENCE character the
+    corresponding recognised segment matched (or ``None`` for an
+    insertion). We attribute segments to words through that index, so a
+    run of characters the recogniser missed cannot shift the words that
+    follow it: the mapping re-synchronises at the next matched character.
 
+    Walking words and segments in lockstep instead (the original
+    approach) meant one missed run displaced every later word and the
+    tail words ran out of segments, collapsing onto a single frame. On a
+    two-minute section that produced captions up to a second behind the
+    audio plus a cluster of zero-length cues (T436758).
+
+    Words with no matched segment (missed by the recogniser, or tokens
+    with no alphanumeric characters such as em-dashes) are interpolated
+    between their anchored neighbours in proportion to their length.
+    Those timings are estimates, not measurements, but they are
+    monotonic and non-degenerate, which cue-stepping players require.
+
+    Guarantees, asserted in the tests:
+      * one timestamp per input word, in input order (a word is omitted
+        only where the audio leaves literally no room for a cue);
+      * ``start_ms`` non-decreasing; ``end_ms`` > ``start_ms``;
+      * output for a fully matched alignment is unchanged from the
+        lockstep implementation (to within one frame on ``end_ms``).
+    """
+    if not words:
+        return []
+
+    # Reference character index -> index of the word that owns it.
+    char_owner: list[int] = []
+    for word_idx, clean in enumerate(clean_words):
+        char_owner.extend([word_idx] * len(clean))
+
+    # Frame span of the segments matched to each word.
+    spans: dict[int, tuple[int, int]] = {}
     for seg_idx in range(min(len(segments), len(alignment))):
-        # Emit zero-duration entries for non-alphanumeric tokens (e.g. em-dashes)
-        # so they stay index-aligned with the recognised words.
-        while word_idx < len(clean_words) and len(clean_words[word_idx]) == 0:
-            zero_ms = word_timestamps[-1]["end_ms"] if word_timestamps else 0.0
-            word_timestamps.append(
-                {"word": words[word_idx], "start_ms": zero_ms, "end_ms": zero_ms}
-            )
-            word_idx += 1
-
-        if word_idx >= len(clean_words):
-            break
-
         ref_char_idx = alignment[seg_idx]
-        if ref_char_idx is None:
+        if ref_char_idx is None or not 0 <= ref_char_idx < len(char_owner):
+            continue  # insertion, or an index past the reference text
+        word_idx = char_owner[ref_char_idx]
+        _symbol, frame_start, frame_end = segments[seg_idx]
+        if word_idx in spans:
+            known_start, known_end = spans[word_idx]
+            spans[word_idx] = (min(known_start, frame_start), max(known_end, frame_end))
+        else:
+            spans[word_idx] = (frame_start, frame_end)
+
+    # Keep only anchors that advance: a word whose matched frames start
+    # before the previous anchor ended is a mis-match, not a measurement.
+    timestamps: list[dict | None] = [None] * len(words)
+    last_end_frame = -1
+    for word_idx in sorted(spans):
+        frame_start, frame_end = spans[word_idx]
+        if frame_start < last_end_frame:
+            continue
+        timestamps[word_idx] = {
+            "word": words[word_idx],
+            "start_ms": frame_start * FRAME_DURATION_MS,
+            "end_ms": max(
+                frame_end * FRAME_DURATION_MS,
+                frame_start * FRAME_DURATION_MS + FRAME_DURATION_MS,
+            ),
+        }
+        last_end_frame = frame_end
+
+    _interpolate_unanchored(timestamps, words, clean_words, total_frames)
+    # A cue with no duration cannot be rendered (players skip it), so it is
+    # dropped rather than emitted. This only happens where the audio leaves
+    # literally no room, e.g. punctuation between two adjacent measurements.
+    return [t for t in timestamps if t is not None and t["end_ms"] > t["start_ms"]]
+
+
+def _interpolate_unanchored(
+    timestamps: list[dict | None],
+    words: list[str],
+    clean_words: list[str],
+    total_frames: int,
+) -> None:
+    """Fill runs of unanchored words in place, between their neighbours.
+
+    Unanchored words are those the recogniser missed, plus tokens with no
+    alphanumeric characters (em-dashes, bare quotes) which produce no
+    reference characters to match. They are laid out across the gap
+    between the surrounding anchors in proportion to their length.
+
+    Each cue gets at least one frame, and cues never overlap: a player
+    highlighting two words at once is as wrong as one highlighting none.
+    When the gap is too narrow to give every word a frame, the run
+    borrows from the preceding anchor's END (shortening a measured cue by
+    a few frames is imperceptible, and the alternatives are overlapping
+    or degenerate cues). Anchor START times are never moved: they are the
+    measurements this whole module exists to produce.
+    """
+    total_ms = float(total_frames * FRAME_DURATION_MS)
+    idx = 0
+    while idx < len(timestamps):
+        if timestamps[idx] is not None:
+            idx += 1
             continue
 
-        word_len = len(clean_words[word_idx])
+        run_end = idx
+        while run_end < len(timestamps) and timestamps[run_end] is None:
+            run_end += 1
 
-        if char_in_word == 0:
-            word_start_global = segments[seg_idx][1]
+        left = timestamps[idx - 1] if idx > 0 else None
+        right = timestamps[run_end] if run_end < len(timestamps) else None
+        window_start = float(left["end_ms"]) if left else 0.0
+        window_end = float(right["start_ms"]) if right else total_ms
+        if window_end < window_start:
+            window_end = window_start
 
-        char_in_word += 1
+        run_length = run_end - idx
+        needed = run_length * FRAME_DURATION_MS
+        if window_end - window_start < needed:
+            # Borrow a few frames so every word keeps a visible cue.
+            # Prefer shortening the preceding anchor's END; if there is no
+            # preceding anchor (a missed word at the very start), delay the
+            # following anchor's START instead. Either way the change is
+            # bounded by the run length and never inverts a cue.
+            if left is not None:
+                floor_ms = float(left["start_ms"]) + FRAME_DURATION_MS
+                window_start = max(floor_ms, window_end - needed)
+                left["end_ms"] = window_start
+            elif right is not None:
+                ceiling_ms = float(right["end_ms"]) - FRAME_DURATION_MS
+                window_end = min(ceiling_ms, window_start + needed)
+                if window_end < window_start:
+                    window_end = window_start
+                right["start_ms"] = window_end
 
-        if char_in_word >= word_len:
-            word_end_frame = segments[seg_idx][2]
-            word_timestamps.append(
-                {
-                    "word": words[word_idx],
-                    "start_ms": word_start_global * FRAME_DURATION_MS,
-                    "end_ms": word_end_frame * FRAME_DURATION_MS,
-                }
-            )
-            word_idx += 1
-            char_in_word = 0
-            word_start_global = None
-
-    # Flush remaining
-    if char_in_word > 0 and word_idx < len(clean_words):
-        final_frame = segments[-1][2] if segments else total_frames
-        word_timestamps.append(
-            {
-                "word": words[word_idx],
-                "start_ms": word_start_global * FRAME_DURATION_MS,
-                "end_ms": final_frame * FRAME_DURATION_MS,
+        weights = [max(len(clean_words[i]), 1) for i in range(idx, run_end)]
+        weight_total = sum(weights)
+        span = max(window_end - window_start, 0.0)
+        cursor = window_start
+        for i, weight in zip(range(idx, run_end), weights):
+            share = span * weight / weight_total
+            step = max(share, float(FRAME_DURATION_MS))
+            timestamps[i] = {
+                "word": words[i],
+                "start_ms": cursor,
+                "end_ms": cursor + step,
             }
-        )
-        word_idx += 1
+            cursor += step
+        # Last resort for a gap so tight that even borrowing left no room:
+        # trim the run back so it cannot cross the next measurement.
+        if right is not None and cursor > right["start_ms"]:
+            _trim_run(timestamps, idx, run_end, float(right["start_ms"]))
+        idx = run_end
 
-    # Flush any trailing zero-length words (non-alnum tokens after the last
-    # recognised word).
-    while word_idx < len(clean_words) and len(clean_words[word_idx]) == 0:
-        zero_ms = word_timestamps[-1]["end_ms"] if word_timestamps else 0.0
-        word_timestamps.append(
-            {"word": words[word_idx], "start_ms": zero_ms, "end_ms": zero_ms}
-        )
-        word_idx += 1
 
-    # Any words we couldn't assign — append at end
-    final_ms = total_frames * FRAME_DURATION_MS
-    while word_idx < len(words):
-        start_ms = word_timestamps[-1]["end_ms"] if word_timestamps else final_ms
-        word_timestamps.append(
-            {"word": words[word_idx], "start_ms": start_ms, "end_ms": final_ms}
-        )
-        word_idx += 1
-
-    return word_timestamps
+def _trim_run(
+    timestamps: list[dict | None], start_idx: int, stop_idx: int, limit_ms: float
+) -> None:
+    """Squeeze cues [start_idx, stop_idx) so none passes ``limit_ms``."""
+    run = [t for t in timestamps[start_idx:stop_idx] if t is not None]
+    if not run:
+        return
+    begin = float(run[0]["start_ms"])
+    available = max(limit_ms - begin, 0.0)
+    slice_ms = available / len(run) if available else 0.0
+    cursor = begin
+    for t in run:
+        t["start_ms"] = cursor
+        t["end_ms"] = cursor + slice_ms
+        cursor += slice_ms
 
 
 def _proportional_timestamps(text: str, total_duration_ms: float) -> list[dict]:

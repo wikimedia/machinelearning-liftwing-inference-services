@@ -107,10 +107,11 @@ def test_assign_frames_two_words():
     }
 
 
-def test_assign_frames_flushes_unassigned_words_at_end():
+def test_assign_frames_interpolates_unassigned_words():
     """
-    If alignment runs out before all words are placed, remaining words are
-    appended pinned to the final timestamp, no word is dropped.
+    If alignment runs out before all words are placed, the remaining words
+    are interpolated between their anchored neighbours and keep a positive
+    duration, rather than being pinned to the final timestamp.
     """
     segments = [_seg(1, 0, 5), _seg(2, 5, 10)]
     alignment = [0, 1]
@@ -121,8 +122,9 @@ def test_assign_frames_flushes_unassigned_words_at_end():
         segments, alignment, words, clean_words, total_frames=10
     )
 
-    # Every input word must appear in the output.
+    # Every input word must appear in the output with a positive duration.
     assert [r["word"] for r in result] == ["Hi", "There", "Friend"]
+    assert all(t["end_ms"] > t["start_ms"] for t in result)
 
 
 def test_assign_frames_preserves_original_word_casing_and_punctuation():
@@ -140,10 +142,11 @@ def test_assign_frames_preserves_original_word_casing_and_punctuation():
     assert result[0]["word"] == "Earth,"  # original token preserved
 
 
-def test_assign_frames_non_alnum_word_gets_zero_duration_entry():
+def test_assign_frames_non_alnum_word_gets_interpolated_duration():
     """
-    A word with no alphanumeric chars (e.g an em-dash) receives a zero-duration
-    timestamp so it stays index-aligned with the recognised words.
+    A word with no alphanumeric chars (e.g an em-dash) is interpolated
+    between its neighbours so it stays index-aligned and keeps a
+    non-degenerate duration, rather than a zero-length cue.
     """
     words = ["Hi", "—", "there"]
     clean_words = ["HI", "", "THERE"]
@@ -168,26 +171,16 @@ def test_assign_frames_non_alnum_word_gets_zero_duration_entry():
 
     ms_per_frame = FRAME_DURATION_MS
 
-    # "Hi" spans frames 0–10.
-    assert result[0] == {
-        "word": "Hi",
-        "start_ms": 0,
-        "end_ms": 10 * ms_per_frame,
-    }
+    # "Hi" may give up a frame so the dash keeps a visible cue.
+    assert result[0]["word"] == "Hi"
+    assert result[0]["start_ms"] == 0
+    assert result[0]["end_ms"] <= 10 * ms_per_frame
 
-    # "—" is a zero-duration stub pinned to the end of "Hi".
-    assert result[1] == {
-        "word": "—",
-        "start_ms": 10 * ms_per_frame,
-        "end_ms": 10 * ms_per_frame,
-    }
-
-    # "there" spans frames 10–35.
-    assert result[2] == {
-        "word": "there",
-        "start_ms": 10 * ms_per_frame,
-        "end_ms": 35 * ms_per_frame,
-    }
+    # "—" is interpolated between "Hi" and "there", non-degenerate, no overlap.
+    assert result[1]["word"] == "—"
+    assert result[1]["start_ms"] == result[0]["end_ms"]
+    assert result[1]["end_ms"] - result[1]["start_ms"] >= ms_per_frame
+    assert result[2]["start_ms"] >= result[1]["end_ms"]
 
 
 # ── _proportional_timestamps ─────────────────────────────────────────────────
