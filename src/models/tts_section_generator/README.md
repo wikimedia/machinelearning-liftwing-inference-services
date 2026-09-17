@@ -419,6 +419,32 @@ Two footguns:
 - **Never reuse a results log against an empty store**: the log says
   settled, the batch writes manifests without audio.
 
+#### `index.json`
+
+Written at the root of the manifest destination when a run completes:
+one entry per article that has audio, with its revision and the relative
+paths of its audio, captions and manifest. Consumers fetch it once
+rather than probing a manifest per article. It is never written
+mid-run, so an interrupted run leaves the previous index in place.
+`--no-index` skips it.
+
+Partial regeneration must run against the **full dataset and the full
+results log**: resume skips what is already settled, so only the
+articles being regenerated cost anything, and the index comes out
+complete. A partial run with a fresh log would write an index listing
+only that run's articles.
+
+### `batch_status.py`
+
+```
+python3 batch_status.py ~/tts/batch_results.jsonl [total_articles]
+```
+
+Progress of a running or finished batch, read from its log. Safe to run
+against a live run: it only reads, and a partially written last line is
+skipped. The optional `[total_articles]` adds a projected-remaining
+estimate.
+
 ### `asr_wer_eval.py` + `Dockerfile.asreval`
 
 See [Audio quality evaluation](#audio-quality-evaluation-asr-round-trip)

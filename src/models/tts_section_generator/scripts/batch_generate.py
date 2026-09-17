@@ -21,6 +21,9 @@ New over the pilot:
   of the two must be configured: a batch whose artifacts evaporate is
   not a batch, so an inline response with no --artifact-dir is a hard,
   non-retryable error, and so is a missing payload of either kind.
+* Writes index.json alongside the manifests: one entry per article that
+  has audio, with its revision and artifact paths. Consumers fetch it
+  once instead of probing a manifest per article (--no-index to skip).
 * --sections limits generation to named sections (e.g. "lead" for the
   v1 experiment's lead-only corpus). The completeness rule and the
   manifest follow the same selection: a manifest means "every REQUESTED
@@ -81,6 +84,9 @@ from pathlib import Path
 import requests
 
 SCHEMA_VERSION = 2  # 2 adds "scope" (which sections a manifest covers)
+# The index is its own contract, versioned separately from the manifests.
+INDEX_SCHEMA_VERSION = 1
+INDEX_KEY = "index.json"
 
 # Published-tree modes. Files inherit the process umask otherwise, and a
 # group-only-readable file under /srv/published is invisible to Apache:
@@ -454,6 +460,61 @@ def build_manifest(
     return manifest
 
 
+def build_index(entries: list[dict], scope: str) -> dict:
+    """One file listing every article that has audio, for consumers.
+
+    The read path is static files, so without this a client has to fetch a
+    manifest per article just to learn whether audio exists. With the index
+    cached it can answer that offline: look up the page id, compare the
+    revision it is displaying, and use the paths given here.
+
+    Paths are relative to the index's own location, like the manifests', so
+    the serving domain stays the CDN's concern and the storage layout stays
+    ours to change: clients must not compose paths by convention.
+
+    Entries mirror the manifest structure minus its integrity fields, so a
+    client learns one shape. Sorted by page_id: stable diffs between runs,
+    and a client can binary-search without building a map.
+    """
+    versions = sorted({e.pop("_generation_version") for e in entries})
+    return {
+        "schema_version": INDEX_SCHEMA_VERSION,
+        "scope": scope,
+        "wiki_id": "enwiki",
+        "generated_at": _now(),
+        # A list: a run interrupted across a redeploy can legitimately span
+        # more than one generation version, and hiding that would mislead.
+        "generation_versions": versions,
+        "count": len(entries),
+        "articles": sorted(entries, key=lambda e: e["page_id"]),
+    }
+
+
+def _index_entry(art: dict, manifest: dict, manifest_key: str) -> dict:
+    """Index entry for one article, from the manifest just written."""
+    return {
+        "title": art["title"],
+        "page_id": manifest["page_id"],
+        "rev_id": manifest["rev_id"],
+        "duration_ms": round(sum(s["duration_ms"] for s in manifest["sections"]), 1),
+        "manifest": manifest_key,
+        "sections": [
+            {
+                "section_id": s["section_id"],
+                "title": s["title"],
+                "duration_ms": s["duration_ms"],
+                **{
+                    field: s[field]["key"] for field in ART_FIELD.values() if field in s
+                },
+            }
+            for s in manifest["sections"]
+        ],
+        # Popped by build_index: used to report which versions the corpus
+        # spans, not part of the per-article contract.
+        "_generation_version": manifest["generation_version"],
+    }
+
+
 def settle_article(
     art: dict,
     enum: dict,
@@ -462,9 +523,14 @@ def settle_article(
     log_path: Path,
     wanted: "set[str] | None" = None,
     scope: str = "all",
+    index_entries: "list[dict] | None" = None,
 ) -> str:
     """Evaluate one article's completeness; write its manifest if earned.
     Returns 'manifest' | 'incomplete' | 'no_sections'.
+
+    When ``index_entries`` is given, an entry is appended for each article
+    that earns a manifest, so the index lists exactly the articles a
+    consumer can play: incomplete and dead-lettered articles are absent.
 
     Completeness is scoped to the REQUESTED sections: under --sections
     lead, an article is complete when its lead is present, and the other
@@ -498,6 +564,8 @@ def settle_article(
         return "incomplete"
     key = f"enwiki/{art['page_id']}/{art['rev_id']}/manifest.json"
     uri = manifest_sink.put(key, json.dumps(manifest, indent=1).encode())
+    if index_entries is not None:
+        index_entries.append(_index_entry(art, manifest, key))
     _append(
         log_path,
         {
@@ -549,6 +617,14 @@ def main() -> int:
         help="write artifact bytes under this local root (required when the "
         "generator runs with an inline sink, e.g. the analytics published "
         "tree run from a stat host)",
+    )
+    ap.add_argument(
+        "--no-index",
+        action="store_true",
+        help=f"skip writing {INDEX_KEY} (the per-article listing consumers "
+        "read to find what has audio). The index is written at the end of a "
+        "completed run, never mid-run: an interrupted run leaves the previous "
+        "index in place rather than advertising a half-generated corpus.",
     )
     ap.add_argument(
         "--manifest-dir",
@@ -707,6 +783,7 @@ def main() -> int:
     # Runs on EVERY invocation over the full log, which is what makes both
     # resume and manifest writing idempotent.
     outcomes = {"manifest": 0, "incomplete": 0, "no_sections": 0}
+    index_entries: list[dict] = []
     for art in articles:
         enum = enums.get((art["page_id"], art["rev_id"]))
         if enum is None:
@@ -721,6 +798,7 @@ def main() -> int:
                 log_path,
                 wanted=wanted,
                 scope=scope,
+                index_entries=index_entries,
             )
         ] += 1
 
@@ -734,6 +812,18 @@ def main() -> int:
         f"in {log_path}), {outcomes['no_sections']} with no generatable "
         f"sections"
     )
+
+    # The index goes last, after every manifest of this run has settled, and
+    # only if there is something to list. A resumed run re-settles the whole
+    # dataset from the log, so the index it writes covers earlier runs too.
+    if not args.no_index and index_entries:
+        index = build_index(index_entries, scope)
+        uri = manifest_sink.put(
+            INDEX_KEY, json.dumps(index, indent=1, ensure_ascii=False).encode()
+        )
+        print(f"Index: {index['count']} articles listed in {uri}")
+    elif not args.no_index:
+        print(f"Index: no articles to list, {INDEX_KEY} left unchanged")
     return 0 if outcomes["incomplete"] == 0 and counts["fail"] == 0 else 1
 
 
