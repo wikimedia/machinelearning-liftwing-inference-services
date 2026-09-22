@@ -472,3 +472,24 @@ its first baseline is mean WER 5.3% under ruleset 2026.08.04 (T433923),
 and every future generation version is compared against it. Both pin
 exact revisions so a re-run is a paired comparison. Do not refresh the
 pins: that breaks pairing with every recorded baseline.
+
+### `derive_fold_set.py`
+
+Regenerates and re-verifies `_UNREADABLE_LATIN` in `tts_generator/text.py`
+— the Latin characters espeak cannot pronounce, which the generator folds
+to ASCII before synthesis ([T438647](https://phabricator.wikimedia.org/T438647)).
+It phonemizes every Latin codepoint through kokoro-onnx and lists the ones
+espeak spells out, so an espeak or kokoro upgrade surfaces as a diff to
+review rather than a silent change in pronunciation.
+
+It runs inside the **tts model-server image** — the only image with espeak
+and kokoro-onnx (the generator image has neither):
+
+```
+docker run --rm --user root -v "$(pwd)":/mnt \
+  --entrypoint python3 \
+  docker-registry.wikimedia.org/.../tts:<tag> /mnt/derive_fold_set.py
+```
+
+It prints the set as a Python literal and exits non-zero if it differs
+from what the generator currently carries.

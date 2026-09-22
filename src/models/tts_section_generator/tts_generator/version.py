@@ -4,13 +4,16 @@ Contract definitions the storage/index design depends on:
 
 ``generation_version`` identifies everything that changes output audio for
 identical input text: the Kokoro model version, the voice, and the
-normalization identity. The normalization identity covers three things:
+normalization identity. The normalization identity covers four things:
 which normalizer ran and its version (nemo1.2.0 vs the regex fallback,
-since they produce different text), the hand-bumped ruleset tag (cleaning regex changes), and
-a hash of the NeMo whitelist file (whitelist edits change pronunciation
-without any code change). When ML bumps any component, existing artifacts
-become outdated and a backfill is requested of the DE pipeline; the version
-string in each index record is what makes that diff computable.
+since they produce different text), the hand-bumped ruleset tag (cleaning
+regex changes), a hash of the NeMo whitelist file (whitelist edits change
+pronunciation without any code change), and the anyascii version (its
+transliteration table decides how unreadable Latin characters are spoken,
+so a silent upgrade would change audio for identical input). When ML bumps
+any component, existing artifacts become outdated and a backfill is
+requested of the DE pipeline; the version string in each index record is
+what makes that diff computable.
 
 ``content_sha256`` is hashed over the NORMALIZED text, not the raw section
 text, because normalized text is what the voice actually speaks: two
@@ -41,6 +44,13 @@ try:
 except Exception:  # package absent or metadata unreadable
     _NEMO_PKG_VERSION = ""
 
+try:
+    from importlib.metadata import version as _pkg_version2
+
+    _ANYASCII_VERSION = _pkg_version2("anyascii")
+except Exception:  # package absent or metadata unreadable
+    _ANYASCII_VERSION = ""
+
 
 def _whitelist_hash() -> str:
     try:
@@ -52,11 +62,12 @@ def _whitelist_hash() -> str:
 
 def normalizer_version() -> str:
     engine = f"nemo{_NEMO_PKG_VERSION}" if nemo_available() else "regex"
-    return f"norm-{NORMALIZATION_RULESET}-{engine}-{_whitelist_hash()}"
+    translit = f"aa{_ANYASCII_VERSION}" if _ANYASCII_VERSION else "aa-none"
+    return f"norm-{NORMALIZATION_RULESET}-{engine}-{translit}-{_whitelist_hash()}"
 
 
 def generation_version(voice: str = DEFAULT_VOICE) -> str:
-    """E.g. ``kokoro-v1.0+af_heart+norm-2026.07.30-nemo1.2.0-3f9a1c2b``."""
+    """E.g. ``kokoro-v1.0+af_heart+norm-2026.09.21-nemo1.2.0-aa0.3.3-3f9a1c2b``."""
     return f"{KOKORO_MODEL_VERSION}+{voice}+{normalizer_version()}"
 
 

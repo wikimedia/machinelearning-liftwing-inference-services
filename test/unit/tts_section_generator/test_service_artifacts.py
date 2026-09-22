@@ -293,3 +293,40 @@ def test_isvc_client_raises_synthesis_not_possible_for_phoneme_code(monkeypatch)
     monkeypatch.setattr(isvc_client.requests, "post", lambda *a, **k: FakeResp())
     with pytest.raises(isvc_client.SynthesisNotPossible):
         isvc_client.synthesize([{"text": "x"}], voice="v", lang="l")
+
+
+def test_kserve_error_envelope_is_recognised(monkeypatch):
+    """The model server returns KServe's {"error": "<message>"} with no
+    "code" key. Matching only on "code" reported a deterministic rejection
+    as a generic 502, which the batch retried three times and then
+    dead-lettered: 81 articles in the first production run (T438647)."""
+
+    class FakeResp:
+        status_code = 400
+        ok = False
+        text = '{"error": "text_not_synthesizable: segment 3 phonemizes to 551..."}'
+
+        def json(self):
+            return {
+                "error": "text_not_synthesizable: segment 3 phonemizes to 551 "
+                "phonemes, over the Kokoro context limit (510); rejecting "
+                "rather than truncating"
+            }
+
+    monkeypatch.setattr(isvc_client.requests, "post", lambda *a, **k: FakeResp())
+    with pytest.raises(isvc_client.SynthesisNotPossible):
+        isvc_client.synthesize([{"text": "x"}], voice="v", lang="l")
+
+
+def test_other_4xx_still_raises_the_loud_path(monkeypatch):
+    class FakeResp:
+        status_code = 400
+        ok = False
+        text = '{"error": "some other problem"}'
+
+        def json(self):
+            return {"error": "some other problem"}
+
+    monkeypatch.setattr(isvc_client.requests, "post", lambda *a, **k: FakeResp())
+    with pytest.raises(isvc_client.SynthesisRejected):
+        isvc_client.synthesize([{"text": "x"}], voice="v", lang="l")

@@ -104,7 +104,18 @@ def synthesize(
         if 400 <= resp.status_code < 500:
             code = None
             try:
-                code = resp.json().get("code")
+                body = resp.json()
+                code = body.get("code")
+                if code is None and "text_not_synthesizable" in str(
+                    body.get("error", "")
+                ):
+                    # KServe wraps InvalidInput as {"error": "<message>"} with
+                    # no "code" key, so the marker in the message is the only
+                    # machine-readable signal the model server gives us.
+                    # Without this the rejection is reported as a generic 502
+                    # and the batch retries a deterministic failure three
+                    # times before dead-lettering it (T438647).
+                    code = "text_not_synthesizable"
             except ValueError:
                 pass
             if code == "text_not_synthesizable":

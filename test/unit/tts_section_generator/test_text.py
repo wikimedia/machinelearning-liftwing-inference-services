@@ -1,8 +1,12 @@
 """Port of v0's text normalization tests plus pilot regression guards."""
 
+import re
+
 import pytest
 
 from src.models.tts_section_generator.tts_generator.text import (
+    _UNREADABLE_LATIN,
+    _fold_unreadable_latin,
     clean_spoken_text,
     init_nemo,
 )
@@ -432,3 +436,139 @@ def test_benchmark_name_respellings_nemo():
     assert "Soo geeya prah nahta" in out
     assert "Zwo toree ya" in out
     assert "Shep sess kaf's" in out
+
+
+# ── T438647: diacritic folding + Greek word stripping ─────────────────────
+
+
+def test_fold_transliterates_only_what_espeak_cannot_read():
+    """Vietnamese and scholarly-transliteration characters are spelled out
+    by espeak as codepoints, so they are folded to ASCII."""
+    assert _fold_unreadable_latin("Nguyễn Việt Đại Cồ") == "Nguyen Viet Dai Co"
+    assert _fold_unreadable_latin("Ṣaḥ") == "Sah"
+    assert _fold_unreadable_latin("Ștefan") == "Stefan"
+
+
+def test_fold_leaves_characters_espeak_reads_correctly():
+    """Folding these would make pronunciation WORSE across far more of the
+    corpus than it fixes: espeak says "Señor" as sɛnjˈɔːɹ and "Brontë" as
+    bɹˈɔntɛ today, which folding turns into sˈɛnɚ and bɹˈɔnt. Macrons read
+    correctly too, so Ṣaḥīḥ folds only its first two characters."""
+    for text in (
+        "Señor Beyoncé Brontë Curaçao Français Núñez Müller café",
+        "Władysław Jagiełło Dvořák Kraków Łódź Ångström Tromsø",
+        "Lê Shōtaku Mihăilescu",  # circumflex, macron, breve
+        "ā ē ī ō ū",  # macrons: readable
+        "α β μ Δ",  # Greek letters: not Latin
+        "Kamaʻehuakanaloa",  # Hawaiian okina
+    ):
+        assert _fold_unreadable_latin(text) == text, text
+    assert _fold_unreadable_latin("Ṣaḥīḥ") == "Sahīh"  # ī stays
+
+
+def test_fold_is_a_no_op_for_ascii():
+    text = "The quick brown fox jumps over the lazy dog, 42 times."
+    assert _fold_unreadable_latin(text) == text
+
+
+def test_fold_never_drops_characters():
+    """anyascii can return "" for a character it does not know, which would
+    silently delete a letter mid-word. The ``or ch`` fallback keeps the
+    original character when there is no transliteration, so folding never
+    loses a character position."""
+    for ch in _UNREADABLE_LATIN:
+        assert _fold_unreadable_latin(ch) != "", f"{ch!r} folded to empty"
+    assert _fold_unreadable_latin("ʘʗɸ") != ""
+
+
+def test_gate_excludes_the_one_readable_character_in_its_block():
+    """Latin Extended Additional is 255 of 256 characters unreadable; the
+    exception (U+1E9E capital sharp s) reads correctly, which is why the
+    gate is an exact set rather than the range."""
+    assert "ẞ" not in _UNREADABLE_LATIN
+    assert "ễ" in _UNREADABLE_LATIN  # ễ, same block
+    assert _fold_unreadable_latin("ẞ") == "ẞ"
+
+
+def test_gate_matches_espeak_when_espeak_is_available():
+    """Re-derives the gate against the phonemizer. Skips where kokoro is
+    absent (the generator image and CI), so this is a check to run, not a
+    gate that protects: scripts/derive_fold_set.py is the same check as a
+    tool, to run inside the tts image after an espeak or kokoro upgrade."""
+    pytest.importorskip("kokoro_onnx")
+    from kokoro_onnx.tokenizer import Tokenizer
+
+    tokenizer = Tokenizer()
+    markers = ("lˌɛɾɚ", "stɹˈoʊk", "dˌiːstɹ")
+    sampled_unreadable = "ễệồẵĐșṣḥ"
+    sampled_readable = "éñçüöłřšžāēīōū"
+    for char in sampled_unreadable:
+        phonemes = tokenizer.phonemize(f"x{char}x", lang="en-us")
+        assert any(m in phonemes for m in markers), f"{char!r} reads fine now"
+        assert char in _UNREADABLE_LATIN, f"{char!r} missing from the gate"
+    for char in sampled_readable:
+        phonemes = tokenizer.phonemize(f"x{char}x", lang="en-us")
+        assert not any(m in phonemes for m in markers), f"{char!r} is mangled"
+        assert char not in _UNREADABLE_LATIN, f"{char!r} should not be folded"
+
+
+def test_greek_words_are_stripped():
+    out = clean_spoken_text(
+        "Alexios Apokaukos (Greek: Ἀλέξιος Ἀπόκαυκος) was a statesman."
+    )
+    assert "Alexios Apokaukos" in out and "statesman" in out
+    assert not re.search(r"[Ͱ-Ͽἀ-῿]{2,}", out)
+
+
+def test_single_greek_letters_survive():
+    """espeak says "alpha" and "beta" correctly; these are the reason
+    Greek is not in the non-Latin strip list."""
+    out = clean_spoken_text("The α particle and β decay were measured.")
+    assert "α" in out and "β" in out
+
+
+@pytest.mark.parametrize(
+    "text,expected",
+    [
+        ("Władysław II Jagiełło ruled.", "Vladiswav the Second Yahg yehwo"),
+        ("The Białowieża forest.", "Byahwovyezha"),
+        ("Æthelwulf's son succeeded.", "Athel wulf's"),
+        ("The town of Złotoryja.", "Zwo toree ya"),
+        ("It cost one złoty.", "zwoty"),
+    ],
+)
+def test_whitelist_entries_still_match_after_the_fold(text, expected):
+    """The whitelist is keyed on original spellings, diacritics included.
+    Folding before NeMo would stop all eleven diacritic entries matching
+    and silently undo those pronunciation fixes, so the fold runs last."""
+    pytest.importorskip("nemo_text_processing")
+    from src.models.tts_section_generator.tts_generator.text import nemo_available
+
+    init_nemo()
+    if not nemo_available():
+        pytest.skip("NeMo init failed")
+    assert expected in clean_spoken_text(text)
+
+
+def test_folded_text_phonemizes_at_the_normal_rate():
+    """The defect was density, not length: espeak spelling out codepoints
+    pushed a 390-character segment to 551 phonemes against a 510 limit.
+    This pins the fix at the level it actually operates on, so a future
+    ruleset change that reintroduces unreadable characters fails here
+    rather than in a batch run."""
+    pytest.importorskip("kokoro_onnx")
+    from kokoro_onnx.config import MAX_PHONEME_LENGTH
+    from kokoro_onnx.tokenizer import Tokenizer
+
+    tokenizer = Tokenizer()
+    segment = (
+        "The futou with jinzi was also introduced in Japan during the Nara "
+        "period through Prince Shōtaku. Đại Cồ Việt was introduced to the "
+        "futou in the late tenth century and adapted various iterations "
+        "from the Early Lê to the Nguyễn dynasty."
+    )
+    before = len(tokenizer.phonemize(segment, lang="en-us"))
+    after = len(tokenizer.phonemize(_fold_unreadable_latin(segment), lang="en-us"))
+    assert before / len(segment) > 1.3, "expected the unfolded text to be dense"
+    assert after / len(segment) < 1.2, "folded text should read at the normal rate"
+    assert after < MAX_PHONEME_LENGTH

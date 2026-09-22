@@ -9,6 +9,7 @@ output text for identical input must bump NORMALIZATION_RULESET.
 import logging
 import re
 
+from anyascii import anyascii
 from tts_generator.config import NEMO_GRAMMAR_CACHE, NEMO_WHITELIST
 
 logger = logging.getLogger(__name__)
@@ -90,10 +91,20 @@ _CURRENCY_PREFIX = {
     "HK$": "Hong Kong dollars",
 }
 
-# Non-Latin script ranges stripped from English audio. Deliberately NOT
-# Greek (α/β in astronomy names are directly pronounceable). This is v1's
-# explicit stance: non-Latin content is omitted pending multilingual
-# model-servers, per the README architecture separation.
+# Non-Latin script ranges are stripped from English audio, per the README
+# architecture separation (non-Latin content is omitted pending
+# multilingual model-servers). Greek is the deliberate exception: single
+# letters are kept — α/β in astronomy names are directly pronounceable,
+# and the scientific use ("the alpha particle", "beta decay") reads
+# correctly — but Greek WORDS are removed. espeak has no Greek
+# pronunciation in en-us, so it reads a word as its codepoint and then
+# names each letter: "Ἀλέξιος" is 67 phonemes for 7 characters, and a
+# Byzantine gloss can consume half a segment's phoneme budget before any
+# English is spoken (T438647).
+_GREEK_WORD_RE = re.compile(
+    r"[\u0370-\u03ff\u1f00-\u1fff][\u0370-\u03ff\u1f00-\u1fff\u0300-\u036f'\u2019]+"
+)
+
 _NON_LATIN_RE = re.compile(
     "["
     "֐-׿"  # Hebrew
@@ -331,6 +342,66 @@ def _norm_numbers(text: str) -> str:
     return text
 
 
+# Latin characters espeak cannot pronounce. Its language data has no
+# pronunciation and no accent name for these, so it falls back to spelling
+# out the codepoint one digit at a time (the ``$accent`` fallback in
+# espeak-ng's dictionary documentation): "Nguyễn" becomes 45 phonemes
+# reading "N G U Y letter one E C five N", where "Nguyen" is 7 (T438647).
+#
+# DERIVED, not hand-written: which characters these are depends on the
+# espeak behind kokoro-onnx, so scripts/derive_fold_set.py regenerates and
+# re-verifies this set inside the tts image (the only place with espeak).
+# The set is listed exactly rather than as a range: Latin Extended
+# Additional is 255 of 256 characters, and the exception (U+1E9E capital
+# sharp s) reads correctly, so folding the whole block would regress it.
+#
+# Characters espeak DOES read are deliberately absent: folding é ñ ç ü ö
+# would make pronunciation worse ("Señor" sɛnjˈɔːɹ -> sˈɛnɚ, "Brontë"
+# bɹˈɔntɛ -> bɹˈɔnt) across far more of the corpus than it fixes, and
+# macrons (ā ē ī ō ū) read correctly too.
+_UNREADABLE_LATIN = frozenset(
+    "ĐđŉſƀƂƃƄƅƇƈƋƌƍƑƒƔƕƖƘƙƚƛƞƤƥƧƨƪƫƬƭƱƵƶƸƹƺƻƼƽƾƿǀǁǂǃǄ"
+    "ǅǆǇǈǉǊǋǌǤǥǦǧǨǩǮǯǰǱǲǳǴǵǶǷǸǹȐȑȒȓȘșȚțȞȟȠȡȤȥȴȵȶȷȸȹȺȻ"
+    "ȼȽȾȿɀɁɂɃɈɉɊɋɌɍḀḁḂḃḄḅḆḇḈḉḊḋḌḍḎḏḐḑḒḓḔḕḖḗḘḙḚḛḜḝḞḟḠḡ"
+    "ḢḣḤḥḦḧḨḩḪḫḬḭḮḯḰḱḲḳḴḵḶḷḸḹḺḻḼḽḾḿṀṁṂṃṄṅṆṇṈṉṊṋṌṍṎṏṐṑ"
+    "ṒṓṔṕṖṗṘṙṚṛṜṝṞṟṠṡṢṣṤṥṦṧṨṩṪṫṬṭṮṯṰṱṲṳṴṵṶṷṸṹṺṻṼṽṾṿẀẁ"
+    "ẂẃẄẅẆẇẈẉẊẋẌẍẎẏẐẑẒẓẔẕẖẗẘẙẚẛẜẝẟẠạẢảẤấẦầẨẩẪẫẬậẮắẰằẲ"
+    "ẳẴẵẶặẸẹẺẻẼẽẾếỀềỂểỄễỆệỈỉỊịỌọỎỏỐốỒồỔổỖỗỘộỚớỜờỞởỠỡỢ"
+    "ợỤụỦủỨứỪừỬửỮữỰựỲỳỴỵỶỷỸỹỺỻỼỽỾỿɞɡɣɩɰɷɸʊʗʘʚʩʪʫʬʭʮʯⱠ"
+    "ⱡⱣⱥⱦⱧⱨⱩⱪⱫⱬⱱⱲⱳⱴⱵⱶⱷⱸⱹⱺⱻⱼⱽⱾⱿꝽꞬ"
+)
+
+
+def _fold_unreadable_latin(text: str) -> str:
+    """Transliterate the Latin characters espeak cannot pronounce.
+
+    Only characters in ``_UNREADABLE_LATIN`` are touched; everything else
+    is returned byte-for-byte. The mapping itself comes from anyascii
+    (ISC-licensed, no dependencies) rather than a hand-maintained table.
+
+    MUST run after NeMo normalisation. Eleven pronunciation whitelist
+    entries are keyed on diacritic spellings (Władysław, Jagiełło,
+    Białowieża, Æthelwulf and others); folding first would stop every one
+    of them matching and silently undo those fixes.
+
+    anyascii's table feeds this function, so its output is part of
+    ``content_sha256`` and of the normalizer identity: the pin in
+    requirements.txt and the version component in version.py must move
+    together with any upgrade.
+    """
+    if text.isascii():
+        return text
+    # ``or ch``: anyascii can return "" for a character it does not know,
+    # which would silently delete a letter mid-word — a missing-token G2P
+    # error worse than espeak's codepoint spelling. No current gate
+    # character hits this, but the guard is cheap insurance against a
+    # future anyascii table change. Preserve the character when there is no
+    # transliteration.
+    return "".join(
+        (anyascii(ch) or ch) if ch in _UNREADABLE_LATIN else ch for ch in text
+    )
+
+
 def clean_spoken_text(text: str) -> str:
     """Normalize Wikipedia text for TTS: removes citations, HTML, phonetic
     guides, expands units, normalizes numbers, dates, currency, and
@@ -472,6 +543,7 @@ def clean_spoken_text(text: str) -> str:
     text = re.sub(r"\bi\.e\.,?\s*", "that is, ", text)
 
     # Non-Latin script runs: strip, keep romanization
+    text = _GREEK_WORD_RE.sub("", text)
     text = _NON_LATIN_RE.sub("", text)
     # Collapse damage left by script removal: ": ," -> ": ";
     # a gloss with nothing left ("(Japanese: )") -> removed.
@@ -487,7 +559,12 @@ def clean_spoken_text(text: str) -> str:
         text = _norm_units(text)  # full unit list (always plural)
         text = _norm_numbers(text)
 
-    # ── 6. Remove orphaned punctuation from stripped Wikipedia symbols ────
+    # ── 6. Fold the Latin characters espeak cannot pronounce ──────────────
+    # After NeMo: the pronunciation whitelist is keyed on the original
+    # spellings, diacritics included.
+    text = _fold_unreadable_latin(text)
+
+    # ── 7. Remove orphaned punctuation from stripped Wikipedia symbols ────
     text = re.sub(r"\s+([.,!?:;])", r"\1", text)
     text = re.sub(r",\s*\.", ".", text)
     text = re.sub(r",+", ",", text)
