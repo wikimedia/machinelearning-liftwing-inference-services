@@ -6,8 +6,10 @@ changes are config imports and module logging. Normalization is part of
 output text for identical input must bump NORMALIZATION_RULESET.
 """
 
+import functools
 import logging
 import re
+import unicodedata
 
 from anyascii import anyascii
 from tts_generator.config import NEMO_GRAMMAR_CACHE, NEMO_WHITELIST
@@ -105,26 +107,80 @@ _GREEK_WORD_RE = re.compile(
     r"[\u0370-\u03ff\u1f00-\u1fff][\u0370-\u03ff\u1f00-\u1fff\u0300-\u036f'\u2019]+"
 )
 
-_NON_LATIN_RE = re.compile(
-    "["
-    "֐-׿"  # Hebrew
-    "؀-ۿ"  # Arabic
-    "ऀ-ॿ"  # Devanagari
-    "฀-๿"  # Thai
-    "ᄀ-ᇿ"  # Hangul jamo
-    "\u3000-\u303f"  # CJK symbols & punctuation (、。「」 + ideographic space)
-    "぀-ゟ゠-ヿ"  # hiragana, katakana
-    "㄰-㆏ㇰ-ㇿ"  # Hangul compat jamo, katakana phonetic ext
-    "㈀-㏿"  # CJK enclosed / compatibility
-    "㐀-䶿一-鿿"  # CJK ext A, CJK unified ideographs
-    "가-힯"  # Hangul syllables
-    "豈-﫿"  # CJK compatibility ideographs
-    "＀-￯"  # fullwidth / halfwidth forms (includes fullwidth
-    #   Latin letters and digits: deliberate, they
-    #   appear almost exclusively inside CJK glosses)
-    "\U00020000-\U0002ffff"  # CJK ext B+
-    "]+"
+# Characters that are not ASCII but MUST survive the script strip below:
+# the rules further down (and NeMo, which runs after) consume them, so
+# dropping one would silently break coordinates, units, fractions,
+# currency or the arrow rule. Punctuation is here for a second reason:
+# the cleaned string is also the caption text (service.py sends it to the
+# isvc, whose word timestamps become captions_vtt), so anything that
+# survives is read by a person, not just by espeak.
+_KEEP_NON_ASCII = frozenset(
+    "°′″µμ×÷±−–—‘’“”„…†‡§¶€£¥¢₹½¼¾⅓⅔⅛⅜⅝⅞⁰¹²³⁴⁵⁶⁷⁸⁹₀₁₂₃₄₅₆₇₈₉→⟶≈≤≥©®™«»"
 )
+_MARK_CATEGORIES = frozenset({"Mn", "Mc", "Me"})
+_LETTER_CATEGORIES = frozenset({"Lo", "Lu", "Ll", "Lt"})
+# espeak's en-us voice can pronounce Latin and (single) Greek letters.
+# Everything else it reads as a codepoint followed by letter names, which
+# is both unintelligible and enormous: "Ἀλέξιος" is 67 phonemes for 7
+# characters, "Здание" 26 for 6, one Burmese gloss 587 (T438647).
+_READABLE_SCRIPTS = frozenset({"LATIN", "GREEK"})
+
+
+@functools.lru_cache(maxsize=4096)
+def _readable(ch: str) -> bool | None:
+    """True = keep, False = strip, None = inherit the preceding character.
+
+    Marks inherit: a combining acute belongs to the letter it sits on, so
+    it survives on "cafe\u0301" and is removed with a stripped Cyrillic
+    base. Modifier letters (category Lm) are kept: the Hawaiian okina in
+    "Kama\u02bbehuakanaloa" is one, and it is part of the name.
+    """
+    if ch.isascii() or ch in _KEEP_NON_ASCII:
+        return True
+    category = unicodedata.category(ch)
+    if category in _MARK_CATEGORIES:
+        return None
+    if category == "Lm":
+        return True
+    if category in _LETTER_CATEGORIES:
+        try:
+            script = unicodedata.name(ch).split()[0]
+        except ValueError:  # unnamed codepoint: not something we can read
+            return False
+        return script in _READABLE_SCRIPTS
+    # Non-ASCII punctuation and symbols of other scripts: CJK 。、「」,
+    # Arabic ،؛, the Tibetan tsheg. Not speech, and caption residue.
+    return False
+
+
+def _strip_unreadable_scripts(text: str) -> str:
+    """Remove characters espeak cannot read, and their attached marks.
+
+    Replaces an enumerated block list. Enumerating scripts does not
+    converge: the first production run turned up Cyrillic, Coptic,
+    Cuneiform, Phoenician, Egyptian hieroglyphs, Syriac, Tibetan, Lao,
+    Burmese, Armenian, Balinese and Tifinagh, and the next corpus would
+    turn up more. Keeping what is readable and dropping the rest handles
+    a script nobody has seen yet, on arrival.
+
+    Greek is kept here and handled by _GREEK_WORD_RE above: single
+    letters are pronounceable and meaningful ("the alpha particle"),
+    whole Greek words are not.
+    """
+    if text.isascii():
+        return text
+    out = []
+    keeping = True
+    for ch in text:
+        verdict = _readable(ch)
+        if verdict is None:
+            if keeping:
+                out.append(ch)
+            continue
+        keeping = verdict
+        if verdict:
+            out.append(ch)
+    return "".join(out)
 
 
 # ── Roman numerals (listening-pass ruleset 2026.08) ───────────────────────
@@ -542,9 +598,9 @@ def clean_spoken_text(text: str) -> str:
     text = re.sub(r"\be\.g\.,?\s*", "for example, ", text)
     text = re.sub(r"\bi\.e\.,?\s*", "that is, ", text)
 
-    # Non-Latin script runs: strip, keep romanization
+    # Scripts espeak cannot read: strip, keep the romanization beside them
     text = _GREEK_WORD_RE.sub("", text)
-    text = _NON_LATIN_RE.sub("", text)
+    text = _strip_unreadable_scripts(text)
     # Collapse damage left by script removal: ": ," -> ": ";
     # a gloss with nothing left ("(Japanese: )") -> removed.
     text = re.sub(r":\s*,\s*", ": ", text)
