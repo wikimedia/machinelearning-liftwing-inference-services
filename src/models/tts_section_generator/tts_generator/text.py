@@ -124,6 +124,64 @@ _LETTER_CATEGORIES = frozenset({"Lo", "Lu", "Ll", "Lt"})
 # is both unintelligible and enormous: "Ἀλέξιος" is 67 phonemes for 7
 # characters, "Здание" 26 for 6, one Burmese gloss 587 (T438647).
 _READABLE_SCRIPTS = frozenset({"LATIN", "GREEK"})
+# Punctuation blocks belonging to scripts we strip, for the characters
+# whose Unicode name does not start with the script: 「 is "LEFT CORNER
+# BRACKET", 〜 is "WAVE DASH". Small and stable, unlike the letter
+# blocklist this design replaced.
+_SCRIPT_PUNCT_RANGES = (
+    (0x3000, 0x303F),  # CJK symbols and punctuation 。、「」〜
+    (0xFE10, 0xFE1F),  # vertical forms
+    (0xFE30, 0xFE4F),  # CJK compatibility forms
+    (0xFF00, 0xFFEF),  # fullwidth and halfwidth forms
+    (0x0964, 0x0965),  # Devanagari danda
+)
+
+# Punctuation and symbols are KEPT by default: espeak is silent on the
+# ones it does not know, so the cost of keeping one is a glyph in the
+# caption, while the cost of dropping one is a wrong reading. Stripping
+# "1⁄2"'s fraction slash turned "2+1⁄2" into "two plus twelve".
+# Only punctuation BELONGING to a stripped script goes, identified by
+# the first word of its Unicode name.
+_UNREADABLE_SCRIPT_NAMES = frozenset(
+    {
+        "ARABIC",
+        "ARMENIAN",
+        "BALINESE",
+        "BENGALI",
+        "COPTIC",
+        "CJK",
+        "CUNEIFORM",
+        "DEVANAGARI",
+        "ETHIOPIC",
+        "EGYPTIAN",
+        "FULLWIDTH",
+        "GEORGIAN",
+        "GUJARATI",
+        "GURMUKHI",
+        "HALFWIDTH",
+        "HANGUL",
+        "HEBREW",
+        "HIRAGANA",
+        "IDEOGRAPHIC",
+        "KANNADA",
+        "KATAKANA",
+        "KHMER",
+        "LAO",
+        "MALAYALAM",
+        "MONGOLIAN",
+        "MYANMAR",
+        "NKO",
+        "ORIYA",
+        "PHOENICIAN",
+        "SINHALA",
+        "SYRIAC",
+        "TAMIL",
+        "TELUGU",
+        "THAI",
+        "TIBETAN",
+        "TIFINAGH",
+    }
+)
 
 
 @functools.lru_cache(maxsize=4096)
@@ -132,25 +190,39 @@ def _readable(ch: str) -> bool | None:
 
     Marks inherit: a combining acute belongs to the letter it sits on, so
     it survives on "cafe\u0301" and is removed with a stripped Cyrillic
-    base. Modifier letters (category Lm) are kept: the Hawaiian okina in
-    "Kama\u02bbehuakanaloa" is one, and it is part of the name.
+    base.
+
+    Modifier letters (category Lm) are kept-by-default LIKE SYMBOLS, not
+    judged by the letter rule. The distinction matters: the Hawaiian
+    okina is "MODIFIER LETTER TURNED COMMA", so the letter rule (keep
+    only LATIN and GREEK) would strip it and break
+    "Kama\u02bbehuakanaloa". Kept-by-default keeps it, while CJK and Thai
+    iteration marks (\u3005 \u309d \u30fe \u0e46, also Lm) still go, because their
+    names carry the script they belong to.
     """
     if ch.isascii() or ch in _KEEP_NON_ASCII:
         return True
     category = unicodedata.category(ch)
     if category in _MARK_CATEGORIES:
         return None
-    if category == "Lm":
-        return True
     if category in _LETTER_CATEGORIES:
         try:
             script = unicodedata.name(ch).split()[0]
         except ValueError:  # unnamed codepoint: not something we can read
             return False
         return script in _READABLE_SCRIPTS
-    # Non-ASCII punctuation and symbols of other scripts: CJK 。、「」,
-    # Arabic ،؛, the Tibetan tsheg. Not speech, and caption residue.
-    return False
+    # Modifier letters, punctuation, symbols and digits: KEPT unless the
+    # character belongs to a script we strip. Lm lands here deliberately
+    # (see the docstring): judging it by the letter rule would strip the
+    # okina, whose name begins MODIFIER rather than LATIN.
+    codepoint = ord(ch)
+    if any(low <= codepoint <= high for low, high in _SCRIPT_PUNCT_RANGES):
+        return False
+    try:
+        script = unicodedata.name(ch).split()[0]
+    except ValueError:
+        return False
+    return script not in _UNREADABLE_SCRIPT_NAMES
 
 
 def _strip_unreadable_scripts(text: str) -> str:

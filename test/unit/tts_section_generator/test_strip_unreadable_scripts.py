@@ -35,10 +35,46 @@ from src.models.tts_section_generator.tts_generator.text import (
         "naïve café Señor Brontë Müller",  # espeak reads these correctly
         "Æthelwulf and Władysław and Dvořák",  # whitelist keys, folded later
         "an em—dash, an en–dash, ’quotes’",  # typography: caption fidelity
+        "2+1⁄2 cups and 10+2⁄3 litres",  # FRACTION SLASH: see below
+        "a ∗ operation where x ≠ y",  # math symbols espeak ignores
+        "(Spanish: ¡Átame!) and ¿Qué?",  # Spanish punctuation
+        "√2 ≈ 1.41 and ∞ is not a number",
     ],
 )
 def test_readable_text_is_returned_unchanged(text):
     assert _strip_unreadable_scripts(text) == text
+
+
+def test_symbols_are_kept_by_default_not_stripped():
+    """The failure modes are asymmetric, which is why letters and symbols
+    get opposite defaults. An unreadable LETTER makes espeak recite its
+    codepoint (unintelligible, and 45 phonemes for a six-letter name); an
+    unreadable SYMBOL is merely silent. So symbols are kept unless they
+    belong to a script being stripped.
+
+    Dropping one is not harmless: removing the fraction slash from
+    "2+1⁄2" leaves "2+12", which NeMo verbalizes as "two plus twelve".
+    """
+    for text in ("2+1⁄2", "10+2⁄3", "a ∗ b", "x ≠ y", "¡Átame!", "√2", "∞"):
+        assert _strip_unreadable_scripts(text) == text
+
+
+def test_script_owned_punctuation_still_goes():
+    """Kept-by-default applies to symbols in general, not to punctuation
+    belonging to a stripped script: those would be caption residue
+    sitting beside the words just removed."""
+    for text in ("。、「」・〜", "،؛", "｡｢｣", "Ａ２", "हिन्दी।"):
+        assert _strip_unreadable_scripts(text).strip() == ""
+
+
+def test_iteration_marks_go_with_their_script():
+    """Modifier letters are kept so the Hawaiian okina survives, but CJK
+    and Thai iteration marks are modifier letters too, and they appear
+    inside the very glosses whose letters are stripped."""
+    for text in ("々", "ゝゞ", "ヽヾ", "ๆ"):
+        assert _strip_unreadable_scripts(text).strip() == ""
+    for text in ("Kamaʻehuakanaloa", "ʻOumuamua"):
+        assert _strip_unreadable_scripts(text) == text
 
 
 def test_every_symbol_the_rules_depend_on_survives():
