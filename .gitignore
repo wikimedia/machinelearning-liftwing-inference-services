@@ -162,3 +162,6 @@ cython_debug/
 
 # Model directories as used by the Makefile
 /models/
+
+# Local docker compose overrides, not for committing
+docker-compose.override.yml

@@ -1,5 +1,6 @@
 import logging
 import os
+import re
 from concurrent.futures import process
 from distutils.util import strtobool
 from typing import Any
@@ -11,6 +12,10 @@ from knowledge_integrity.mediawiki import Error, get_parent_revision
 from knowledge_integrity.models.reference_need import classify, load_model
 from knowledge_integrity.models.reference_risk import (
     ReferenceRiskModel as BaseReferenceRiskModel,
+)
+from knowledge_integrity.models.reference_risk.domain import (
+    normalize_domain,
+    parse_url_domain,
 )
 from kserve.errors import InferenceError, InvalidInput
 
@@ -27,6 +32,11 @@ logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
 
 # Global variable to be used by each worker process
 _global_model = None
+
+# The maximum length of the `domain` request parameter. A domain name has a
+# maximum of 253 characters, but the parameter also accepts a full URL. The
+# limit rejects a very large input before the regular expressions read it.
+MAX_DOMAIN_INPUT_LENGTH = 2048
 
 
 class AsyncClassifierPool:
@@ -192,9 +202,117 @@ class ReferenceRiskModel(ReferenceNeedModel):
         logging.info(f"{self.name} supported wikis: {self.model.supported_wikis}.")
         self.ready = True
 
+    @staticmethod
+    def parse_domain_input(domain_input: str) -> str:
+        """Change the input domain into the form that the metadata database uses.
+
+        The keys of the database are lowercase and have no "www." prefix. The
+        revision path normalizes the domains that it extracts with the same two
+        functions. A domain request and a rev_id request thus match the same row.
+
+        The input accepts a bare domain or a full URL. An archive URL gives the
+        domain of the original link.
+        """
+        if not isinstance(domain_input, str):
+            raise InvalidInput("The parameter domain must be a string.")
+        if len(domain_input) > MAX_DOMAIN_INPUT_LENGTH:
+            raise InvalidInput(
+                "The parameter domain has a maximum of "
+                f"{MAX_DOMAIN_INPUT_LENGTH} characters."
+            )
+        # urlparse puts a bare domain in the path and leaves the netloc empty.
+        # Add a scheme-relative prefix when the input has no scheme. Examine
+        # only the start of the input: an archive URL holds a second scheme in
+        # its path, and that scheme must not hide a missing first one.
+        url = (
+            domain_input
+            if re.match(r"(?:[a-zA-Z][a-zA-Z0-9+.\-]*:)?//", domain_input)
+            else f"//{domain_input}"
+        )
+        parsed_domain = parse_url_domain(url)
+        normalized_domain = normalize_domain(parsed_domain) if parsed_domain else None
+        if not normalized_domain:
+            raise InvalidInput(f"Could not parse a domain from '{domain_input}'.")
+        return normalized_domain
+
+    async def preprocess(
+        self, inputs: dict[str, Any], headers: dict[str, str] = None
+    ) -> dict[str, Any]:
+        """Prepare a request that gives a rev_id or a domain.
+
+        A rev_id request uses the parent class. The parent class reads the
+        revision from the MediaWiki API and scores every reference in it.
+
+        A domain request reads no revision. The metadata database holds all the
+        data for one domain, so the request makes no MediaWiki API call.
+        """
+        inputs = validate_json_input(inputs)
+        lang = inputs.get("lang")
+        check_input_param(lang=lang)
+        check_wiki_suffix(lang)
+        # The parent class does not check the supported wikis. Check them
+        # before the parent class calls the MediaWiki API.
+        check_supported_wikis(self.model, lang)
+        if "domain" not in inputs:
+            return await super().preprocess(inputs, headers)
+        if inputs.get("rev_id"):
+            raise InvalidInput(
+                "The parameters rev_id and domain are mutually exclusive. "
+                "Send only one of them."
+            )
+        domain = inputs.get("domain")
+        logging.info(f"Received request for domain {domain} ({lang}).")
+        check_input_param(domain=domain)
+        inputs["normalized_domain"] = self.parse_domain_input(domain)
+        return inputs
+
+    def predict_domain(self, request: dict[str, Any]) -> dict[str, Any]:
+        """Give the metadata of one domain on one wiki."""
+        domain = request["normalized_domain"]
+        # NOTE: This builds the wiki_db from the language code. The rule is not
+        # always correct. A database name replaces a hyphen with an underscore,
+        # thus "zh-yue" becomes "zh_yuewiki". Some wikis also use a different
+        # name, thus "be-tarask" becomes "be_x_oldwiki". The rev_id path and
+        # knowledge_integrity make the same assumption. This change keeps the
+        # rule, because a correct mapping is not the subject of this change.
+        wiki_db = f"{request.get('lang')}wiki"
+        # NOTE: `_fetch_domain_metadata` is a private method of
+        # knowledge_integrity. A version bump can change it or remove it, and
+        # this code then breaks without a warning. The correct solution adds a
+        # public method to
+        # knowledge_integrity.models.reference_risk.ReferenceRiskModel, for
+        # example `classify_domains(wiki_db, domains)`. After the upstream
+        # change, move the requirements pin to the new commit and call the
+        # public method here.
+        domain_metadata = self.model._fetch_domain_metadata(
+            wiki_db=wiki_db, domains=[domain]
+        )
+        metadata = domain_metadata.get(domain)
+        return {
+            "model_name": self.name,
+            "model_version": self.model.model_version,
+            "wiki_db": wiki_db,
+            "domain": domain,
+            # The metadata is null when the database has no row for the domain.
+            "domain_metadata": (
+                {
+                    "survival_ratio": metadata.survival_ratio,
+                    "page_count": metadata.page_count,
+                    "editors_count": metadata.editors_count,
+                    "ps_label_local": metadata.ps_label_local,
+                    "ps_label_enwiki": metadata.ps_label_enwiki,
+                    "is_risky": metadata.is_risky,
+                }
+                if metadata
+                else None
+            ),
+        }
+
     def predict(
         self, request: dict[str, Any], headers: dict[str, str] = None
     ) -> dict[str, Any]:
+        if "normalized_domain" in request:
+            return self.predict_domain(request)
         result = self.model.classify(request["revision"])
         output = {
             "model_name": self.name,

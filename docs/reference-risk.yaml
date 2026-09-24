@@ -10,6 +10,13 @@ paths:
       summary: Predict revert risk for a reference in a Wikipedia revision
       description: |
         Predicts the risk that a reference in a Wikipedia edit will be reverted.
+
+        The request gives `rev_id` or `domain`, but not both:
+          * `rev_id` scores every reference in the revision.
+          * `domain` gives the metadata of that one domain on the given wiki.
+            The domain accepts a bare domain or a full URL. An archive URL
+            gives the original domain.
+
         For more information, see the [model card](https://meta.wikimedia.org/wiki/Special:MyLanguage/Machine_learning_models/Production/Language-agnostic_reference_risk).
       operationId: referenceRiskPredict
       tags:
@@ -20,24 +27,45 @@ paths:
           application/json:
             schema:
               type: object
-              required: [rev_id, lang]
+              required: [lang]
+              oneOf:
+                - required: [rev_id]
+                - required: [domain]
               properties:
                 rev_id:
                   type: integer
-                  description: Wikipedia revision identifier
+                  description: Wikipedia revision identifier. Mutually exclusive with domain.
                   example: 123456789
+                domain:
+                  type: string
+                  description: |
+                    A single domain to evaluate, instead of a revision. Accepts a
+                    bare domain or a full URL; it is normalized the same way as
+                    the domains extracted from a revision. Mutually exclusive
+                    with rev_id.
+                  example: "nytimes.com"
                 lang:
                   type: string
                   description: Language code
                   example: "en"
                 extended_output:
                   type: boolean
-                  description: When true, includes a detailed list of references in the response
+                  description: |
+                    When true, includes a detailed list of references in the
+                    response. Ignored for a domain request.
                   default: false
                   example: false
-            example:
-              rev_id: 123456789
-              lang: "en"
+            examples:
+              revision:
+                summary: Score every reference in a revision
+                value:
+                  rev_id: 123456789
+                  lang: "en"
+              domain:
+                summary: Evaluate a single domain
+                value:
+                  domain: "nytimes.com"
+                  lang: "en"
       responses:
         "200":
           description: Successful prediction
@@ -60,15 +88,56 @@ paths:
                     example: "enwiki"
                   revision_id:
                     type: integer
-                    description: Revision identifier
+                    description: Revision identifier (only for a rev_id request)
                     example: 123456789
+                  domain:
+                    type: string
+                    description: |
+                      The normalized domain that was evaluated (only for a
+                      domain request).
+                    example: "nytimes.com"
+                  domain_metadata:
+                    type: object
+                    nullable: true
+                    description: |
+                      Metadata of the domain on this wiki (only for a domain
+                      request). Null when the domain metadata database holds no
+                      row for the domain.
+                    properties:
+                      survival_ratio:
+                        type: number
+                        format: float
+                        description: Mean ratio of edits in which the citation survived
+                        example: 0.92
+                      page_count:
+                        type: integer
+                        description: Number of distinct pages that cite the domain
+                        example: 123
+                      editors_count:
+                        type: integer
+                        description: Number of distinct editors that added the domain
+                        example: 3450
+                      ps_label_local:
+                        type: string
+                        nullable: true
+                        description: Perennial sources label on this wiki
+                        example: "Generally reliable"
+                      ps_label_enwiki:
+                        type: string
+                        nullable: true
+                        description: Perennial sources label on the English Wikipedia
+                        example: "No consensus"
+                      is_risky:
+                        type: boolean
+                        description: True when ps_label_local is Deprecated or Blacklisted
+                        example: false
                   reference_count:
                     type: integer
-                    description: Number of references in the revision
+                    description: Number of references in the revision (only for a rev_id request)
                     example: 23
                   survival_ratio:
                     type: object
-                    description: Ratio of references that survived in the revision
+                    description: Ratio of references that survived in the revision (only for a rev_id request)
                     properties:
                       min:
                         type: number
@@ -85,7 +154,7 @@ paths:
                   reference_risk_score:
                     type: number
                     format: float
-                    description: Risk score indicating how likely references are to be reverted
+                    description: Risk score indicating how likely references are to be reverted (only for a rev_id request)
                     example: 0.12
                     minimum: 0.0
                     maximum: 1.0
@@ -94,16 +163,41 @@ paths:
                     description: Detailed reference list (only with extended_output=true)
                     items:
                       type: object
-              example:
-                model_name: "reference-risk"
-                model_version: v1
-                wiki_db: "enwiki"
-                revision_id: 123456789
-                reference_count: 23
-                survival_ratio:
-                  min: 0.15462119220883494
-                  mean: 0.6825915126679182
-                  median: 0.7154859966638077
-                reference_risk_score: 0.12
+              examples:
+                revision:
+                  summary: Response to a rev_id request
+                  value:
+                    model_name: "reference-risk"
+                    model_version: v1
+                    wiki_db: "enwiki"
+                    revision_id: 123456789
+                    reference_count: 23
+                    survival_ratio:
+                      min: 0.15462119220883494
+                      mean: 0.6825915126679182
+                      median: 0.7154859966638077
+                    reference_risk_score: 0.12
+                domain:
+                  summary: Response to a domain request
+                  value:
+                    model_name: "reference-risk"
+                    model_version: "2024-07"
+                    wiki_db: "enwiki"
+                    domain: "nytimes.com"
+                    domain_metadata:
+                      survival_ratio: 0.92
+                      page_count: 123
+                      editors_count: 3450
+                      ps_label_local: "Generally reliable"
+                      ps_label_enwiki: "No consensus"
+                      is_risky: false
+                unknown_domain:
+                  summary: Response for a domain the database does not hold
+                  value:
+                    model_name: "reference-risk"
+                    model_version: "2024-07"
+                    wiki_db: "enwiki"
+                    domain: "unknown.example.com"
+                    domain_metadata: null
         "400":
           description: Invalid input

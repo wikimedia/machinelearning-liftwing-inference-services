@@ -33,6 +33,14 @@ and the reference-risk isvc using:
 curl -s localhost:8080/v1/models/reference-risk:predict -X POST -d '{"rev_id": 1242378206, "lang": "en"}' -H "Content-type: application/json"
 ```
 
+The reference-risk model also evaluates a single domain, instead of a revision.
+Send `domain` in place of `rev_id`. The value is a bare domain or a full URL:
+```console
+curl -s localhost:8080/v1/models/reference-risk:predict -X POST -d '{"domain": "nytimes.com", "lang": "en"}' -H "Content-type: application/json"
+```
+A domain request reads no revision from the MediaWiki API, so it only needs the
+`features.db`.
+
 ### 1.3. Remove
 If you would like to remove the setup run:
 ```console
@@ -74,4 +82,12 @@ and the reference-risk model with:
 ```console
 curl localhost:8080/v1/models/reference-risk:predict -X POST -d '{"rev_id": 1242378206, "lang": "en"}' -H "Content-type: application/json"
 ```
+
+The reference-risk model also evaluates a single domain, instead of a revision.
+Send `domain` in place of `rev_id`. The value is a bare domain or a full URL:
+```console
+curl -s localhost:8080/v1/models/reference-risk:predict -X POST -d '{"domain": "nytimes.com", "lang": "en"}' -H "Content-type: application/json"
+```
+A domain request reads no revision from the MediaWiki API, so it only needs the
+`features.db`.
 </details>
