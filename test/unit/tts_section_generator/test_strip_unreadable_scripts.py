@@ -8,6 +8,7 @@ caption residue even when nothing is spoken.
 """
 
 import re
+import unicodedata
 
 import pytest
 
@@ -135,6 +136,48 @@ def test_scripts_are_removed_from_around_the_english(text=None):
         )
         == "Moscow City Hall (Russian: ) is here."
     )
+
+
+def test_parity_with_the_blocklist_this_replaced():
+    """Every character the enumerated blocklist removed must still be
+    removed. Written after a regression the other tests missed: the
+    Japanese prolonged-sound mark "ー" survived, because its name is
+    "KATAKANA-HIRAGANA PROLONGED SOUND MARK" and the script check reads
+    the first word. The same hole let through 400+ enclosed CJK forms
+    whose names begin CIRCLED, PARENTHESIZED or SQUARE.
+
+    Combining marks are excluded: tested alone they have no base to
+    inherit from, while in real text they follow one. The gloss tests
+    above cover them in context.
+    """
+    old_blocklist = re.compile(
+        "[֐-׿؀-ۿऀ-ॿ฀-๿ᄀ-ᇿ　-〿぀-ゟ゠-ヿ㄰-㆏ㇰ-ㇿ㈀-㏿"
+        "㐀-䶿一-鿿가-힯豈-﫿＀-￯\U00020000-\U0002ffff]"
+    )
+    ranges = [
+        (0x0590, 0x0700),
+        (0x0900, 0x0E80),
+        (0x1100, 0x1200),
+        (0x3000, 0x3400),
+        (0x4E00, 0x4E20),
+        (0xAC00, 0xAC20),
+        (0xFF00, 0xFFF0),
+    ]
+    leaks = []
+    for low, high in ranges:
+        for codepoint in range(low, high):
+            char = chr(codepoint)
+            if unicodedata.category(char) in ("Mn", "Mc", "Me"):
+                continue
+            if old_blocklist.match(char) and _strip_unreadable_scripts(char) != "":
+                leaks.append(char)
+    assert leaks == [], f"{len(leaks)} characters leak: {''.join(leaks[:20])!r}"
+
+
+def test_prolonged_sound_mark_goes():
+    """The regression that prompted the parity test above."""
+    assert _strip_unreadable_scripts("ー") == ""
+    assert _strip_unreadable_scripts("ポケモン ー").strip() == ""
 
 
 # ── Marks follow their base (the stateful case) ──────────────────────────

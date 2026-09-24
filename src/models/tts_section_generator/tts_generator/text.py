@@ -124,24 +124,39 @@ _LETTER_CATEGORIES = frozenset({"Lo", "Lu", "Ll", "Lt"})
 # is both unintelligible and enormous: "Ἀλέξιος" is 67 phonemes for 7
 # characters, "Здание" 26 for 6, one Burmese gloss 587 (T438647).
 _READABLE_SCRIPTS = frozenset({"LATIN", "GREEK"})
-# Punctuation blocks belonging to scripts we strip, for the characters
-# whose Unicode name does not start with the script: 「 is "LEFT CORNER
-# BRACKET", 〜 is "WAVE DASH". Small and stable, unlike the letter
-# blocklist this design replaced.
+# Punctuation, signs and digits of the scripts we strip. The name-based
+# rule below cannot find these: their Unicode names begin with a shape
+# or a compound ("LEFT CORNER BRACKET", "CIRCLED HANGUL KIYEOK",
+# "KATAKANA-HIRAGANA PROLONGED SOUND MARK"), not with the script.
+#
+# A block list is the right tool HERE and the wrong tool for letters:
+# missing a symbol leaves a glyph in a caption, while missing a letter
+# makes espeak recite codepoints. These ranges also guarantee parity
+# with the enumerated blocklist this design replaced, which is pinned
+# by a differential test.
 _SCRIPT_PUNCT_RANGES = (
-    (0x3000, 0x303F),  # CJK symbols and punctuation 。、「」〜
+    (0x0590, 0x05FF),  # Hebrew points and punctuation
+    (0x0600, 0x06FF),  # Arabic signs, Arabic-Indic digits ٠١٢
+    (0x0700, 0x074F),  # Syriac
+    (0x0900, 0x097F),  # Devanagari signs and danda
+    (0x0E00, 0x0E7F),  # Thai signs
+    (0x0E80, 0x0EFF),  # Lao signs
+    (0x0F00, 0x0FFF),  # Tibetan marks, including the tsheg
+    (0x1000, 0x109F),  # Myanmar signs
+    (0x1100, 0x11FF),  # Hangul jamo
+    (0x3000, 0x33FF),  # CJK punctuation 。、「」〜, kana marks ゛゜ー,
+    #                    and the enclosed/squared forms ㈀ ㉄ ㋏ whose
+    #                    names begin CIRCLED/PARENTHESIZED/SQUARE
     (0xFE10, 0xFE1F),  # vertical forms
     (0xFE30, 0xFE4F),  # CJK compatibility forms
     (0xFF00, 0xFFEF),  # fullwidth and halfwidth forms
-    (0x0964, 0x0965),  # Devanagari danda
 )
 
 # Punctuation and symbols are KEPT by default: espeak is silent on the
 # ones it does not know, so the cost of keeping one is a glyph in the
 # caption, while the cost of dropping one is a wrong reading. Stripping
 # "1⁄2"'s fraction slash turned "2+1⁄2" into "two plus twelve".
-# Only punctuation BELONGING to a stripped script goes, identified by
-# the first word of its Unicode name.
+# Scripts whose punctuation DOES carry the script in its name:
 _UNREADABLE_SCRIPT_NAMES = frozenset(
     {
         "ARABIC",
@@ -343,9 +358,9 @@ def _norm_roman_numerals(text: str) -> str:
     text = _ROMAN_NAME_MULTI_RE.sub(_roman_name, text)
     text = _ROMAN_NAME_VX_RE.sub(_roman_name, text)
     text = _ROMAN_NAME_I_RE.sub(
-        lambda m: f"{m.group(1)} the First"
-        if _is_name_shaped(m.group(1))
-        else m.group(0),
+        lambda m: (
+            f"{m.group(1)} the First" if _is_name_shaped(m.group(1)) else m.group(0)
+        ),
         text,
     )
     return text
@@ -645,9 +660,11 @@ def clean_spoken_text(text: str) -> str:
     # forty en").
     text = re.sub(
         r"([\u00b0\u2032\u2033])\s*([NSEW])\b",
-        lambda m: m.group(1)
-        + " "
-        + {"N": "north", "S": "south", "E": "east", "W": "west"}[m.group(2)],
+        lambda m: (
+            m.group(1)
+            + " "
+            + {"N": "north", "S": "south", "E": "east", "W": "west"}[m.group(2)]
+        ),
         text,
     )
     text = re.sub(r"(?<=\d)\s*\u2032", " minutes ", text)
