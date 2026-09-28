@@ -1,3 +1,39 @@
+"""
+A full tool-calling loop against the tool-server and a LiftWing LLM.
+
+Not part of the service. This is the smallest client that shows why the
+tool-server exists: the model asks for a tool, this script runs it on
+the tool-server, and the model answers grounded in the result. Tools run
+here, in the client, and never in the model-server (T434274#12256418).
+
+Against a LiftWing inference service:
+
+    python examples/tool_calling_loop.py \\
+        --model-url https://inference.svc.eqiad.wmnet:30443/openai/v1/chat/completions \\
+        --model-host llm-qwen36-27b.llm.wikimedia.org \\
+        --model llm-qwen36-27b \\
+        "What day is it today in Kampala?"
+
+The inference services are addressed by cluster URL and routed by Host
+header, exactly as with curl. TLS is verified against the URL host, using
+the system CA store by default -- for the tool-server and the model alike
+-- so that the WMF internal CA is trusted the same way curl trusts it. In a virtualenv, httpx would otherwise use the
+certifi bundle, which does not contain the WMF CA, and every request would
+fail with CERTIFICATE_VERIFY_FAILED. Override with --ca-bundle or
+MODEL_CA_BUNDLE.
+
+Against a local model, for example a model-server on ML-Lab:
+
+    python examples/tool_calling_loop.py \\
+        --model-url http://localhost:8585/openai/v1/chat/completions \\
+        --model qwen3-0.6b \\
+        "What day is it today in Kampala?"
+
+Every option has an environment variable equivalent (TOOLS_URL,
+MODEL_URL, MODEL, MODEL_HOST, MODEL_API_KEY, MAX_TOKENS, TOOL_TIMEOUT_S,
+MAX_TURNS, MODEL_TLS_VERIFY); command-line options win.
+"""
+
 from __future__ import annotations
 
 import argparse
@@ -11,15 +47,23 @@ from typing import Any
 
 import httpx
 from fastmcp import Client
+from fastmcp.client.transports import StreamableHttpTransport
 
 logger = logging.getLogger("tool_calling_loop")
 
 DEFAULT_TOOLS_URL = "http://localhost:8080/mcp/"
 DEFAULT_MODEL_URL = "http://localhost:8585/openai/v1/chat/completions"
 DEFAULT_MODEL = "qwen3-0.6b"
-DEFAULT_MAX_TURNS = 3
-DEFAULT_MAX_TOKENS = 500
+# Analytics questions chain tools: looking up identifiers, building a
+# cohort and ranking it is three calls, which needs four model turns.
+# Three was the right default when the toolbelt was two tools.
+DEFAULT_MAX_TURNS = 6
+# Analytics answers carry a table, the definitions and the caveats, so
+# 500 tokens truncates them mid-sentence and the result still reads as
+# a finished answer.
+DEFAULT_MAX_TOKENS = 1500
 REQUEST_TIMEOUT_S = 120.0
+DEFAULT_TOOL_TIMEOUT_S = 300
 # Debian/Ubuntu system trust store, where wmf-certificates installs the
 # internal CA. This is the store curl uses.
 SYSTEM_CA_BUNDLE = "/etc/ssl/certs/ca-certificates.crt"
@@ -64,16 +108,25 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "--max-tokens",
+        type=int,
+        default=int(os.environ.get("MAX_TOKENS", DEFAULT_MAX_TOKENS)),
+        help="answer length cap. A truncated answer still looks finished.",
+    )
+    parser.add_argument(
+        "--tool-timeout",
+        type=float,
+        default=float(os.environ.get("TOOL_TIMEOUT_S", DEFAULT_TOOL_TIMEOUT_S)),
+        help=(
+            "seconds to wait for a tool. Ranking a cohort fetches one "
+            "request per article, so the default is generous."
+        ),
+    )
+    parser.add_argument(
         "--max-turns",
         type=int,
         default=int(os.environ.get("MAX_TURNS", DEFAULT_MAX_TURNS)),
         help="Loop guard: how many times the model may be asked.",
-    )
-    parser.add_argument(
-        "--max-tokens",
-        type=int,
-        default=int(os.environ.get("MAX_TOKENS", DEFAULT_MAX_TOKENS)),
-        help="Maximum tokens the model may generate per turn.",
     )
     parser.add_argument(
         "--ca-bundle",
@@ -171,7 +224,10 @@ def tool_result_text(result: Any) -> str:
     """Flatten an MCP result into the text of a 'tool' message."""
     data = getattr(result, "data", None)
     if data is not None:
-        return json.dumps(data)
+        try:
+            return json.dumps(data)
+        except TypeError:
+            return str(data)
     blocks = [getattr(block, "text", "") for block in (result.content or [])]
     return "\n".join(b for b in blocks if b) or "(empty tool result)"
 
@@ -188,17 +244,47 @@ def model_headers(args: argparse.Namespace) -> dict[str, str]:
     return headers
 
 
+def tools_client(args: argparse.Namespace, verify: ssl.SSLContext | bool) -> Client:
+    """
+    MCP client for the tool-server, using the same CA policy as the
+    model client. Without this the MCP client would fall back to the
+    certifi bundle, which cannot verify an internally signed endpoint.
+    """
+
+    def client_factory(**kwargs: Any) -> httpx.AsyncClient:
+        # Accept whatever keyword arguments fastmcp passes (they vary by
+        # version) and override only the certificate policy.
+        kwargs["verify"] = verify
+        # Set the timeout here rather than letting whatever fastmcp
+        # passes through: with a client-level timeout set, the value
+        # reaching the transport is added to an httpx.Timeout later and
+        # the types clash.
+        kwargs["timeout"] = httpx.Timeout(args.tool_timeout)
+        return httpx.AsyncClient(**kwargs)
+
+    transport = StreamableHttpTransport(
+        args.tools_url, httpx_client_factory=client_factory
+    )
+    # An explicit timeout, because the default is shorter than the
+    # slowest tool: ranking a cohort fetches one request per article and
+    # takes tens of seconds. The client is where the MCP SDK reads it
+    # from.
+    return Client(transport, timeout=args.tool_timeout)
+
+
 async def run_loop(args: argparse.Namespace) -> str:
     """Run the loop and return the model's final answer."""
     if args.insecure:
-        logger.warning("TLS verification is disabled for the model request")
+        logger.warning("TLS verification is disabled")
+
+    verify = resolve_verify(args)
 
     async with (
-        Client(args.tools_url) as tools,
+        tools_client(args, verify) as tools,
         httpx.AsyncClient(
             timeout=REQUEST_TIMEOUT_S,
             headers=model_headers(args),
-            verify=resolve_verify(args),
+            verify=verify,
         ) as model,
     ):
         # [1] discover the toolbelt, once
@@ -233,7 +319,13 @@ async def run_loop(args: argparse.Namespace) -> str:
             )
 
             if choice["finish_reason"] != "tool_calls":
-                # [5] the answer is final
+                # [5] the answer is final, unless it was cut off
+                if choice["finish_reason"] == "length":
+                    logger.warning(
+                        "the answer hit the %d token limit and is cut off; "
+                        "raise --max-tokens",
+                        args.max_tokens,
+                    )
                 return choice["message"].get("content") or ""
 
             # Keep the assistant message, with its tool_calls, in the history.
@@ -254,11 +346,15 @@ async def run_loop(args: argparse.Namespace) -> str:
                     ) from e
                 logger.info("[3] tools/call %s(%s)", name, arguments)
                 try:
-                    result = await tools.call_tool(name, arguments)
-                    content = tool_result_text(result)
-                except Exception as exc:  # surface the failure to the model
-                    logger.warning("[3] tools/call %s failed: %s", name, exc)
-                    content = f"Tool '{name}' failed: {exc}"
+                    content = tool_result_text(await tools.call_tool(name, arguments))
+                except Exception as e:  # noqa: BLE001 - see below
+                    # A failing tool is information for the model, not the
+                    # end of the run: it can correct the arguments and try
+                    # again, which is usually what a wrong project or an
+                    # out-of-range date needs. Raising here ends a session
+                    # that had four good turns left in it.
+                    content = f"The tool failed: {e}. Fix the arguments and try again."
+                    logger.info("[3] tools/call %s failed: %s", name, e)
                 messages.append(
                     {
                         "role": "tool",

@@ -136,7 +136,10 @@ class TestMcp:
                 tools = await c.list_tools()
                 return sorted(t.name for t in tools)
 
-        assert asyncio.run(main()) == ["current_date", "wikipedia_semantic_search"]
+        assert asyncio.run(main()) == [
+            "current_date",
+            "wikipedia_semantic_search",
+        ]
 
     def test_tools_call_current_date(self):
         async def main():
@@ -146,3 +149,25 @@ class TestMcp:
 
         out = asyncio.run(main())
         assert "Africa/Kampala" in str(out)
+
+
+class TestMcpAnnotations:
+    """
+    Annotations tell a client how a tool behaves without spending
+    prompt tokens on saying so. Every tool here reads public data and
+    changes nothing.
+    """
+
+    def test_every_tool_is_marked_read_only(self):
+        import asyncio
+
+        async def main():
+            async with Client(service.mcp) as c:
+                return await c.list_tools()
+
+        for tool in asyncio.run(main()):
+            assert tool.annotations is not None, tool.name
+            assert tool.annotations.read_only_hint is True, tool.name
+            assert tool.annotations.open_world_hint is True, tool.name
+            assert tool.annotations.idempotent_hint is True, tool.name
+            assert tool.annotations.title, tool.name

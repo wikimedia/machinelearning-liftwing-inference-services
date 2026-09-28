@@ -31,7 +31,8 @@ import logging
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastmcp import FastMCP
-from fastmcp.server.openapi import MCPType, RouteMap
+from fastmcp.server.providers.openapi import MCPType, OpenAPITool, RouteMap
+from mcp.types import ToolAnnotations
 
 from tool_server.config import LOG_LEVEL
 from tool_server.errors import ToolInputError, ToolUpstreamError
@@ -101,6 +102,27 @@ for _spec in TOOLS:
 logger.info("registered %d tools: %s", len(TOOLS), [t.name for t in TOOLS])
 
 
+def annotate(route: object, component: object) -> None:
+    """
+    Describe how the tools behave, for clients rather than for the model.
+
+    Every tool here reads public data and changes nothing, so they are
+    all read-only and idempotent, and they all reach outside this
+    service. Clients use these hints to decide whether to ask the user
+    before running a tool; annotations cost no prompt tokens, unlike
+    saying the same thing in a description.
+    """
+    if isinstance(component, OpenAPITool):
+        # snake_case field names: the MCP SDK v2 renamed the camelCase
+        # ones, which still work but are deprecated.
+        component.annotations = ToolAnnotations(
+            title=component.name.replace("_", " "),
+            read_only_hint=True,
+            idempotent_hint=True,
+            open_world_hint=True,
+        )
+
+
 # MCP: derived from the routes above, mounted at /mcp.
 # The lifespan wiring is required: the MCP session manager initializes in
 # the sub-app's lifespan, and FastAPI only runs the lifespan it is given.
@@ -112,6 +134,7 @@ mcp = FastMCP.from_fastapi(
         RouteMap(pattern=rf"^{TOOL_ROUTE_PREFIX}/.*", mcp_type=MCPType.TOOL),
         RouteMap(pattern=r".*", mcp_type=MCPType.EXCLUDE),
     ],
+    mcp_component_fn=annotate,
 )
 mcp_app = mcp.http_app(path="/")
 app.mount("/mcp", mcp_app)
