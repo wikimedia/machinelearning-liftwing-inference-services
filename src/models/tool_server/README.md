@@ -135,6 +135,7 @@ Every option has an environment variable equivalent, run `python examples/tool_c
 | Tool | What it does | REST | MCP tool name |
 |------|--------------|------|---------------|
 | `current_date` | Returns the current date, time, and day of the week in an [IANA timezone](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones) (defaults to `UTC`). | `GET /v1/tools/current-date?timezone=Africa/Kampala` | `current_date` |
+| `wikipedia_article_html` | Returns the HTML of a Wikipedia article by title (MediaWiki REST `GET /page/{title}/html`, view flavor). Bodies longer than `TOOL_HTML_MAX_CHARS` (default 100000) are truncated, with a source URL in the note. | `GET /v1/tools/wikipedia-article-html?title=Jupiter&language=en` | `wikipedia_article_html` |
 | `wikipedia_semantic_search` | Searches Wikipedia for articles matching a natural-language query (semantic search with keyword fallback); returns titles, descriptions, extracts, and source URLs. | `GET /v1/tools/wikipedia-semantic-search?query=CRISPR&language=en&limit=3` | `wikipedia_semantic_search` |
 
 NB: Local runs hit `{language}.wikipedia.org` directly. On LiftWing, set `TOOL_MW_API_PROXY=http://localhost:6500` and requests use the envoy services-proxy with a per-language Host header.

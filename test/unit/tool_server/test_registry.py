@@ -100,6 +100,7 @@ class TestDiscovery:
         specs = registry.discover()
         assert [s.name for s in specs] == [
             "current_date",
+            "wikipedia_article_html",
             "wikipedia_semantic_search",
         ]
 

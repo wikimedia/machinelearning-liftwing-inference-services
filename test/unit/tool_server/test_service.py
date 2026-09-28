@@ -104,7 +104,11 @@ class TestRest:
             for methods in spec["paths"].values()
             for op in methods.values()
         }
-        assert {"current_date", "wikipedia_semantic_search"} <= ids
+        assert {
+            "current_date",
+            "wikipedia_article_html",
+            "wikipedia_semantic_search",
+        } <= ids
         assert "/healthz" not in spec["paths"]
 
     def test_search_limits_come_from_config(self, client):
@@ -136,7 +140,11 @@ class TestMcp:
                 tools = await c.list_tools()
                 return sorted(t.name for t in tools)
 
-        assert asyncio.run(main()) == ["current_date", "wikipedia_semantic_search"]
+        assert asyncio.run(main()) == [
+            "current_date",
+            "wikipedia_article_html",
+            "wikipedia_semantic_search",
+        ]
 
     def test_tools_call_current_date(self):
         async def main():

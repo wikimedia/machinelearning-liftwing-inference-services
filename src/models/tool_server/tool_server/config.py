@@ -29,5 +29,8 @@ DEFAULT_LANGUAGE = os.environ.get("TOOL_DEFAULT_LANGUAGE", "en")
 DEFAULT_LIMIT = int(os.environ.get("TOOL_DEFAULT_LIMIT", "5"))
 MAX_LIMIT = int(os.environ.get("TOOL_MAX_LIMIT", "10"))
 
+# ── wikipedia_article_html ──────────────────────────────────────────────────
+HTML_MAX_CHARS = int(os.environ.get("TOOL_HTML_MAX_CHARS", "100000"))
+
 # ── Logging ─────────────────────────────────────────────────────────────────
 LOG_LEVEL = os.environ.get("TOOL_LOG_LEVEL", "INFO").upper()
