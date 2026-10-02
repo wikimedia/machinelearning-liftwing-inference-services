@@ -254,6 +254,24 @@ def resolve_titles(titles_path: Path, base_api: str, out_path: Path) -> None:
 # ── Generation ──────────────────────────────────────────────────────────────
 
 
+_thread_local = threading.local()
+
+
+def _session() -> requests.Session:
+    """A requests.Session for the calling thread.
+
+    requests.Session is not thread-safe: its connection pool and cookie
+    jar are shared mutable state, and concurrent use can cross responses
+    between threads under load. One session per thread keeps connection
+    reuse (the point of a Session) without sharing it.
+    """
+    session = getattr(_thread_local, "session", None)
+    if session is None:
+        session = requests.Session()
+        _thread_local.session = session
+    return session
+
+
 def fetch_sections(base: str, art: dict, session: requests.Session) -> dict:
     r = session.get(
         f"{base}/sections",
@@ -274,7 +292,7 @@ def generate_one(
     section: dict,
     doc_index: int,
     log_path: Path,
-    session: requests.Session,
+    session: "requests.Session | None" = None,
     artifact_writer: "ArtifactWriter | None" = None,
 ) -> dict:
     """Generate one section; append exactly one record; return it.
@@ -283,6 +301,10 @@ def generate_one(
     duration, hashes, artifact keys), so manifests are rebuildable from the
     log alone: that is what makes resume and manifest writing idempotent.
     """
+    if session is None:
+        # One session per worker thread: requests.Session is not
+        # thread-safe, and this pool shares nothing else.
+        session = _session()
     key = f"enwiki/{art['page_id']}/{art['rev_id']}/{section['section_id']}"
     payload = {
         "wiki_id": "enwiki",
@@ -603,6 +625,14 @@ def main() -> int:
     ap.add_argument("--base", default="http://localhost:8080")
     ap.add_argument("--log", default="./batch_results.jsonl")
     ap.add_argument(
+        "--enum-concurrency",
+        type=int,
+        default=0,
+        help="workers for the enumeration pass (default: max(--concurrency, 8)). "
+        "/sections is served by the generator, not the voice model, so this is "
+        "not bound by the model's concurrency limit",
+    )
+    ap.add_argument(
         "--concurrency", type=int, default=1, help="size to the isvc replica count"
     )
     ap.add_argument(
@@ -672,7 +702,6 @@ def main() -> int:
     prior = _read_log(log_path)
     done = _done_keys(prior)
     records_by_key = {r["key"]: r for r in prior if r.get("status") in ("ok", "skip")}
-    session = requests.Session()
 
     print(
         f"Batch: {len(articles)} articles from {args.dataset} (pinned "
@@ -682,13 +711,46 @@ def main() -> int:
         + (f"; writing artifacts to {args.artifact_dir}" if artifact_writer else "")
     )
 
-    # Enumerate first (serial, fast), then generate (bounded pool).
-    tasks, enums = [], {}
-    for art in articles:
-        akey = (art["page_id"], art["rev_id"])
+    # Enumerate first, then generate. The enumeration fetches run in a
+    # pool of their own: /sections is served by the generator, not by the
+    # voice model, so it is not bound by the model's concurrency and a
+    # serial pass over 7,800 articles costs hours (T436758).
+    #
+    # Only the FETCH is parallel. Everything that writes to the results
+    # log runs afterwards, serially, in dataset order, so the log stays
+    # deterministic and resumable regardless of how the fetches raced.
+    enum_workers = args.enum_concurrency or max(args.concurrency, 8)
+    print(f"  enumerating {len(articles)} articles ({enum_workers} workers)")
+
+    def _enumerate(art: dict):
+        """Returns (article, enum, error). Never raises: one unreachable
+        article must not abandon the other 7,799."""
         try:
-            enum = fetch_sections(args.base, art, session)
+            return art, fetch_sections(args.base, art, _session()), None
         except requests.RequestException as e:
+            return art, None, e
+
+    enum_results = []
+    t_enum = time.perf_counter()
+    with concurrent.futures.ThreadPoolExecutor(max_workers=enum_workers) as ex:
+        futures = {ex.submit(_enumerate, art): i for i, art in enumerate(articles)}
+        done_count = 0
+        for fut in concurrent.futures.as_completed(futures):
+            enum_results.append((futures[fut], fut.result()))
+            done_count += 1
+            if done_count % 500 == 0:
+                print(
+                    f"    {done_count}/{len(articles)} "
+                    f"({(time.perf_counter() - t_enum) / 60:.1f} min)"
+                )
+    # Dataset order, whatever order the fetches finished in.
+    enum_results.sort(key=lambda pair: pair[0])
+    print(f"  enumerated in {(time.perf_counter() - t_enum) / 60:.1f} min")
+
+    tasks, enums = [], {}
+    for _, (art, enum, error) in enum_results:
+        akey = (art["page_id"], art["rev_id"])
+        if error is not None:
             _append(
                 log_path,
                 {
@@ -696,11 +758,11 @@ def main() -> int:
                     "status": "fail",
                     "key": f"enwiki/{art['page_id']}/{art['rev_id']}/-",
                     "title": art["title"],
-                    "error": f"sections: {e}",
+                    "error": f"sections: {error}",
                     "attempts": 1,
                 },
             )
-            print(f"  ENUM FAIL {art['title']}: {e}")
+            print(f"  ENUM FAIL {art['title']}: {error}")
             continue
         enums[akey] = enum
         if wanted is not None:
@@ -761,7 +823,7 @@ def main() -> int:
                 s,
                 i,
                 log_path,
-                session,
+                None,  # each worker thread gets its own session
                 artifact_writer,
             ): (art, s)
             for art, s, i in tasks

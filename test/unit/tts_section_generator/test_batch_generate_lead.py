@@ -10,6 +10,7 @@ import stat
 import subprocess
 import sys
 import threading
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
@@ -27,11 +28,13 @@ SCRIPT = next(c.resolve() for c in _CANDIDATES if c.exists())
 GV = "kokoro-v1.0+af_heart+norm-2026.08.10-nemo1.2.0-c350b336"
 
 # page 7 has no lead section at all (the missing-requested-section case)
+ENUM_FAIL_PAGE = 777
 NO_LEAD_PAGE = 7
 
 
 class Stub(BaseHTTPRequestHandler):
     inline = True  # class switch: bytes_b64 vs blob_uri
+    sections_delay = 0.0  # make /sections slow, to show the pool working
 
     def log_message(self, *a):
         pass
@@ -47,6 +50,11 @@ class Stub(BaseHTTPRequestHandler):
     def do_GET(self):
         q = parse_qs(urlparse(self.path).query)
         page, rev = int(q["page_id"][0]), int(q["rev_id"][0])
+        if Stub.sections_delay:
+            time.sleep(Stub.sections_delay)
+        if page == ENUM_FAIL_PAGE:
+            self._json(500, {"error": "boom"})
+            return
         secs = [
             {
                 "section_id": "lead",
@@ -388,3 +396,94 @@ def test_index_written_in_blob_uri_mode_too(stub, tmp_path):
     assert proc.returncode == 0
     idx = _index(pub)
     assert idx["articles"][0]["sections"][0]["audio"] == "enwiki/9/90/lead.mp3"
+
+
+# ── parallel enumeration ─────────────────────────────────────────────────
+
+
+def test_enumeration_failure_does_not_abort_the_others(stub, tmp_path):
+    """One unreachable article must not take the batch down with it: the
+    pool records its failure and the rest still generate."""
+    Stub.inline = True
+    ds = [
+        {"title": "A", "page_id": 9, "rev_id": 90},
+        {"title": "Boom", "page_id": ENUM_FAIL_PAGE, "rev_id": 99},
+        {"title": "B", "page_id": 5, "rev_id": 50},
+    ]
+    proc, pub, log = run(
+        stub,
+        tmp_path,
+        ds,
+        "--sections",
+        "lead",
+        "--artifact-dir",
+        str(tmp_path / "published"),
+    )
+    recs = [json.loads(x) for x in log.read_text().splitlines()]
+    assert len([r for r in recs if r.get("status") == "ok"]) == 2
+    enum_fails = [r for r in recs if r.get("error", "").startswith("sections:")]
+    assert len(enum_fails) == 1
+    assert "ENUM FAIL" in proc.stdout
+    assert manifest(pub, 9, 90) and manifest(pub, 5, 50)
+
+
+def test_enumeration_runs_in_parallel(stub, tmp_path):
+    """The point of the change: 12 articles against a stub that sleeps on
+    /sections must not take 12 x the per-call time."""
+    Stub.inline = True
+    Stub.sections_delay = 0.25
+    try:
+        ds = [
+            {"title": f"A{i}", "page_id": 100 + i, "rev_id": 1000 + i}
+            for i in range(12)
+        ]
+        t0 = time.perf_counter()
+        proc, _, _ = run(
+            stub,
+            tmp_path,
+            ds,
+            "--sections",
+            "lead",
+            "--enum-concurrency",
+            "12",
+            "--artifact-dir",
+            str(tmp_path / "published"),
+        )
+        elapsed = time.perf_counter() - t0
+    finally:
+        Stub.sections_delay = 0.0
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    serial = 12 * 0.25
+    assert elapsed < serial, f"took {elapsed:.1f}s, serial would be {serial:.1f}s"
+    assert "enumerating 12 articles" in proc.stdout
+
+
+def test_log_is_written_in_dataset_order(stub, tmp_path):
+    """Fetches race; the log must not. Records are written by a serial
+    pass after the pool drains, so resume reads a deterministic file."""
+    Stub.inline = True
+    Stub.sections_delay = 0.05
+    try:
+        ds = [
+            {"title": f"A{i}", "page_id": 200 + i, "rev_id": 2000 + i} for i in range(8)
+        ]
+        # No --sections filter: the non-generatable "empty" section yields
+        # a skip record per article, written by the serial pass in dataset
+        # order rather than completion order.
+        proc, _, log = run(
+            stub,
+            tmp_path,
+            ds,
+            "--enum-concurrency",
+            "8",
+            "--artifact-dir",
+            str(tmp_path / "published"),
+        )
+    finally:
+        Stub.sections_delay = 0.0
+    assert proc.returncode == 0
+    recs = [json.loads(x) for x in log.read_text().splitlines()]
+    # "skip" records come from the serial pass; their order must follow
+    # the dataset, not completion order.
+    skips = [r["page_id"] for r in recs if r.get("status") == "skip"]
+    assert skips == sorted(skips), skips
