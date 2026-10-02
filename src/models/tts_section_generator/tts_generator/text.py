@@ -63,6 +63,26 @@ _COMPOUND_UNIT_SUBS: list[tuple[re.Pattern, str]] = [
     (re.compile(r"(\d+(?:\.\d+)?)\s*m/s²\b"), r"\1 meters per second squared"),
     (re.compile(r"(\d+(?:\.\d+)?)\s*m/s\b"), r"\1 meters per second"),
     (re.compile(r"(\d+(?:\.\d+)?)\s*mph\b"), r"\1 miles per hour"),
+    # Bare "m" after a number. NeMo leaves it alone because "m" is
+    # ambiguous (metres, minutes, million), so espeak reads the leftover
+    # letter aloud: "56.7 m long" became "fifty six point seven M long"
+    # (T426756, reported again by a volunteer against the Beta app).
+    #
+    # MUST STAY LAST in this table: m/s² and m/s above would otherwise
+    # match as a bare metre first ("56.7 meters/s"). km and cm cannot
+    # match it either, since the digit must sit immediately before the "m".
+    #
+    # Accepted trade: financial "m" ("£50 m") also reads as metres. Bare
+    # metric measurements are common in article prose and financial "m"
+    # is usually written out, so metres is the right default; a wrong
+    # reading of a rare case beats a wrong reading of a common one.
+    #
+    # "mm" is the same defect (NeMo expands cm and km but not mm, so
+    # "3 mm" was read as "three MM") and is unambiguous. Both were
+    # already in _UNIT_SUBS, the fallback-only table that production
+    # never reaches, which is why neither ever took effect.
+    (re.compile(r"(\d+(?:\.\d+)?)\s*mm\b"), r"\1 millimeters"),
+    (re.compile(r"(\d+(?:\.\d+)?)\s*m\b"), r"\1 meters"),
 ]
 
 _SUP_TO_DIGIT = str.maketrans("⁰¹²³⁴⁵⁶⁷⁸⁹", "0123456789")
