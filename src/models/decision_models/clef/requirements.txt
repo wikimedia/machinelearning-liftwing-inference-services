@@ -1,0 +1,10 @@
+# NOTE: The following dependencies are provided by the vLLM base image: ROCm
+# 7.2.0, Torch 2.10.0, FlashAttention 2.8.3, Aiter 0.1.13, vLLM 0.22.1,
+# Pillow 12.2.0 and huggingface-hub 1.20.1. Clef needs no package the image
+# does not already carry: verified on ML-Lab, where clef-flash loaded and
+# served with nothing installed.
+
+# The model card was tested with transformers 5.10.2. The image ships 5.12.1,
+# which works, and is pinned here so a later image does not move it silently.
+transformers==5.12.1
+kserve==0.19.0

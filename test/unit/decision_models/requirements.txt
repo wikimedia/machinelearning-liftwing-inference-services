@@ -1,0 +1,17 @@
+# Deps the unit tests need beyond requirements-test.txt.
+#
+# torch is deliberately absent: conftest.py stubs it via sys.modules (as
+# test/unit/semantic_highlighting does), so CI does not pull a ROCm wheel to
+# test payload validation and an image resize.
+#
+# Pillow is NOT stubbed. These tests decode real PNGs, check that a wide image
+# is downscaled and a narrow one is not, and that a decompression bomb is
+# refused. A stub would make all three vacuous, and the wheel is small. Pillow
+# is pinned to the image's version because the decompression-bomb threshold
+# and the resize filters are the behaviour under test and could shift between
+# majors.
+#
+# kserve and Pillow are pinned to the model-server's versions (0.19.0 and 12.2.0)
+# so the tests exercise what production runs.
+kserve==0.19.0
+pillow==12.2.0
