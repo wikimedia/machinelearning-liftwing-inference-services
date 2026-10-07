@@ -60,9 +60,7 @@ class TestRest:
         """Through the real tool: a transport failure is retryable."""
         import requests
 
-        from tool_server.tools.wikipedia_semantic_search import (
-            wikipedia_semantic_search as ws,
-        )
+        from tool_server.tools.wikipedia_semantic_search import search as ws
 
         session = MagicMock()
         session.get.side_effect = requests.ConnectionError("boom")
@@ -74,9 +72,7 @@ class TestRest:
     def test_search_route_passes_parameters_through(self, client):
         """The route's signature is the tool's signature, so parameters
         arrive as declared."""
-        from tool_server.tools.wikipedia_semantic_search import (
-            wikipedia_semantic_search as ws,
-        )
+        from tool_server.tools.wikipedia_semantic_search import search as ws
 
         session = MagicMock()
         session.get.return_value = MagicMock(

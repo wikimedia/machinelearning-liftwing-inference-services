@@ -10,6 +10,7 @@ import pytest
 
 from tool_server.errors import ToolInputError, ToolUpstreamError
 from tool_server.tools.wikipedia_semantic_search import (
+    search as search_mod,
     wikipedia_semantic_search as ws_module,
 )
 
@@ -66,7 +67,7 @@ class TestWikipediaSemanticSearch:
             # enrichment for hit 2 fails -> snippet fallback
             _resp(ok=False, status=503),
         ]
-        with patch.object(ws, "_session", return_value=session):
+        with patch.object(search_mod, "_session", return_value=session):
             out = ws.wikipedia_semantic_search("why do neural networks forget")
 
         assert out.startswith(
@@ -92,11 +93,11 @@ class TestWikipediaSemanticSearch:
     def test_semantic_parameter_and_limit_clamp(self):
         session = MagicMock()
         session.get.side_effect = [_action_response([])]
-        with patch.object(ws, "_session", return_value=session):
+        with patch.object(search_mod, "_session", return_value=session):
             out = ws.wikipedia_semantic_search("q", limit=99)
         params = session.get.call_args_list[0].kwargs["params"]
         assert "cirrusSemanticSearch" in params
-        assert params["srlimit"] == str(ws.MAX_LIMIT)
+        assert params["srlimit"] == str(search_mod.MAX_LIMIT)
         assert params["srnamespace"] == "0"
         assert "No Wikipedia articles found" in out
 
@@ -113,7 +114,7 @@ class TestWikipediaSemanticSearch:
             ),
             _resp(ok=False, status=503),
         ]
-        with patch.object(ws, "_session", return_value=session):
+        with patch.object(search_mod, "_session", return_value=session):
             out = ws.wikipedia_semantic_search("q")
         assert "4321" not in out
 
@@ -124,18 +125,18 @@ class TestWikipediaSemanticSearch:
     def test_bad_language_falls_back_to_default(self):
         session = MagicMock()
         session.get.side_effect = [_action_response([])]
-        with patch.object(ws, "_session", return_value=session):
+        with patch.object(search_mod, "_session", return_value=session):
             out = ws.wikipedia_semantic_search("q", language="EN GB!!")
-        assert f"{ws.DEFAULT_LANGUAGE}.wikipedia.org" in out
+        assert f"{search_mod.DEFAULT_LANGUAGE}.wikipedia.org" in out
         url = session.get.call_args_list[0].args[0]
-        assert url.startswith(f"https://{ws.DEFAULT_LANGUAGE}.wikipedia.org")
+        assert url.startswith(f"https://{search_mod.DEFAULT_LANGUAGE}.wikipedia.org")
 
     def test_transport_failure_is_retryable(self):
         import requests as requests_lib
 
         session = MagicMock()
         session.get.side_effect = requests_lib.ConnectionError("boom")
-        with patch.object(ws, "_session", return_value=session):
+        with patch.object(search_mod, "_session", return_value=session):
             with pytest.raises(ToolUpstreamError):
                 ws.wikipedia_semantic_search("q")
 
@@ -146,17 +147,17 @@ class TestWikipediaSemanticSearch:
             _action_response([_search_hit("Long", "snippet")]),
             _resp(json_data={"extract": long_extract.strip(), "content_urls": {}}),
         ]
-        with patch.object(ws, "_session", return_value=session):
+        with patch.object(search_mod, "_session", return_value=session):
             out = ws.wikipedia_semantic_search("q")
         body = out.split("1. Long\n   ")[1].split("\n   Source:")[0]
         assert body.endswith("...")
-        assert len(body) <= ws.EXTRACT_MAX_CHARS + 3
+        assert len(body) <= search_mod.EXTRACT_MAX_CHARS + 3
 
     def test_proxy_mode_uses_proxy_base_and_host_header(self):
         session = MagicMock()
         session.get.side_effect = [_action_response([])]
-        with patch.object(ws, "MW_API_PROXY", "http://localhost:6500"):
-            with patch.object(ws, "_session", return_value=session):
+        with patch.object(search_mod, "MW_API_PROXY", "http://localhost:6500"):
+            with patch.object(search_mod, "_session", return_value=session):
                 ws.wikipedia_semantic_search("q", language="sw")
         call = session.get.call_args_list[0]
         assert call.args[0].startswith("http://localhost:6500/w/api.php")
@@ -165,7 +166,7 @@ class TestWikipediaSemanticSearch:
     def test_direct_mode_sends_no_host_header(self):
         session = MagicMock()
         session.get.side_effect = [_action_response([])]
-        with patch.object(ws, "_session", return_value=session):
+        with patch.object(search_mod, "_session", return_value=session):
             ws.wikipedia_semantic_search("q")
         assert "Host" not in session.get.call_args_list[0].kwargs["headers"]
 
@@ -190,14 +191,14 @@ class TestUpstreamStatusTaxonomy:
 
     @pytest.mark.parametrize("status", [400, 403, 404])
     def test_client_errors_are_deterministic(self, status):
-        with patch.object(ws, "_session", return_value=self._fail_with(status)):
+        with patch.object(search_mod, "_session", return_value=self._fail_with(status)):
             with pytest.raises(ToolInputError) as e:
                 ws.wikipedia_semantic_search("q")
         assert str(status) in str(e.value)
 
     @pytest.mark.parametrize("status", [429, 500, 502, 503])
     def test_rate_limit_and_server_errors_are_retryable(self, status):
-        with patch.object(ws, "_session", return_value=self._fail_with(status)):
+        with patch.object(search_mod, "_session", return_value=self._fail_with(status)):
             with pytest.raises(ToolUpstreamError):
                 ws.wikipedia_semantic_search("q")
 
@@ -213,7 +214,7 @@ class TestUpstreamStatusTaxonomy:
         )
         session = MagicMock()
         session.get.return_value = resp
-        with patch.object(ws, "_session", return_value=session):
+        with patch.object(search_mod, "_session", return_value=session):
             with pytest.raises(ToolUpstreamError, match="unreadable response"):
                 ws.wikipedia_semantic_search("q")
 
@@ -225,7 +226,7 @@ class TestEnrichmentLogging:
             _action_response([_search_hit("T", "snippet text")]),
             _resp(ok=False, status=503),
         ]
-        with patch.object(ws, "_session", return_value=session):
+        with patch.object(search_mod, "_session", return_value=session):
             with caplog.at_level("WARNING"):
                 out = ws.wikipedia_semantic_search("q")
         assert "summary enrichment failed" in caplog.text
@@ -236,8 +237,9 @@ class TestEnrichmentLogging:
 class TestStripHtml:
     def test_strips_tags_and_entities(self):
         assert (
-            ws._strip_html('a <span class="x">b</span> &amp; c&nbsp;d') == "a b & c d"
+            search_mod._strip_html('a <span class="x">b</span> &amp; c&nbsp;d')
+            == "a b & c d"
         )
 
     def test_non_string_is_empty(self):
-        assert ws._strip_html(None) == ""
+        assert search_mod._strip_html(None) == ""
