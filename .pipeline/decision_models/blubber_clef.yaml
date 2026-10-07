@@ -1,0 +1,108 @@
+# syntax=docker-registry.wikimedia.org/repos/releng/blubber/buildkit:v1.0.1
+version: v4
+base: docker-registry.wikimedia.org/ml/amd-vllm022:gfx90agfx942rocm7.2.0pytorch2.10.0flash-attn2.8.3aiter0.1.13vllm0.22.1-3
+runs:
+  insecurely: true
+  environment:
+    PYTHONPATH: /srv/venv/lib/python3.12/site-packages:/srv/app
+    PATH: $PATH:/srv/app
+
+lives:
+  in: /srv/app
+
+variants:
+  build:
+    apt:
+      packages:
+        - build-essential
+        - cmake
+        - git
+        - pkg-config
+    builders:
+      - custom:
+          # fix issue where blubber's default python builder is not using the correct python version (3.12) and venv path
+          requirements: [src/models/decision_models/clef/requirements.txt]
+          command: [ "/srv/venv/bin/python", "-m", "pip", "install", "-r", "src/models/decision_models/clef/requirements.txt" ]
+      - custom:
+          # fix issue where blubber's default python builder is not using the correct python version (3.12) and venv path
+          requirements: [python/requirements.txt]
+          command: [ "/srv/venv/bin/python", "-m", "pip", "install", "-r", "python/requirements.txt" ]
+
+
+  production:
+    copies:
+      - from: local
+        source: src/models/decision_models/clef/.
+        destination: .
+      - from: local
+        source: python
+        destination: python
+      - from: build
+        source: /srv/venv/lib/python3.12/site-packages
+        destination: /srv/venv/lib/python3.12/site-packages
+      - from: local
+        source: model_server_entrypoint_python312.sh
+        destination: entrypoint.sh
+      - from: local
+        source: common_settings_python312.sh
+        destination: common_settings.sh
+
+    apt:
+      packages:
+        - wmf-certificates
+        - libdrm-amdgpu1
+        - g++
+    entrypoint: ["./entrypoint.sh", "model.py"]
+
+  test:
+    # Lint and unit tests do not need ROCm: the tests stub torch out, so they
+    # run on a plain bookworm image in seconds instead of pulling the
+    # multi-GB GPU base.
+    base: docker-registry.wikimedia.org/bookworm:20260927
+    runs:
+      environment:
+        # This base has no /srv/venv. Blubber installs the test requirements
+        # into its own py3.11 venv, so replace the py3.12 path list that the
+        # top-level environment sets for the GPU base.
+        PYTHONPATH: /opt/lib/venv/lib/python3.11/site-packages:/srv/app
+    apt:
+      packages:
+        - git
+        - python3
+        - python3-pip
+        - python3-venv
+    copies:
+      - from: local
+        source: src/models/decision_models/clef
+        destination: src/models/decision_models/clef
+      - from: local
+        source: tox.ini
+        destination: .
+      - from: local
+        source: .pre-commit-config.yaml
+        destination: .
+      - from: local
+        source: ci_entrypoint.sh
+        destination: entrypoint.sh
+      - from: local
+        source: ruff.toml
+        destination: .
+      - from: local
+        source: requirements-test.txt
+        destination: .
+      - from: local
+        source: test/unit/__init__.py
+        destination: test/unit/__init__.py
+      - from: local
+        source: test/unit/decision_models
+        destination: test/unit/decision_models
+    entrypoint: ["./entrypoint.sh", "ci-lint", "ci-unit"]
+    python:
+      version: python3
+      # Deliberately NOT the service requirements.txt: that would drag in
+      # transformers and, through it, torch. conftest.py stubs torch, and
+      # kserve and Pillow are pinned to the versions the GPU base ships so the
+      # tests exercise what production runs.
+      requirements:
+        - requirements-test.txt
+        - test/unit/decision_models/requirements.txt

@@ -307,6 +307,25 @@ pipelines:
             name: '${setup.project}-policy-violation-cope-b-a4b'
             tags: [stable]
 
+  decision-models-clef:
+    blubberfile: decision_models/blubber_clef.yaml
+    stages:
+      - name: run-test
+        build: test
+        run: true
+      - name: production
+        build: production
+
+  decision-models-clef-publish:
+    blubberfile: decision_models/blubber_clef.yaml
+    stages:
+      - name: publish
+        build: production
+        publish:
+          image:
+            name: '${setup.project}-decision-models-clef'
+            tags: [stable]
+
   liftwing-openapi-server:
     blubberfile: liftwing_openapi_server/blubber.yaml
     stages:
