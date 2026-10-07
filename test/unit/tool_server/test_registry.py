@@ -130,3 +130,52 @@ class TestDiscovery:
 
         with pytest.raises(ModuleNotFoundError):
             registry.discover("broken_toolbelt")
+
+
+class TestAppTool:
+    """MCP App versions: one per tool, published in name order."""
+
+    def _snapshot(self):
+        return dict(registry._APPS)
+
+    def _restore(self, snapshot):
+        registry._APPS.clear()
+        registry._APPS.update(snapshot)
+
+    def test_registers_and_returns_the_function(self):
+        snapshot = self._snapshot()
+        try:
+
+            def view_tool():
+                pass
+
+            out = registry.app_tool(
+                tool="t",
+                resource_uri="ui://t/view.html",
+                html=None,
+                resource_domains=["https://example.org"],
+            )(view_tool)
+            assert out is view_tool
+            (spec,) = [a for a in registry.registered_apps() if a.tool == "t"]
+            assert spec.fn is view_tool
+            assert spec.resource_uri == "ui://t/view.html"
+            assert spec.resource_domains == ("https://example.org",)
+        finally:
+            self._restore(snapshot)
+
+    def test_second_app_version_of_one_tool_is_refused(self):
+        snapshot = self._snapshot()
+        try:
+
+            @registry.app_tool(tool="t", resource_uri="ui://t/a.html", html=None)
+            def a():
+                pass
+
+            with pytest.raises(RuntimeError, match="Two MCP App versions"):
+
+                @registry.app_tool(tool="t", resource_uri="ui://t/b.html", html=None)
+                def b():
+                    pass
+
+        finally:
+            self._restore(snapshot)

@@ -7,7 +7,7 @@ Since it's an anti-pattern to run tools inside the model-server, clients own the
 This service supports two protocols that serve the same tool functions:
 
 * **REST with OpenAPI**: `GET /v1/tools/<tool>`; live contract at `/openapi.json`, human docs at `/docs`. This is what Open WebUI consumes as an external tool server (no bridge needed).
-* **MCP** at `/mcp`: for MCP clients such as an orchestrator. Derived from the REST routes; a route's `operation_id` is the MCP tool name and its docstring is the model-facing description.
+* **MCP** at `/mcp`: for MCP clients such as an orchestrator. Derived from the REST routes; a route's `operation_id` is the MCP tool name and its docstring is the model-facing description. A tool can also have an [MCP App version](#mcp-app-versions), which replaces it on MCP only.
 
 There is no static `openapi.yaml`: the contract is generated from the code and served at `/openapi.json`, so it doesn't drift.
 
@@ -135,7 +135,7 @@ Every option has an environment variable equivalent, run `python examples/tool_c
 | Tool | What it does | REST | MCP tool name |
 |------|--------------|------|---------------|
 | `current_date` | Returns the current date, time, and day of the week in an [IANA timezone](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones) (defaults to `UTC`). | `GET /v1/tools/current-date?timezone=Africa/Kampala` | `current_date` |
-| `wikipedia_semantic_search` | Searches Wikipedia for articles matching a natural-language query (semantic search with keyword fallback); returns titles, descriptions, extracts, and source URLs. | `GET /v1/tools/wikipedia-semantic-search?query=CRISPR&language=en&limit=3` | `wikipedia_semantic_search` |
+| `wikipedia_semantic_search` | Searches Wikipedia for articles matching a natural-language query (semantic search with keyword fallback); returns titles, descriptions, extracts, and source URLs. On MCP it is an [MCP App](#mcp-app-versions): hosts that support MCP Apps show the results as a card grid. | `GET /v1/tools/wikipedia-semantic-search?query=CRISPR&language=en&limit=3` | `wikipedia_semantic_search` |
 
 NB: Local runs hit `{language}.wikipedia.org` directly. On LiftWing, set `TOOL_MW_API_PROXY=http://localhost:6500` and requests use the envoy services-proxy with a per-language Host header.
 
@@ -185,6 +185,16 @@ A tool is one `@tool`-decorated function in its own directory under `tools/`. `s
    ```
 
    Cover the success path and both error paths; mirror the existing tests, which patch the requests session so no network is used.
+
+### MCP App versions
+
+An [MCP App](https://modelcontextprotocol.io/extensions/apps/overview) is a tool that comes with its own UI (a "View"): an HTML page that MCP Apps hosts, such as LibreChat with MCP Apps turned on, show inside the chat. The model still gets the tool's text; the View gets the tool's structured result.
+
+A tool gets an MCP App version with `@app_tool` from `tool_server.registry`, in the tool's own directory next to its View. `service.py` then publishes that version on MCP under the tool's name, with the tool's description, in place of the REST-derived tool. REST is unchanged. See `tools/wikipedia_semantic_search/cards.py`:
+
+- The function takes the same arguments as the tool and returns a `fastmcp.tools.ToolResult`: `content` is the text for the model, `structured_content` is the data for the View.
+- The View is served as a `ui://` resource. `resource_domains` lists where it may load images and other files from; hosts block everything else.
+- The View itself is a built HTML file in the tool's `ui/` directory. `tools/wikipedia_semantic_search/ui/README.md` says where it comes from and how to rebuild it.
 
 ### Running the unit tests
 

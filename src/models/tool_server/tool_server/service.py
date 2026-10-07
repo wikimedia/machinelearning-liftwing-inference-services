@@ -15,7 +15,10 @@ One codebase serves two protocols from the same tool functions:
 * MCP, mounted at ``/mcp``: the standard for tool servers, for MCP
   clients such as an orchestrator. Derived from the REST routes with
   ``FastMCP.from_fastapi``, so a tool's MCP name is its function name
-  and its MCP schema comes from the same signature.
+  and its MCP schema comes from the same signature. The exception is a
+  tool with an MCP App version (``registry.app_tool``): on MCP that
+  version replaces the derived tool under the same name, and serves a
+  ``ui://`` View that MCP Apps hosts render with its structured result.
 
 Errors follow the taxonomy in ``errors.py``, mapped to status codes by
 the two exception handlers below and nowhere else: ToolInputError is
@@ -27,16 +30,18 @@ and T434274#12280495.
 """
 
 import logging
+import re
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastmcp import FastMCP
+from fastmcp.apps.config import AppConfig, ResourceCSP
 from fastmcp.server.providers.openapi import MCPType, OpenAPITool, RouteMap
 from mcp.types import ToolAnnotations
 
 from tool_server.config import LOG_LEVEL
 from tool_server.errors import ToolInputError, ToolUpstreamError
-from tool_server.registry import ToolSpec, discover
+from tool_server.registry import AppSpec, ToolSpec, discover, registered_apps
 
 logging.basicConfig(
     level=LOG_LEVEL,
@@ -101,6 +106,16 @@ for _spec in TOOLS:
     register_tool_route(app, _spec)
 logger.info("registered %d tools: %s", len(TOOLS), [t.name for t in TOOLS])
 
+# MCP App versions, by the tool they stand in for on MCP.
+APPS = {a.tool: a for a in registered_apps()}
+_TOOLS_BY_NAME = {t.name: t for t in TOOLS}
+_orphans = sorted(set(APPS) - set(_TOOLS_BY_NAME))
+if _orphans:
+    raise RuntimeError(
+        f"MCP App versions of unknown tools: {_orphans}. app_tool(tool=...) "
+        "must name a registered @tool."
+    )
+
 
 def annotate(route: object, component: object) -> None:
     """
@@ -113,14 +128,52 @@ def annotate(route: object, component: object) -> None:
     saying the same thing in a description.
     """
     if isinstance(component, OpenAPITool):
-        # snake_case field names: the MCP SDK v2 renamed the camelCase
-        # ones, which still work but are deprecated.
-        component.annotations = ToolAnnotations(
-            title=component.name.replace("_", " "),
-            read_only_hint=True,
-            idempotent_hint=True,
-            open_world_hint=True,
-        )
+        component.annotations = tool_annotations(component.name)
+
+
+def tool_annotations(name: str) -> ToolAnnotations:
+    """The annotations every tool gets; see :func:`annotate`."""
+    # snake_case field names: the MCP SDK v2 renamed the camelCase ones,
+    # which still work but are deprecated.
+    return ToolAnnotations(
+        title=name.replace("_", " "),
+        read_only_hint=True,
+        idempotent_hint=True,
+        open_world_hint=True,
+    )
+
+
+def register_app(server: FastMCP, spec: AppSpec, tool_spec: ToolSpec) -> None:
+    """
+    Publish a tool's MCP App version: the tool, and the View it points at.
+
+    The tool keeps the plain tool's name, description and annotations, so
+    the model sees no difference; only MCP Apps hosts act on the UI
+    metadata. The View's CSP goes on the resource, where hosts read it
+    (LibreChat reads it from the resources/read item, which FastMCP
+    stamps from this config). The HTML is read once, here: a missing View
+    fails startup rather than the first call.
+    """
+    html = spec.html.read_text(encoding="utf-8")
+
+    def view() -> str:
+        return html
+
+    server.resource(
+        spec.resource_uri,
+        name=f"{spec.tool}_view",
+        description=f"MCP Apps View for {spec.tool}.",
+        app=AppConfig(
+            csp=ResourceCSP(resource_domains=list(spec.resource_domains) or None)
+        ),
+    )(view)
+    server.tool(
+        spec.fn,
+        name=spec.tool,
+        description=tool_spec.description,
+        annotations=tool_annotations(spec.tool),
+        app=AppConfig(resource_uri=spec.resource_uri),
+    )
 
 
 # MCP: derived from the routes above, mounted at /mcp.
@@ -130,12 +183,24 @@ mcp = FastMCP.from_fastapi(
     app=app,
     name="liftwing-tools",
     route_maps=[
+        # A tool with an MCP App version is not derived: register_app
+        # publishes that version under the same name instead. First match
+        # wins, so these come before the tool map.
+        *(
+            RouteMap(
+                pattern=rf"^{re.escape(_TOOLS_BY_NAME[name].path)}$",
+                mcp_type=MCPType.EXCLUDE,
+            )
+            for name in APPS
+        ),
         # Only the tool routes are tools; nothing else is exposed.
         RouteMap(pattern=rf"^{TOOL_ROUTE_PREFIX}/.*", mcp_type=MCPType.TOOL),
         RouteMap(pattern=r".*", mcp_type=MCPType.EXCLUDE),
     ],
     mcp_component_fn=annotate,
 )
+for _name, _app_spec in APPS.items():
+    register_app(mcp, _app_spec, _TOOLS_BY_NAME[_name])
 mcp_app = mcp.http_app(path="/")
 app.mount("/mcp", mcp_app)
 app.router.lifespan_context = mcp_app.lifespan

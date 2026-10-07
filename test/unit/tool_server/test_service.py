@@ -167,3 +167,28 @@ class TestMcpAnnotations:
             assert tool.annotations.open_world_hint is True, tool.name
             assert tool.annotations.idempotent_hint is True, tool.name
             assert tool.annotations.title, tool.name
+
+
+class TestRegisterApp:
+    def test_missing_view_fails_at_registration(self, tmp_path):
+        """The View is read at startup, so a missing file stops the server
+        there rather than failing the first call."""
+        from fastmcp import FastMCP
+
+        from tool_server.registry import AppSpec, ToolSpec
+
+        def example() -> str:
+            """Doc."""
+
+        with pytest.raises(FileNotFoundError):
+            service.register_app(
+                FastMCP("test"),
+                AppSpec(
+                    tool="example",
+                    fn=example,
+                    resource_uri="ui://example/view.html",
+                    html=tmp_path / "missing.html",
+                    resource_domains=(),
+                ),
+                ToolSpec(name="example", fn=example),
+            )

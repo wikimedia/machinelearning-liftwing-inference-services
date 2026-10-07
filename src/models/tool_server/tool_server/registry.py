@@ -11,6 +11,9 @@ The function signature is the tool's API (FastAPI builds the query
 parameters and the OpenAPI schema from it, and the MCP tool schema is
 derived from that), and the docstring is the model-facing description.
 
+A tool can also have an MCP App version, declared with :func:`app_tool`
+in the tool's directory next to the View it renders.
+
 Discovery imports every module under ``tools/``. Import failures are
 fatal on purpose: a tool that cannot be imported would otherwise vanish
 from the toolbelt silently, and a client would see a shorter tools/list
@@ -19,8 +22,9 @@ with no error anywhere.
 
 import importlib
 import pkgutil
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
+from pathlib import Path
 
 TOOLS_PACKAGE = "tool_server.tools"
 
@@ -82,6 +86,69 @@ def tool(fn: Callable | None = None, *, name: str | None = None) -> Callable:
     return register(fn) if fn is not None else register
 
 
+@dataclass(frozen=True)
+class AppSpec:
+    """
+    An MCP App version of a registered tool.
+
+    On MCP it stands in for the tool of the same name: same arguments and
+    description, but its result also carries structured data, and the
+    tool points at a ``ui://`` resource (the View) that MCP Apps hosts
+    render in a sandboxed iframe. REST keeps the plain tool.
+    """
+
+    tool: str
+    fn: Callable
+    resource_uri: str
+    html: Path
+    # Origins the View may load images, scripts, styles and fonts from.
+    # Hosts block everything else (the View's CSP).
+    resource_domains: tuple[str, ...]
+
+
+_APPS: dict[str, AppSpec] = {}
+
+
+def app_tool(
+    *,
+    tool: str,
+    resource_uri: str,
+    html: Path,
+    resource_domains: Sequence[str] = (),
+) -> Callable:
+    """
+    Register a function as the MCP App version of ``tool``.
+
+    Usage::
+
+        @app_tool(tool="some_tool", resource_uri="ui://some-tool/view.html",
+                  html=Path(__file__).parent / "ui" / "view.html")
+        def some_tool_app(query: str) -> ToolResult:
+            ...
+
+    The function returns a ``fastmcp.tools.ToolResult`` with text for the
+    model and ``structured_content`` for the View. ``tool`` must name a
+    registered tool; the service checks this once discovery is done.
+    """
+
+    def register(f: Callable) -> Callable:
+        if tool in _APPS and _APPS[tool].fn is not f:
+            raise RuntimeError(
+                f"Two MCP App versions of {tool!r}: {_APPS[tool].fn.__module__} "
+                f"and {f.__module__}."
+            )
+        _APPS[tool] = AppSpec(
+            tool=tool,
+            fn=f,
+            resource_uri=resource_uri,
+            html=html,
+            resource_domains=tuple(resource_domains),
+        )
+        return f
+
+    return register
+
+
 def discover(package: str = TOOLS_PACKAGE) -> list[ToolSpec]:
     """
     Import every module under ``package`` and return the tools found.
@@ -108,3 +175,8 @@ def discover(package: str = TOOLS_PACKAGE) -> list[ToolSpec]:
 def registered() -> list[ToolSpec]:
     """Tools registered so far, without triggering discovery."""
     return [_REGISTRY[name] for name in sorted(_REGISTRY)]
+
+
+def registered_apps() -> list[AppSpec]:
+    """MCP App versions registered so far, sorted by tool name."""
+    return [_APPS[name] for name in sorted(_APPS)]

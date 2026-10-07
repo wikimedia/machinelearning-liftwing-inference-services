@@ -29,7 +29,10 @@ def wikipedia_semantic_search(
 
 
 def format_text(results: SearchResults) -> str:
-    """The model-facing text for a search."""
+    """
+    The model-facing text for a search. Shared by the REST tool and the
+    MCP App tool in ``cards``, so the model reads the same thing on both.
+    """
     query, language = results.query, results.language
     if not results.found:
         return f"No Wikipedia articles found for '{query}' on {language}.wikipedia.org."

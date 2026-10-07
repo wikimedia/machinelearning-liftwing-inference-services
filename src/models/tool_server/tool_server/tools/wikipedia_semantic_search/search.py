@@ -2,7 +2,8 @@
 The Wikipedia search behind wikipedia_semantic_search.
 
 Runs the search, fetches each page's summary, and returns the results as
-data. wikipedia_semantic_search.py turns them into text for the model.
+data. wikipedia_semantic_search.py turns them into text for the model, and
+cards.py into the data for the card grid.
 """
 
 import logging
@@ -33,10 +34,20 @@ _RETRYABLE_4XX = frozenset({429})
 
 
 @dataclass(frozen=True)
+class Thumbnail:
+    """The article's lead image, as the page summary reports it."""
+
+    src: str
+    width: int | None
+    height: int | None
+
+
+@dataclass(frozen=True)
 class Hit:
     """One search result after enrichment."""
 
     title: str
+    page_id: int | None
     snippet: str
     section: str | None
     # The summary extract, or the snippet when enrichment failed. Already
@@ -44,6 +55,7 @@ class Hit:
     extract: str
     description: str | None
     url: str
+    thumbnail: Thumbnail | None
 
 
 @dataclass(frozen=True)
@@ -134,7 +146,7 @@ def _enrich(
 ) -> Hit:
     """
     Per-hit enrichment via the REST page-summary endpoint (extract, short
-    description, canonical URL). A failed summary call
+    description, canonical URL, lead image). A failed summary call
     degrades gracefully to the search snippet, which also keeps the tool
     functional if the services-proxy does not route /api/rest_v1 (to be
     verified at staging deploy).
@@ -143,6 +155,7 @@ def _enrich(
     snippet = _strip_html(raw.get("snippet", ""))
     extract = snippet
     description = None
+    thumbnail = None
     url = (
         f"https://{language}.wikipedia.org/wiki/"
         f"{requests.utils.quote(title.replace(' ', '_'))}"
@@ -159,6 +172,7 @@ def _enrich(
             extract = data.get("extract") or snippet
             description = data.get("description")
             url = data.get("content_urls", {}).get("desktop", {}).get("page") or url
+            thumbnail = _thumbnail(data.get("thumbnail"))
         else:
             # A non-ok response is not an exception, so it needs its own
             # log line: otherwise degraded enrichment is invisible.
@@ -175,11 +189,22 @@ def _enrich(
 
     return Hit(
         title=title,
+        page_id=raw.get("pageid"),
         snippet=snippet,
         section=raw.get("sectiontitle"),
         extract=extract,
         description=description,
         url=url,
+        thumbnail=thumbnail,
+    )
+
+
+def _thumbnail(raw: object) -> Thumbnail | None:
+    """The summary's ``thumbnail`` object, or None when it has no source."""
+    if not isinstance(raw, dict) or not raw.get("source"):
+        return None
+    return Thumbnail(
+        src=raw["source"], width=raw.get("width"), height=raw.get("height")
     )
 
 
