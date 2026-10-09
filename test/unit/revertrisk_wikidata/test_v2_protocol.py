@@ -2,7 +2,6 @@ import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from fastapi import HTTPException
 from kserve.errors import InvalidInput
 from kserve.protocol.infer_type import InferInput, InferRequest, InferResponse
 
@@ -257,11 +256,8 @@ class TestNormalizeCacheInput:
     def test_non_wikidata_wiki_id_raises(self, model_server):
         inputs = {"wiki_id": "enwiki", "page_id": 42, "revision_id": REV_ID}
 
-        with pytest.raises(HTTPException) as excinfo:
+        with pytest.raises(InvalidInput, match="enwiki"):
             model_server._normalize_cache_input(inputs)
-
-        assert excinfo.value.status_code == 400
-        assert "enwiki" in excinfo.value.detail
 
     def test_explicit_rev_id_wins(self, model_server):
         """A caller sending both must not have its rev_id silently overridden."""
@@ -322,11 +318,9 @@ class TestNormalizeCacheInput:
                 "create_mwapi_session",
                 return_value=mock_session,
             ),
-            pytest.raises(HTTPException) as excinfo,
+            pytest.raises(InvalidInput, match="enwiki"),
         ):
             await model_server.preprocess(request)
-
-        assert excinfo.value.status_code == 400
 
 
 class TestProtocolDetection:

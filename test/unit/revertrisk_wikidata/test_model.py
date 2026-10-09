@@ -1,6 +1,7 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from kserve.errors import InvalidInput
 
 from src.models.revertrisk_wikidata.model_server.model import (
     DEFAULT_USER_AGENT,
@@ -370,19 +371,26 @@ async def test_preprocess_event_input_extracts_rev_id(model_server):
 @pytest.mark.asyncio
 async def test_preprocess_event_non_wikidata_wiki_id_raises(model_server):
     """
-    Test that preprocess raises HTTPException(400) for events from non-Wikidata wikis.
+    Test that preprocess raises InvalidInput for events from non-Wikidata wikis.
     """
-    from fastapi import HTTPException
-
     non_wikidata_event = {
         **SAMPLE_PAGE_CHANGE_EVENT,
         "wiki_id": "enwiki",
     }
     inputs = {"event": non_wikidata_event}
 
-    with pytest.raises(HTTPException) as exc_info:
+    with pytest.raises(InvalidInput, match="Wikidata"):
         await model_server.preprocess(inputs)
-    assert exc_info.value.status_code == 400
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("rev_id", [0, -1, "123", None])
+async def test_preprocess_invalid_rev_id_raises(model_server, rev_id):
+    """
+    Test that preprocess raises InvalidInput for a rev_id that is not a positive integer.
+    """
+    with pytest.raises(InvalidInput, match="positive integer"):
+        await model_server.preprocess({"rev_id": rev_id})
 
 
 @pytest.mark.asyncio

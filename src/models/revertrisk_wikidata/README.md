@@ -91,10 +91,10 @@ result = json.loads(response.outputs[0].contents.bytes_contents[0].decode("utf-8
 print(json.dumps(result, indent=2))
 ```
 
-Note: input validation errors are currently raised as HTTP 400, which gRPC
-surfaces as `UNKNOWN` rather than `INVALID_ARGUMENT`. Switching to
-`kserve.errors.InvalidInput` would change the REST error body key from `detail`
-to `error`, so it is deferred until the current REST clients move to LAC.
+Note: input validation errors (e.g. a `wiki_id` other than `wikidatawiki`, or a
+`rev_id` that is not a positive integer) raise `kserve.errors.InvalidInput`:
+REST returns HTTP 400 with the message under `error`, gRPC returns
+`INVALID_ARGUMENT`.
 
 ## How to run locally
 

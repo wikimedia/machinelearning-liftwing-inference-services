@@ -21,8 +21,7 @@ import pandas as pd
 import torch
 import transformers
 from diskcache import Cache
-from fastapi import HTTPException
-from kserve.errors import InferenceError
+from kserve.errors import InferenceError, InvalidInput
 from kserve.protocol.infer_type import InferOutput, InferRequest, InferResponse
 from tenacity import retry, stop_after_attempt, wait_exponential
 from utils import (
@@ -124,7 +123,7 @@ class RevertRiskWikidataModel(kserve.Model):
                 "edits (wiki_id must be 'wikidatawiki')."
             )
             logging.error(error_message)
-            raise HTTPException(status_code=400, detail=error_message)
+            raise InvalidInput(error_message)
 
         inputs.pop("page_id", None)
         revision_id = inputs.pop("revision_id")
@@ -462,7 +461,7 @@ class RevertRiskWikidataModel(kserve.Model):
                     "(wiki_id must be 'wikidatawiki')."
                 )
                 logging.error(error_message)
-                raise HTTPException(status_code=400, detail=error_message)
+                raise InvalidInput(error_message)
             rev_id = get_rev_id(inputs, self.event_key)
             check_input_param(rev_id=rev_id)
         else:
@@ -472,7 +471,7 @@ class RevertRiskWikidataModel(kserve.Model):
                     f"Invalid rev_id: {rev_id}. The rev_id must be a positive integer."
                 )
                 logging.error(error_message)
-                raise HTTPException(status_code=400, detail=error_message)
+                raise InvalidInput(error_message)
             check_input_param(rev_id=rev_id)
 
         session = self.create_mwapi_session()
