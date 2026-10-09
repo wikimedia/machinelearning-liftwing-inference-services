@@ -401,7 +401,7 @@ class ClefModel(kserve.Model):
 
 if __name__ == "__main__":
     model_name = os.environ.get("MODEL_NAME", "clef-flash")
-    model_path = os.environ.get("MODEL_PATH", "/mnt/models/snapshots/clef-flash")
+    model_path = os.environ.get("MODEL_PATH", "/mnt/models")
     device = os.environ.get("DEVICE", "cuda")
     max_images = positive_int("MAX_IMAGES", os.environ.get("MAX_IMAGES", "4"))
     max_questions = positive_int("MAX_QUESTIONS", os.environ.get("MAX_QUESTIONS", "32"))

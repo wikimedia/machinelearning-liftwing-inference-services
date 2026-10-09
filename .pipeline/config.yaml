@@ -313,8 +313,6 @@ pipelines:
       - name: run-test
         build: test
         run: true
-      - name: production
-        build: production
 
   decision-models-clef-publish:
     blubberfile: decision_models/blubber_clef.yaml
