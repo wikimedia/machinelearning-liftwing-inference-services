@@ -2,9 +2,10 @@
 
 The model is never loaded: `load()` imports vendor code and reads 15 GiB of
 weights, so every test here builds the server directly and exercises the three
-KServe stages around a stubbed `systemone`. What is worth testing is the part
-this repo owns, which is the payload contract: what is refused, what an image
-becomes before it reaches the model, and what comes back.
+KServe stages around a stubbed vLLM engine, head and vendor module. What is
+worth testing is the part this repo owns, which is the payload contract: what
+is refused, what an image becomes before it reaches the model, what reaches
+vLLM, and what comes back.
 
 conftest.py stubs torch before this module is imported. Pillow is real.
 """
@@ -16,6 +17,7 @@ import inspect
 import io
 import threading
 import time
+from types import SimpleNamespace
 from unittest import mock
 
 import pytest
@@ -55,7 +57,59 @@ def model():
         max_image_bytes=DEFAULT_MAX_IMAGE_BYTES,
         max_state_chars=DEFAULT_MAX_STATE_CHARS,
         warmup=False,
+        gpu_memory_utilization=0.85,
     )
+
+
+# What `encode_record` returns for a text-only record with no questions.
+ENCODED = SimpleNamespace(input_ids=(1, 2, 3), questions=())
+
+
+class FakeEngine:
+    """Stands in for the vLLM engine.
+
+    It returns the prompt tokens as vLLM does after it expands the images. By
+    default these are the `encode_record` tokens, so the token check passes.
+    """
+
+    def __init__(self, prompt_token_ids=ENCODED.input_ids, delay=0.0):
+        self.prompt_token_ids = prompt_token_ids
+        self.delay = delay
+        self.prompts = []
+        self.now = 0
+        self.most = 0
+
+    async def encode(self, prompt, pooling_params, request_id):
+        self.prompts.append(prompt)
+        self.now += 1
+        self.most = max(self.most, self.now)
+        await asyncio.sleep(self.delay)
+        self.now -= 1
+        yield SimpleNamespace(
+            prompt_token_ids=list(self.prompt_token_ids),
+            outputs=SimpleNamespace(data=mock.MagicMock()),
+        )
+
+
+@pytest.fixture
+def loaded(model):
+    """A server with stand-ins for what load() sets: no GPU, no vendor code.
+
+    torch is patched on the module, because other test directories replace
+    `sys.modules["torch"]` with stubs that lack the names `_score` reads.
+    """
+    model.vendor = SimpleNamespace(
+        encode_record=mock.MagicMock(return_value=ENCODED),
+        systemone_answer=mock.MagicMock(),
+    )
+    model.vllm_engine = FakeEngine()
+    model.head = mock.MagicMock(return_value=[[]])
+    model.lm_head = mock.MagicMock()
+    model.processor = SimpleNamespace(tokenizer=object())
+    model.image_pad_id = 9
+    fake_torch = mock.MagicMock(inference_mode=contextlib.nullcontext)
+    with mock.patch.object(clef_model, "torch", fake_torch):
+        yield model
 
 
 class TestPayloadValidation:
@@ -245,62 +299,120 @@ class TestPredict:
         # sync def, the forward pass silently moves back onto the event loop.
         assert inspect.iscoroutinefunction(model.predict)
 
-    def test_the_body_reaches_systemone_unchanged(self, model):
-        seen = {}
-        model.systemone = lambda m, p, body: seen.setdefault("body", body) or {
-            "answers": {}
-        }
-        model.model, model.processor = object(), object()
+    def test_the_body_reaches_encode_record_unchanged(self, loaded):
         body = {"model": "clef-flash", "state": "x", "questions": NOUL}
-        asyncio.run(model.predict(body))
-        assert seen["body"] is body
+        asyncio.run(loaded.predict(body))
+        assert loaded.vendor.encode_record.call_args.args[1] is body
 
-    def test_a_failure_inside_the_model_becomes_an_inference_error(self, model):
-        def boom(m, p, body):
-            raise RuntimeError("HIP out of memory")
+    def test_the_response_follows_the_vendor_systemone(self, loaded):
+        question = SimpleNamespace(question_id="revert", option_ids=("true", "false"))
+        loaded.vendor.encode_record.return_value = SimpleNamespace(
+            input_ids=(1, 2, 3), questions=(question,)
+        )
+        logits = mock.MagicMock()
+        logits.float.return_value.softmax.return_value.tolist.return_value = [0.9, 0.1]
+        loaded.head.return_value = [[logits]]
+        loaded.vendor.systemone_answer.side_effect = lambda q, probabilities: (
+            probabilities
+        )
+        body = {"model": "clef-flash", "state": "x", "questions": NOUL}
+        response = asyncio.run(loaded.predict(body))
+        assert response == {
+            "model": "clef-flash",
+            "answers": {"revert": {"true": 0.9, "false": 0.1}},
+            "usage": {"input_tokens": 3, "output_tokens": 0},
+        }
+        loaded.vendor.systemone_answer.assert_called_once_with(
+            NOUL["revert"], {"true": 0.9, "false": 0.1}
+        )
 
-        model.systemone = boom
-        model.model, model.processor = object(), object()
+    def test_a_failure_inside_the_model_becomes_an_inference_error(self, loaded):
+        loaded.head.side_effect = RuntimeError("HIP out of memory")
         with pytest.raises(InferenceError, match="HIP out of memory"):
-            asyncio.run(model.predict({"state": "x"}))
+            asyncio.run(loaded.predict({"model": "clef-flash", "questions": {}}))
 
-    def test_requests_do_not_enter_the_model_at_once(self, model):
-        """One GPU and one model instance. Now that the forward pass runs in a
-        worker thread, two requests really can arrive at once, so the lock is
-        what keeps them apart."""
+    def test_a_text_prompt_reaches_vllm_unchanged(self, loaded):
+        asyncio.run(loaded.predict({"model": "clef-flash", "questions": {}}))
+        assert loaded.vllm_engine.prompts == [{"prompt_token_ids": [1, 2, 3]}]
+
+    def test_each_image_reaches_vllm_as_one_pad_token(self, loaded):
+        """encode_record expands each image to a run of pad tokens, and vLLM
+        expands each pad token again. Without the collapse, every position
+        after the first image would move."""
+        # 8 and 7 stand for <|vision_start|> and <|vision_end|>, 9 for the pad.
+        expanded = (1, 8, 9, 9, 9, 7, 2, 8, 9, 9, 7, 3)
+        loaded.vendor.encode_record.return_value = SimpleNamespace(
+            input_ids=expanded, questions=()
+        )
+        loaded.vllm_engine = FakeEngine(prompt_token_ids=expanded)
+        images = [object(), object()]
+        asyncio.run(
+            loaded.predict({"model": "clef-flash", "questions": {}, "images": images})
+        )
+        (prompt,) = loaded.vllm_engine.prompts
+        assert prompt["prompt_token_ids"] == [1, 8, 9, 7, 2, 8, 9, 7, 3]
+        assert prompt["multi_modal_data"] == {"image": images}
+
+    def test_a_token_mismatch_with_vllm_is_an_error(self, loaded):
+        """The head reads each question and option by position, so a shifted
+        prompt would give wrong answers and no error."""
+        loaded.vllm_engine = FakeEngine(prompt_token_ids=(1, 2, 3, 4))
+        with pytest.raises(InferenceError, match="do not match"):
+            asyncio.run(loaded.predict({"model": "clef-flash", "questions": {}}))
+
+    def test_concurrent_requests_reach_vllm_together(self, loaded):
+        """vLLM batches the backbone passes of concurrent requests. This is
+        the gain over the transformers server, which ran one at a time."""
+        loaded.vllm_engine = FakeEngine(delay=0.05)
+
+        async def eight_at_once():
+            await asyncio.gather(
+                *(
+                    loaded.predict({"model": "clef-flash", "questions": {}})
+                    for _ in range(8)
+                )
+            )
+
+        asyncio.run(eight_at_once())
+        assert loaded.vllm_engine.most > 1
+
+    def test_the_head_runs_one_request_at_a_time(self, loaded):
         counter = {"now": 0, "most": 0}
         guard = threading.Lock()
 
-        def tracked(m, p, body):
+        def tracked(*args):
             with guard:
                 counter["now"] += 1
                 counter["most"] = max(counter["most"], counter["now"])
             time.sleep(0.02)
             with guard:
                 counter["now"] -= 1
-            return {"answers": {}}
+            return [[]]
 
-        model.systemone = tracked
-        model.model, model.processor = object(), object()
+        loaded.head.side_effect = tracked
 
         async def eight_at_once():
-            await asyncio.gather(*(model.predict({"state": "x"}) for _ in range(8)))
+            await asyncio.gather(
+                *(
+                    loaded.predict({"model": "clef-flash", "questions": {}})
+                    for _ in range(8)
+                )
+            )
 
         asyncio.run(eight_at_once())
         assert counter["most"] == 1
 
-    def test_the_event_loop_keeps_running_during_inference(self, model):
+    def test_the_event_loop_keeps_running_during_inference(self, loaded):
         """The reason predict is async. A health or readiness probe arriving
         while the model is busy has to be answered, and under load a blocked
         loop is enough to get a working pod restarted."""
         ticks = []
 
-        def slow(m, p, body):
+        def slow(*args):
             time.sleep(0.3)
-            return {"answers": {}}
+            return [[]]
 
-        model.systemone = slow
-        model.model, model.processor = object(), object()
+        loaded.head.side_effect = slow
 
         async def probe_while_inferring():
             async def probe():
@@ -308,7 +420,9 @@ class TestPredict:
                     await asyncio.sleep(0.02)
                     ticks.append(1)
 
-            await asyncio.gather(model.predict({"state": "x"}), probe())
+            await asyncio.gather(
+                loaded.predict({"model": "clef-flash", "questions": {}}), probe()
+            )
 
         asyncio.run(probe_while_inferring())
         assert len(ticks) == 5, "the event loop was blocked by the forward pass"
@@ -350,37 +464,39 @@ class TestPostprocess:
 class TestLifecycle:
     def test_not_ready_before_load(self, model):
         assert model.ready is False
-        assert model.model is None
-        assert model.systemone is None
+        assert model.vllm_engine is None
+        assert model.head is None
 
-    def test_warmup_runs_in_the_same_context_as_predict(self, model):
-        """torch.inference_mode() changes how the forward pass executes, so
-        warming up without it could cache a different path from the one
-        served, leaving the first real request to pay the compile cost
-        anyway."""
-        entered = []
+    def test_kserve_runs_start_engine_in_the_server_loop(self, model):
+        """KServe calls `start_engine()` in the server event loop only when
+        `engine` is True. The vLLM engine needs that loop for the warmup."""
+        assert model.engine is True
+        assert inspect.iscoroutinefunction(model.start_engine)
 
-        @contextlib.contextmanager
-        def tracking_inference_mode():
-            entered.append(True)
-            yield
-
-        model.systemone = lambda m, p, body: {"answers": {}}
-        model.model, model.processor = object(), object()
-        with mock.patch.object(
-            clef_model.torch, "inference_mode", tracking_inference_mode
-        ):
-            model._warm_up()
-        assert entered, "warmup must run inside torch.inference_mode()"
-
-    def test_warmup_exercises_both_paths_before_ready(self, model):
-        """The first request of each input shape compiles: 7.1s for text and
-        22.3s for an image on an MI210, against 219ms and 374ms warm. Without
-        this the first real request after a deployment pays that."""
+    @pytest.mark.parametrize("warmup", [True, False])
+    def test_start_engine_runs_the_warmup_only_when_enabled(self, model, warmup):
         calls = []
-        model.systemone = lambda m, p, body: calls.append(body) or {"answers": {}}
-        model.model, model.processor = object(), object()
-        model._warm_up()
+
+        async def warm_up():
+            calls.append(True)
+
+        model.warmup = warmup
+        model._warm_up = warm_up
+        asyncio.run(model.start_engine())
+        assert calls == ([True] if warmup else [])
+
+    def test_warmup_exercises_both_paths(self, model):
+        """The first request compiles the Triton kernels: 4.7s for text on an
+        MI210, against 59ms warm. Without this the first real request after a
+        deployment pays that."""
+        calls = []
+
+        async def predict(body):
+            calls.append(body)
+            return {"answers": {}}
+
+        model.predict = predict
+        asyncio.run(model._warm_up())
         assert len(calls) == 2
         assert "images" not in calls[0]
         assert len(calls[1]["images"]) == 1

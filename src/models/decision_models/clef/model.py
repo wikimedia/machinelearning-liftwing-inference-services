@@ -2,11 +2,14 @@ import asyncio
 import base64
 import binascii
 import io
+import json
 import logging
 import os
 import sys
 import threading
+import uuid
 import warnings
+from pathlib import Path
 
 import kserve
 import torch
@@ -17,11 +20,19 @@ logging.basicConfig(level=kserve.constants.KSERVE_LOGLEVEL)
 
 # Clef is not an AutoModelForCausalLM. The release is a Qwen backbone plus a
 # separate joint schema head, loaded by `joint_schema_model.py`, which ships
-# with the weights. That module also provides `systemone`, which takes a
-# Jev/SystemOne request body and returns the answers, so this server is a thin
-# wrapper around it rather than a prompt builder.
+# with the weights. vLLM runs the backbone and returns the last hidden state of
+# every token. The vendor head then runs on those hidden states in torch. The
+# vendor module also builds the prompt and formats the answers, so this server
+# follows its `systemone` and replaces only the backbone call.
 # See https://huggingface.co/Cloudflare/clef-flash#jev--systemone-api
 QUESTION_TYPES = ("noul", "choice", "score")
+
+# The default `max_length` of `encode_record`. vLLM must accept the longest
+# record that `encode_record` builds.
+MAX_MODEL_LEN = 16384
+
+# `encode_record` writes one run of this token for each image.
+IMAGE_PAD_TOKEN = "<|image_pad|>"
 
 # Downscaling to 640px wide costs nothing in answer quality and 1.73x less
 # time. Measured on ML-Lab (MI210, gfx90a) with a 960x1279 Commons portrait:
@@ -37,11 +48,11 @@ DEFAULT_MAX_IMAGE_WIDTH = 640
 # what would trouble the pod's memory.
 DEFAULT_MAX_IMAGE_BYTES = 8 * 1024 * 1024
 
-# `encode_record` truncates at 16,384 tokens by default, and `systemone` does
-# not expose that argument, so an over-long state would be silently cut rather
-# than refused. This bounds the state before it gets there. Four characters per
-# token is the usual rough ratio for English, and the point is to refuse the
-# obviously oversized rather than to count precisely.
+# `encode_record` truncates the state to fit MAX_MODEL_LEN tokens, so an
+# over-long state would be silently cut rather than refused. This bounds the
+# state before it gets there. Four characters per token is the usual rough
+# ratio for English, and the point is to refuse the obviously oversized rather
+# than to count precisely.
 DEFAULT_MAX_STATE_CHARS = 60000
 
 
@@ -54,6 +65,22 @@ def parse_bool(value: str) -> bool:
     using it makes the server depend on setuptools staying installed.
     """
     return value.strip().lower() in ("1", "true", "yes", "y", "on", "t")
+
+
+def collapse_image_pads(input_ids: tuple[int, ...], image_pad_id: int) -> list[int]:
+    """
+    Keep one image pad token for each image.
+
+    `encode_record` expands each image to the full run of pad tokens that the
+    vision encoder fills. vLLM expands each pad token in a token prompt again,
+    so vLLM must get one pad token for each image.
+    """
+    collapsed = []
+    for token_id in input_ids:
+        if token_id == image_pad_id and collapsed and collapsed[-1] == image_pad_id:
+            continue
+        collapsed.append(token_id)
+    return collapsed
 
 
 def positive_int(name: str, value: str) -> int:
@@ -84,6 +111,7 @@ class ClefModel(kserve.Model):
         max_image_bytes: int,
         max_state_chars: int,
         warmup: bool,
+        gpu_memory_utilization: float,
     ) -> None:
         super().__init__(name)
         self.name = name
@@ -95,21 +123,26 @@ class ClefModel(kserve.Model):
         self.max_image_bytes = max_image_bytes
         self.max_state_chars = max_state_chars
         self.warmup = warmup
-        self.model = None
+        self.gpu_memory_utilization = gpu_memory_utilization
+        # KServe calls `start_engine()` inside the server event loop when this
+        # flag is True. The warmup runs there (see `start_engine`).
+        self.engine = True
+        self.vendor = None
+        self.vllm_engine = None
+        self.pooling_params = None
+        self.head = None
+        self.lm_head = None
         self.processor = None
-        self.systemone = None
-        # One GPU and one model instance, so forward passes are serialised.
-        # `predict` runs the forward pass in a worker thread to keep the event
-        # loop free (see the comment there), so two requests really can arrive
-        # at once and this is what keeps them apart. Batching measured only
-        # 1.20x at eight images, so little throughput is given up by holding
-        # the lock for a whole request.
+        self.image_pad_id = None
+        # vLLM batches the backbone passes of concurrent requests. The lock
+        # holds only the head, so the head runs for one request at a time.
+        # The head is small, so the lock costs little.
         self.inference_lock = threading.Lock()
         self.ready = False
 
     def load(self) -> None:
         """
-        Load the Clef backbone and joint schema head.
+        Load the Clef backbone into vLLM and the joint schema head into torch.
 
         The loader lives with the weights rather than in transformers, so the
         model directory goes on sys.path and `joint_schema_model` is imported
@@ -117,20 +150,72 @@ class ClefModel(kserve.Model):
         the module is imported from the model path rather than pip installed.
         """
         try:
+            # The GPU packages are imported here, so the unit tests do not
+            # need them.
+            from safetensors import safe_open
+            from safetensors.torch import load_file
+            from transformers import AutoProcessor
+            from vllm import PoolingParams
+            from vllm.config import PoolerConfig
+            from vllm.engine.arg_utils import AsyncEngineArgs
+            from vllm.engine.async_llm_engine import AsyncLLMEngine
+
             logging.info("Importing the release loader from %s...", self.model_path)
             if self.model_path not in sys.path:
                 sys.path.insert(0, self.model_path)
-            from joint_schema_model import load_release_model, systemone
+            import joint_schema_model
 
-            self.systemone = systemone
+            self.vendor = joint_schema_model
 
-            logging.info("Loading model...")
-            self.model, self.processor = load_release_model(
-                self.model_path, device=self.device
+            # vLLM starts first because at start it checks that its share of
+            # the GPU memory is free. The head and lm_head use the rest.
+            # `convert="embed"` with the `token_embed` task makes vLLM return
+            # the last hidden state of every token instead of generated text.
+            logging.info("Loading the backbone in vLLM...")
+            self.vllm_engine = AsyncLLMEngine.from_engine_args(
+                AsyncEngineArgs(
+                    model=self.model_path,
+                    runner="pooling",
+                    convert="embed",
+                    pooler_config=PoolerConfig(task="token_embed"),
+                    dtype="bfloat16",
+                    max_model_len=MAX_MODEL_LEN,
+                    gpu_memory_utilization=self.gpu_memory_utilization,
+                    limit_mm_per_prompt={"image": self.max_images, "video": 0},
+                )
+            )
+            # use_activation=False turns off the L2 normalisation. The head
+            # then gets the raw hidden states, as it does with transformers.
+            self.pooling_params = PoolingParams(
+                task="token_embed", use_activation=False
             )
 
-            if self.warmup:
-                self._warm_up()
+            # The same steps as the vendor `load_release_model`, without the
+            # backbone.
+            logging.info("Loading the joint schema head...")
+            path = Path(self.model_path)
+            head_config = json.loads((path / "joint_head_config.json").read_text())
+            self.head = self.vendor.JointSchemaHead(**head_config)
+            self.head.load_state_dict(
+                load_file(path / "joint_head.safetensors"), strict=True
+            )
+            self.head = self.head.to(device=self.device, dtype=torch.bfloat16).eval()
+
+            # The head uses lm_head rows as option token embeddings. vLLM does
+            # not load lm_head for a pooling model, so this reads it from the
+            # checkpoint shard that holds it.
+            weight_map = json.loads(
+                (path / "model.safetensors.index.json").read_text()
+            )["weight_map"]
+            with safe_open(
+                path / weight_map["lm_head.weight"], framework="pt", device=self.device
+            ) as shard:
+                self.lm_head = shard.get_tensor("lm_head.weight").to(torch.bfloat16)
+
+            self.processor = AutoProcessor.from_pretrained(path)
+            self.image_pad_id = self.processor.tokenizer.convert_tokens_to_ids(
+                IMAGE_PAD_TOKEN
+            )
 
             self.ready = True
             logging.info("Model loaded successfully!")
@@ -139,43 +224,47 @@ class ClefModel(kserve.Model):
             logging.critical(error_message)
             raise kserve.errors.ModelMissingError(error_message) from e
 
-    def _warm_up(self) -> None:
+    async def start_engine(self) -> None:
         """
-        Run one text request and one image request before reporting ready.
+        Run the warmup inside the server event loop.
+
+        The vLLM engine attaches to the first event loop that uses it, so the
+        warmup cannot run inside `load()`, which runs before the server loop
+        starts. KServe calls this method in the server loop because
+        `self.engine` is True.
+
+        The model stays ready during the warmup. KServe calls `load()` again
+        for a request to a model that is not ready, so setting `ready` to False
+        here would load a second engine.
+        """
+        if self.warmup:
+            await self._warm_up()
+
+    async def _warm_up(self) -> None:
+        """
+        Run one text request and one image request.
 
         A new input shape is compiled on first use, and the cost is large: on
-        ML-Lab the first text request took 7.1s against 180ms warm, and the
-        first image request took 22.3s against 649ms warm. Without this, the
-        first real request after every deployment pays that.
+        ML-Lab the first text request took 4.7s against 59ms warm, because
+        Triton compiles its kernels on that request. Without this, the first
+        real request after every deployment pays that.
         """
         warm_question = {"warm": {"type": "noul", "instructions": "Warm up."}}
 
-        # The same context `predict` uses. torch.inference_mode() changes how
-        # the forward pass executes, so warming up without it could cache a
-        # different path from the one served and leave the first real request
-        # paying the compile cost anyway. The inference lock is deliberately
-        # not taken: this runs inside load(), before ModelServer().start(), so
-        # nothing else can be in flight, and taking it would imply a
-        # concurrency that does not exist yet.
-        with torch.inference_mode():
-            logging.info("Warming up the text path...")
-            self.systemone(
-                self.model,
-                self.processor,
-                {"model": self.name, "state": "warmup", "questions": warm_question},
-            )
+        logging.info("Warming up the text path...")
+        await self.predict(
+            {"model": self.name, "state": "warmup", "questions": warm_question}
+        )
 
-            logging.info("Warming up the image path...")
-            self.systemone(
-                self.model,
-                self.processor,
-                {
-                    "model": self.name,
-                    "state": "warmup",
-                    "images": [Image.new("RGB", (self.max_image_width, 480), "white")],
-                    "questions": warm_question,
-                },
-            )
+        logging.info("Warming up the image path...")
+        await self.predict(
+            {
+                "model": self.name,
+                "state": "warmup",
+                "images": [Image.new("RGB", (self.max_image_width, 480), "white")],
+                "questions": warm_question,
+            }
+        )
         logging.info("Warmup complete.")
 
     def _decode_image(self, encoded: str, index: int) -> Image.Image:
@@ -356,28 +445,89 @@ class ClefModel(kserve.Model):
         """
         Score every option of every question in a single forward pass.
 
-        Async, and the forward pass goes to a worker thread. KServe calls a
-        sync `predict` directly from its async handler rather than through an
-        executor, so a sync one would hold the event loop for the whole
-        inference: about 650ms for an image on an MI210. Nothing else would
-        run in that window, including the health and readiness probes, and
-        under load that is enough to get a working pod restarted.
+        The steps are the vendor `systemone`, with the backbone call moved to
+        vLLM. Async, and the CPU and torch work goes to a worker thread. KServe
+        calls a sync `predict` directly from its async handler rather than
+        through an executor, so a sync one would hold the event loop for the
+        whole inference. Nothing else would run in that window, including the
+        health and readiness probes, and under load that is enough to get a
+        working pod restarted.
         """
-
-        def run_inference() -> dict:
-            # One GPU, so one forward pass at a time. The lock is held for the
-            # whole call rather than around the model only, because the vendor
-            # code encodes the record and the images on the way in.
-            with self.inference_lock, torch.inference_mode():
-                return self.systemone(self.model, self.processor, inputs)
-
         try:
             logging.info("Performing inference...")
-            return await asyncio.to_thread(run_inference)
+            encoded = await asyncio.to_thread(
+                self.vendor.encode_record,
+                self.processor.tokenizer,
+                inputs,
+                max_length=MAX_MODEL_LEN,
+                processor=self.processor,
+            )
+            hidden_states = await self._hidden_states(encoded, inputs.get("images"))
+            return await asyncio.to_thread(self._score, inputs, encoded, hidden_states)
         except Exception as e:
             error_message = f"Error during inference: {e}"
             logging.error(error_message)
             raise InferenceError(error_message) from e
+
+    async def _hidden_states(self, encoded, images: list | None):
+        """
+        Run the backbone in vLLM and return the last hidden state of each token.
+        """
+        prompt = {"prompt_token_ids": list(encoded.input_ids)}
+        if images:
+            prompt["prompt_token_ids"] = collapse_image_pads(
+                encoded.input_ids, self.image_pad_id
+            )
+            prompt["multi_modal_data"] = {"image": images}
+
+        output = None
+        async for output in self.vllm_engine.encode(
+            prompt, self.pooling_params, request_id=uuid.uuid4().hex
+        ):
+            pass
+
+        # The head finds each question and option by its token position. If
+        # vLLM expands an image to a different number of tokens, every
+        # position moves and the answers are wrong without an error. This
+        # check makes that an error.
+        if list(output.prompt_token_ids) != list(encoded.input_ids):
+            raise InferenceError(
+                "The vLLM prompt tokens do not match the encode_record tokens."
+            )
+        return output.outputs.data
+
+    def _score(self, inputs: dict, encoded, hidden_states) -> dict:
+        """
+        Run the joint schema head and build the SystemOne response.
+
+        These are the steps of the vendor `systemone` after its backbone call.
+        """
+        with self.inference_lock, torch.inference_mode():
+            input_ids = torch.tensor([encoded.input_ids], device=self.device)
+            logits = self.head(
+                hidden_states.to(device=self.device, dtype=torch.bfloat16).unsqueeze(0),
+                input_ids,
+                torch.ones_like(input_ids),
+                [encoded],
+                self.lm_head,
+            )[0]
+            answers = {
+                question.question_id: self.vendor.systemone_answer(
+                    inputs["questions"][question.question_id],
+                    dict(
+                        zip(
+                            question.option_ids,
+                            question_logits.float().softmax(-1).tolist(),
+                        )
+                    ),
+                )
+                for question, question_logits in zip(encoded.questions, logits)
+            }
+        return {
+            "model": inputs["model"],
+            "answers": answers,
+            "usage": {"input_tokens": len(encoded.input_ids), "output_tokens": 0},
+        }
 
     def postprocess(self, inputs: dict, headers: dict[str, str] = None) -> dict:
         """
@@ -418,6 +568,9 @@ if __name__ == "__main__":
         os.environ.get("MAX_STATE_CHARS", str(DEFAULT_MAX_STATE_CHARS)),
     )
     warmup = parse_bool(os.environ.get("WARMUP", "True"))
+    # vLLM takes this share of the GPU memory. The head and lm_head need about
+    # 3 GiB of the rest.
+    gpu_memory_utilization = float(os.environ.get("GPU_MEMORY_UTILIZATION", "0.85"))
 
     model = ClefModel(
         name=model_name,
@@ -429,6 +582,7 @@ if __name__ == "__main__":
         max_image_bytes=max_image_bytes,
         max_state_chars=max_state_chars,
         warmup=warmup,
+        gpu_memory_utilization=gpu_memory_utilization,
     )
 
     model.load()

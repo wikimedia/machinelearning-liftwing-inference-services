@@ -14,11 +14,11 @@ Clef and Clef-Flash are Apache-2.0 multimodal decision models from Cloudflare, p
 One model-server serves either Clef or Clef-Flash since they have the same files, loader and API, and only the backbone differs. Point `MODEL_PATH` at the weights and set `MODEL_NAME` to match.
 
 > [!NOTE]
-> This model-server uses HuggingFace transformers rather than vLLM. A Clef release is a Qwen backbone plus a separate joint schema head (`joint_head.safetensors`), loaded by a vendor [joint_schema_model.py](https://huggingface.co/Cloudflare/clef-flash/blob/41318bf2106d135c7a92da745fec4b255279b4de/joint_schema_model.py) that ships with the weights. vLLM serves backbones and has no concept of a scoring head attached to one, so this is not a case of waiting for an architecture to be added upstream. The module is imported from the model directory at load time, so this server runs vendor code in the server process. This model-server has its own `requirements.txt` (kserve + transformers). For more details see [RFC for a decision endpoint in vLLM](https://github.com/vllm-project/vllm/issues/59365).
+> A Clef release is a Qwen backbone plus a separate joint schema head (`joint_head.safetensors`), loaded by a vendor [joint_schema_model.py](https://huggingface.co/Cloudflare/clef-flash/blob/41318bf2106d135c7a92da745fec4b255279b4de/joint_schema_model.py) that ships with the weights. vLLM serves backbones and has no concept of a scoring head attached to one. So this model-server splits the work: vLLM runs the backbone as a pooling model (`convert="embed"`, task `token_embed`) and returns the last hidden state of every token, and the vendor head runs on those hidden states in torch on the same GPU. The vendor module also builds the prompt (`encode_record`) and formats the answers (`systemone_answer`); this server follows the vendor `systemone` and replaces only the backbone call. The module is imported from the model directory at load time, so this server runs vendor code in the server process. For more details see [RFC for a decision endpoint in vLLM](https://github.com/vllm-project/vllm/issues/59365).
 
 ### How to run locally
 
-Requires at least ~20 GiB of free GPU VRAM (BF16 weights) for clef-flash; the 27B clef backbone needs roughly 55 GiB. Preferred host: `ml-lab1002` (AMD Instinct MI210, 64 GiB VRAM).
+Requires at least ~20 GiB of free GPU VRAM (BF16 weights) for clef-flash; the 27B clef backbone needs roughly 55 GiB. Preferred host: `ml-lab1002` (AMD Instinct MI210, 64 GiB VRAM). vLLM takes `GPU_MEMORY_UTILIZATION` (default `0.85`) of the GPU memory at start and fails if that much is not free, so lower it on a shared GPU, for example `-e GPU_MEMORY_UTILIZATION=0.5`.
 
 ```bash
 docker run --rm -it \
