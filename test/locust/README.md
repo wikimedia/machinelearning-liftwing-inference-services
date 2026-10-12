@@ -88,6 +88,33 @@ It replays real kNN retrieval output from `data/pure_knn_10.json`, and
 [the model README](../../src/models/semantic_highlighting/README.md#load-testing)
 for what the corpus looks like and how to read the numbers.
 
+## Decision models (clef-flash)
+
+This one is not imported by `models/__init__.py` either: clef-flash runs only
+on ml-serve-eqiad, so it has no staging deployment. Ask for it by name and
+point it at eqiad:
+
+```bash
+MODEL=decision_models locust --host https://inference.svc.eqiad.wmnet:30443 -u 8
+```
+
+It sends the T440223 text example requests, with the noul, choice and score
+questions in turn. Against a local container, set the model name that
+`model.py` uses by default:
+
+```bash
+MODEL=decision_models MODEL_NAME=clef-flash locust --host http://localhost:8080 -u 8
+```
+
+The examples are short, about 150 input tokens. `--input-tokens N` adds
+fictional wikitext to each state until a request has about N input tokens, and
+the test prints the real `usage.input_tokens` at the end. Each N gets its own
+row in the stats. The server truncates input above 16,384 tokens.
+
+```bash
+MODEL=decision_models MODEL_NAME=clef-flash locust --host http://localhost:8080 -u 8 --input-tokens 12000
+```
+
 ## Running load tests using the Makefile
 
 ### 1. Build
