@@ -182,6 +182,12 @@ class ClefModel(kserve.Model):
                     max_model_len=MAX_MODEL_LEN,
                     gpu_memory_utilization=self.gpu_memory_utilization,
                     limit_mm_per_prompt={"image": self.max_images, "video": 0},
+                    # vLLM never reads the prefix cache for a token_embed
+                    # request, so the cache gives no reuse here. It also turns
+                    # on the experimental Mamba "align" mode for the linear
+                    # attention layers. In that mode, two or more long requests
+                    # at the same time stop the engine.
+                    enable_prefix_caching=False,
                 )
             )
             # use_activation=False turns off the L2 normalisation. The head
