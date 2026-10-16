@@ -123,16 +123,15 @@ namespace on ml-serve-eqiad, so the load does not reach the production service
 in `llm`:
 
 ```bash
-MODEL=cope_b locust --host https://inference.svc.eqiad.wmnet:30443 -u 8
+MODEL=cope_b locust --host https://inference.svc.eqiad.wmnet:30443 --users 2 --run-time 5m
 ```
 
 It sends the 100 synthetic requests from
 `data/cope_b_synthetic.json` (about 2,500 prompt tokens each, 1 output token,
 5 fictional policies). Each request gets a unique first line in `content`, so
-the vLLM prefix cache can keep the policy but not the full prompt. At the end
-it prints the SLIs for the run: availability (non-5xx) and latency (2xx in
-`--slo-latency-ms` or less, default 2000). To rebuild the data, run
-`python data/cope_b_synthetic.py`; add `--tokenizer DIR` for exact token counts.
+the vLLM prefix cache can keep the policy but not the full prompt. To rebuild
+the data, run `python data/cope_b_synthetic.py`; add `--tokenizer DIR` for
+exact token counts.
 
 ## Running load tests using the Makefile
 
