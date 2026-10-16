@@ -115,6 +115,22 @@ row in the stats. The server truncates input above 16,384 tokens.
 MODEL=decision_models MODEL_NAME=clef-flash locust --host http://localhost:8080 -u 8 --input-tokens 12000
 ```
 
+## Policy violation (cope-b-a4b)
+
+This one is not imported by `models/__init__.py` either: cope-b-a4b has no
+staging deployment. By default it targets the copy in the `experimental`
+namespace on ml-serve-eqiad, so the load does not reach the production service
+in `llm`:
+
+```bash
+MODEL=cope_b locust --host https://inference.svc.eqiad.wmnet:30443 --users 2 --run-time 5m
+```
+
+It sends the 100 synthetic requests from
+`data/cope_b_synthetic.json` (about 2,500 prompt tokens each, 1 output token,
+5 fictional policies). Each request gets a unique first line in `content`, so
+the vLLM prefix cache can keep the policy but not the full prompt.
+
 ## Running load tests using the Makefile
 
 ### 1. Build
