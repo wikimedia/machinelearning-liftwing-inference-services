@@ -62,7 +62,9 @@ def check_phoneme_limits(segments: list[dict], tokenizer, default_lang: str) -> 
 
     MUST run under the pipeline's synthesis lock: phonemization goes
     through espeak-ng, which is not thread-safe (the same shared state
-    behind ``_synth_lock``, T430536).
+    behind ``_synth_lock``, T430536). Since kokoro-onnx 0.6.1 the
+    tokenizer takes that lock itself, so this holds whether or not the
+    caller serializes the pipeline.
     """
     for i, seg in enumerate(segments):
         phonemes = tokenizer.phonemize(seg["text"], lang=seg.get("lang", default_lang))
@@ -106,12 +108,21 @@ class TTSInferencePipeline:
         self.kokoro = Kokoro.from_session(session, kokoro_voices)
         self.sample_rate = 24000
 
-        # Concurrent predict() calls corrupt synthesis output: four
+        # Concurrent predict() calls corrupted synthesis output: four
         # concurrent requests with identical input produced 14.49-26.28s
         # of audio; the same four serialized produced exactly 16.81s each.
-        # Suspected shared mutable state in kokoro-onnx's espeak phonemizer
-        # (espeak-ng is not thread-safe). Serialize the pipeline until
-        # root-caused. See T430536.
+        #
+        # Root cause (T430536): espeak-ng holds process-global state, so
+        # concurrent phonemization returns corrupted phonemes. Reported
+        # upstream (kokoro-onnx#191) and fixed in 0.6.1
+        # (kokoro-onnx#197), which serializes phonemization inside
+        # Tokenizer.phonemize and leaves ONNX synthesis concurrent.
+        #
+        # This coarse lock serializes ALL of predict(), including the
+        # synthesis that no longer needs it. It is kept here so the
+        # upgrade lands as one reviewable change; removing it, and
+        # raising containerConcurrency to use the freed capacity, is
+        # tracked in T441983.
         self._synth_lock = threading.Lock()
 
         logger.info("Loading Wav2Vec2 aligner from %s...", wav2vec2_model_dir)
@@ -166,7 +177,10 @@ class TTSInferencePipeline:
 
         Each segment's ``text`` should be pre-chunked by the caller (e.g. via
         ``_split_text``) to stay under ~800 characters, the practical input
-        limit for Kokoro.  Longer text may be silently truncated by the model.
+        limit for Kokoro. Longer text is split by kokoro-onnx into balanced
+        batches at punctuation or word boundaries (0.5.0 truncated it
+        instead); ``check_phoneme_limits`` rejects it before we get there,
+        so segments reaching synthesis are always a single batch.
 
         Args:
             segments: List of ``{"text": str, "voice"?: str, "speed"?: float, "lang"?: str}``.
