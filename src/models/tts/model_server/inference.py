@@ -10,7 +10,6 @@ https://phabricator.wikimedia.org/T424378#12068767
 """
 
 import logging
-import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 
@@ -59,12 +58,6 @@ def check_phoneme_limits(segments: list[dict], tokenizer, default_lang: str) -> 
     synthesis: the existing text-path ``kokoro.create(text, ...)`` call
     stays byte-for-byte unchanged for every previously-working input, so
     this guard has no generation_version implications.
-
-    MUST run under the pipeline's synthesis lock: phonemization goes
-    through espeak-ng, which is not thread-safe (the same shared state
-    behind ``_synth_lock``, T430536). Since kokoro-onnx 0.6.1 the
-    tokenizer takes that lock itself, so this holds whether or not the
-    caller serializes the pipeline.
     """
     for i, seg in enumerate(segments):
         phonemes = tokenizer.phonemize(seg["text"], lang=seg.get("lang", default_lang))
@@ -108,51 +101,30 @@ class TTSInferencePipeline:
         self.kokoro = Kokoro.from_session(session, kokoro_voices)
         self.sample_rate = 24000
 
-        # Concurrent predict() calls corrupted synthesis output: four
-        # concurrent requests with identical input produced 14.49-26.28s
-        # of audio; the same four serialized produced exactly 16.81s each.
+        # This pipeline is safe to call from several threads at once, so
+        # there is no lock here (T441983). Until kokoro-onnx 0.6.1 there
+        # was: concurrent calls corrupted synthesis output, because
+        # espeak-ng holds process-global state and concurrent
+        # phonemization returned corrupted phonemes (T430536, reported as
+        # kokoro-onnx#191). 0.6.1 serializes phonemization inside
+        # Tokenizer.phonemize and leaves everything else concurrent.
         #
-        # Root cause (T430536): espeak-ng holds process-global state, so
-        # concurrent phonemization returns corrupted phonemes. Reported
-        # upstream (kokoro-onnx#191) and fixed in 0.6.1
-        # (kokoro-onnx#197), which serializes phonemization inside
-        # Tokenizer.phonemize and leaves ONNX synthesis concurrent.
+        # What the rest of a concurrent call touches, and why it is safe:
+        #   * the Kokoro and Wav2Vec2 ONNX sessions are shared, and
+        #     InferenceSession.run() is thread-safe;
+        #   * Aligner.align() only reads self.session and self.processor;
+        #   * voices, vocab and the tokenizer are read-only after load;
+        #   * audio buffers, crossfade bookkeeping and the timestamp
+        #     clock are locals, one set per call.
         #
-        # This coarse lock serializes ALL of predict(), including the
-        # synthesis that no longer needs it. It is kept here so the
-        # upgrade lands as one reviewable change; removing it, and
-        # raising containerConcurrency to use the freed capacity, is
-        # tracked in T441983.
-        self._synth_lock = threading.Lock()
+        # Concurrency is bounded by containerConcurrency in the chart, not
+        # here, so the limit is a deployment decision rather than a code
+        # one.
 
         logger.info("Loading Wav2Vec2 aligner from %s...", wav2vec2_model_dir)
         self.aligner = Aligner(wav2vec2_model_dir, w2v2_threads=w2v2_threads)
 
     def predict(
-        self,
-        segments: list[dict],
-        default_voice: str = "af_heart",
-        default_speed: float = 1.0,
-        default_lang: str = "en-us",
-        timestamps_mode: str = "full",
-    ) -> dict:
-        """
-        Serialized entry point for the inference pipeline.
-
-        Concurrent execution corrupts synthesis output (see the
-        ``_synth_lock`` comment in ``__init__``), so requests are
-        processed one at a time; concurrent callers queue on the lock.
-        """
-        with self._synth_lock:
-            return self._predict_impl(
-                segments,
-                default_voice=default_voice,
-                default_speed=default_speed,
-                default_lang=default_lang,
-                timestamps_mode=timestamps_mode,
-            )
-
-    def _predict_impl(
         self,
         segments: list[dict],
         default_voice: str = "af_heart",
@@ -194,9 +166,8 @@ class TTSInferencePipeline:
         Returns:
             ``{"audio": np.ndarray (float32), "sample_rate": int, "timestamps": list[dict]}``
         """
-        # Phoneme-limit guard first (count-only, under the lock we hold):
-        # an over-limit segment is rejected before ANY synthesis or
-        # alignment work is dispatched.
+        # Phoneme-limit guard first (count-only): an over-limit segment
+        # is rejected before ANY synthesis or alignment work is dispatched.
         check_phoneme_limits(segments, self.kokoro.tokenizer, default_lang)
 
         audio_chunks: list[np.ndarray] = []
@@ -207,10 +178,11 @@ class TTSInferencePipeline:
         t_request = time.perf_counter()
 
         # Overlap: alignment of chunk i runs in a single background worker
-        # while the main thread synthesizes chunk i+1. Safe because the
-        # thread-safety corruption is confined to kokoro's synthesis path
-        # (verified: 4x concurrent align during locked synth -> uniform
-        # output, T430536); synthesis itself stays on this thread only.
+        # while this thread synthesizes chunk i+1, hiding most alignment
+        # time on multi-segment requests. One worker per call, so a
+        # request never aligns two of its own chunks at once; separate
+        # concurrent requests do align at the same time, which is safe
+        # (Aligner.align only reads shared state).
         # max_workers=1: align-vs-align concurrency is untested; one worker
         # also keeps completion order deterministic.
         # Thread budget: overlapped stages contend for the pod's CPUs, so
