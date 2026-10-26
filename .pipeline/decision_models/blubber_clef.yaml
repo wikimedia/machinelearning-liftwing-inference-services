@@ -101,7 +101,7 @@ variants:
       version: python3
       # Deliberately NOT the service requirements.txt: that would drag in
       # transformers and, through it, torch. conftest.py stubs torch, and
-      # kserve and Pillow are pinned to the versions the GPU base ships so the
+      # kserve and Pillow are pinned to the versions the GPU image runs so the
       # tests exercise what production runs.
       requirements:
         - requirements-test.txt
