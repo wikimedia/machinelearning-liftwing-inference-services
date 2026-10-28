@@ -273,17 +273,43 @@ def _session() -> requests.Session:
 
 
 def fetch_sections(base: str, art: dict, session: requests.Session) -> dict:
-    r = session.get(
-        f"{base}/sections",
-        params={
-            "wiki_id": "enwiki",
-            "page_id": art["page_id"],
-            "rev_id": art["rev_id"],
-        },
-        timeout=120,
-    )
-    r.raise_for_status()
-    return r.json()
+    """Enumerate an article's sections, retrying transient failures.
+
+    Mirrors generate_one's taxonomy: transport errors and 5xx are transient
+    and retried with linear backoff; 4xx is deterministic and raised
+    immediately. Without this, a single 503 or timeout ended an article's
+    enumeration (T441983).
+    """
+    last_err = None
+    for attempt in range(1 + TRANSIENT_RETRIES):
+        if attempt:
+            time.sleep(BACKOFF_S * attempt)
+        try:
+            r = session.get(
+                f"{base}/sections",
+                params={
+                    "wiki_id": "enwiki",
+                    "page_id": art["page_id"],
+                    "rev_id": art["rev_id"],
+                },
+                timeout=120,
+            )
+        except requests.RequestException as e:
+            last_err = e
+            continue
+
+        if r.status_code == 200:
+            return r.json()
+
+        if 400 <= r.status_code < 500:
+            # Deterministic: a retry cannot change the answer.
+            r.raise_for_status()
+
+        last_err = requests.HTTPError(
+            f"{r.status_code} {r.reason} for url: {r.url}", response=r
+        )
+
+    raise last_err
 
 
 def generate_one(

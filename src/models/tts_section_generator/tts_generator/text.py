@@ -9,6 +9,7 @@ output text for identical input must bump NORMALIZATION_RULESET.
 import functools
 import logging
 import re
+import threading
 import unicodedata
 
 from anyascii import anyascii
@@ -404,6 +405,15 @@ def _norm_compound_units(text: str) -> str:
 
 _nemo_normalizer = None
 
+# The shared Normalizer is not thread-safe: it builds one TokenParser and
+# reuses it across calls, so concurrent normalize() calls overwrite each
+# other's parse state. The losing thread either raises a bare ValueError or,
+# worse, parses the wrong text and returns silently corrupted output. The
+# lock serializes the whole call -- including the shared pynini FSTs, whose
+# thread safety upstream does not document. See T441983; remove once fixed
+# upstream.
+_nemo_lock = threading.Lock()
+
 
 def init_nemo() -> None:
     """Initialize the NeMo text normalizer (called once at service startup)."""
@@ -436,7 +446,8 @@ def nemo_available() -> bool:
 
 def _norm_nemo(text: str) -> str:
     if _nemo_normalizer is not None:
-        return _nemo_normalizer.normalize(text)
+        with _nemo_lock:
+            return _nemo_normalizer.normalize(text)
     return text
 
 
