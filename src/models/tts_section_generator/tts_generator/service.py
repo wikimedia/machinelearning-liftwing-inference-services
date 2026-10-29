@@ -30,6 +30,7 @@ from fastapi import FastAPI, Query
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from tts_generator import isvc_client
+from tts_generator.batching import partition
 from tts_generator.chunking import split_text
 from tts_generator.config import (
     DEFAULT_LANG,
@@ -37,6 +38,8 @@ from tts_generator.config import (
     LOG_LEVEL,
     MAX_SEGMENT_CHARS,
     MIN_TEXT_LENGTH,
+    SPLIT_BATCH_CHARS,
+    SPLIT_GAP_MS,
 )
 from tts_generator.fetch import FetchError, fetch_revision_html, fetch_revision_meta
 from tts_generator.sections import extract_sections, find_section
@@ -92,6 +95,21 @@ app = FastAPI(title="TTS Section Generator", version="0.4.0", lifespan=_lifespan
 
 
 # ── Error helper ────────────────────────────────────────────────────────────
+
+
+# PCM is signed 16-bit mono at the isvc's sample rate; both helpers work
+# on the raw bytes so the timeline matches the audio actually written.
+_BYTES_PER_SAMPLE = 2
+
+
+def _pcm_duration_ms(pcm: bytes, sample_rate: int) -> float:
+    """Playing time of ``pcm`` in milliseconds."""
+    return len(pcm) / _BYTES_PER_SAMPLE / sample_rate * 1000
+
+
+def _silence_pcm(gap_ms: float, sample_rate: int) -> bytes:
+    """``gap_ms`` of silence, as PCM bytes."""
+    return b"\x00" * (int(sample_rate * gap_ms / 1000) * _BYTES_PER_SAMPLE)
 
 
 def _error(status: int, code: str, message: str) -> JSONResponse:
@@ -231,7 +249,7 @@ def generate_section(req: GenerateRequest):
             f"Cleaned text is {len(cleaned)} chars (minimum {MIN_TEXT_LENGTH})",
         )
 
-    segments = [{"text": c} for c in split_text(cleaned, MAX_SEGMENT_CHARS)]
+    chunks = split_text(cleaned, MAX_SEGMENT_CHARS)
     sha = content_sha256(cleaned)
     gv = generation_version(cfg.voice)
 
@@ -239,11 +257,56 @@ def generate_section(req: GenerateRequest):
     # audio-only requests ride the isvc's alignment-free path (RTF ~0.22).
     ts_mode = cfg.timestamps if (set(cfg.artifacts) & TIMING_ARTIFACTS) else "none"
 
+    # One isvc request per batch. A long section would otherwise be a
+    # single request that outlives the 600 s chain: a 19,877-character
+    # section did exactly that in the v2 trial (T441983). Sections at or
+    # under the budget -- ~93% of them -- yield one batch and take the
+    # same single-request path as before.
+    batches = partition(chunks, SPLIT_BATCH_CHARS)
+
     t0 = time.perf_counter()
+    pcm_parts: list[bytes] = []
+    all_timestamps: list[dict] = []
+    sample_rate = None
+    offset_ms = 0.0
     try:
-        isvc = isvc_client.synthesize(
-            segments, voice=cfg.voice, lang=cfg.lang, timestamps=ts_mode
-        )
+        for batch in batches:
+            isvc = isvc_client.synthesize(
+                [{"text": c} for c in batch],
+                voice=cfg.voice,
+                lang=cfg.lang,
+                timestamps=ts_mode,
+            )
+            batch_pcm = base64.b64decode(isvc["audio_b64"])
+            if sample_rate is None:
+                sample_rate = isvc["sample_rate"]
+
+            if pcm_parts:
+                # Silence between batches: the isvc crossfades segments
+                # within a request but cannot across requests, and the
+                # join is at a sentence end, where a short pause is what
+                # the voice would do anyway.
+                gap = _silence_pcm(SPLIT_GAP_MS, sample_rate)
+                pcm_parts.append(gap)
+                offset_ms += _pcm_duration_ms(gap, sample_rate)
+
+            for stamp in isvc.get("timestamps") or []:
+                all_timestamps.append(
+                    {
+                        **stamp,
+                        "start_ms": stamp["start_ms"] + offset_ms,
+                        "end_ms": stamp["end_ms"] + offset_ms,
+                    }
+                )
+            # Offset from the decoded audio, not the isvc's duration_ms:
+            # the two agree, but deriving it here keeps the timestamps
+            # exact against the bytes we actually concatenated.
+            offset_ms += _pcm_duration_ms(batch_pcm, sample_rate)
+            pcm_parts.append(batch_pcm)
+            # Identical across batches (same isvc, same request shape);
+            # captured so the artifact loop never reads a loop variable.
+            timestamps_mode = isvc["timestamps_mode"]
+            encoding = isvc["encoding"]
     except isvc_client.SynthesisNotPossible as e:
         # The section's text cannot be synthesized under this model's
         # limits: deterministic for this text + generation_version.
@@ -259,8 +322,17 @@ def generate_section(req: GenerateRequest):
         return _error(502, "synthesis_error", str(e))
     synth_s = time.perf_counter() - t0
 
-    pcm = base64.b64decode(isvc.pop("audio_b64"))
-    sample_rate = isvc["sample_rate"]
+    # Nothing is written until every batch has succeeded, so a failure
+    # part-way through a section cannot leave a partial artifact set.
+    pcm = b"".join(pcm_parts)
+    duration_ms = _pcm_duration_ms(pcm, sample_rate)
+    if len(batches) > 1:
+        logger.info(
+            "section split across %d isvc requests (%d chars, %d chunks)",
+            len(batches),
+            len(cleaned),
+            len(chunks),
+        )
 
     common = {
         "wiki_id": req.wiki_id,
@@ -269,7 +341,7 @@ def generate_section(req: GenerateRequest):
         "section_id": req.section_id,
         "generation_version": gv,
         "content_sha256": sha,
-        "duration_ms": isvc["duration_ms"],
+        "duration_ms": duration_ms,
     }
     if render_id:
         common["render_id"] = render_id
@@ -300,14 +372,14 @@ def generate_section(req: GenerateRequest):
                 _emit(entry, pcm_to_mp3(pcm, sample_rate))
                 transcode_s += time.perf_counter() - _t
             elif kind == "captions_vtt":
-                entry["timestamps_mode"] = isvc["timestamps_mode"]
-                _emit(entry, timestamps_to_vtt(isvc["timestamps"]).encode("utf-8"))
+                entry["timestamps_mode"] = timestamps_mode
+                _emit(entry, timestamps_to_vtt(all_timestamps).encode("utf-8"))
             elif kind == "timestamps_json":
-                entry["timestamps"] = isvc["timestamps"]
-                entry["timestamps_mode"] = isvc["timestamps_mode"]
+                entry["timestamps"] = all_timestamps
+                entry["timestamps_mode"] = timestamps_mode
             elif kind == "audio_pcm_s16le":
                 entry["sample_rate"] = sample_rate
-                entry["encoding"] = isvc["encoding"]
+                entry["encoding"] = encoding
                 _emit(entry, pcm)
             artifacts.append(entry)
     except TranscodeError as e:
@@ -319,20 +391,21 @@ def generate_section(req: GenerateRequest):
         return _error(502, "blob_write_error", str(e))
 
     logger.info(
-        "generated %s/%s/%s/%s: %d segments, %.1fms audio "
+        "generated %s/%s/%s/%s: %d segments in %d request(s), %.1fms audio "
         "(synth %.2fs, transcode %.2fs, ts=%s)",
         req.wiki_id,
         req.page_id,
         req.rev_id,
         req.section_id,
-        len(segments),
-        isvc["duration_ms"],
+        len(chunks),
+        len(batches),
+        duration_ms,
         synth_s,
         transcode_s,
         ts_mode,
     )
 
-    return {"artifacts": artifacts, "segment_count": len(segments)}
+    return {"artifacts": artifacts, "segment_count": len(chunks)}
 
 
 if __name__ == "__main__":

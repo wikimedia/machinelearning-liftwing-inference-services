@@ -330,3 +330,118 @@ def test_other_4xx_still_raises_the_loud_path(monkeypatch):
     monkeypatch.setattr(isvc_client.requests, "post", lambda *a, **k: FakeResp())
     with pytest.raises(isvc_client.SynthesisRejected):
         isvc_client.synthesize([{"text": "x"}], voice="v", lang="l")
+
+
+# ── Long-section splitting (T441983) ──────────────────────────────────────
+
+
+def _recording_client(monkeypatch, chunks, budget, pcm_fn=None):
+    """Patch fetch/split_text/synthesize so a section's chunk list and
+    batch budget are controlled, and every isvc call is recorded.
+
+    ``split_text`` is stubbed (its behaviour is covered by test_chunking.py)
+    so the split tests exercise the batch loop wiring deterministically:
+    one call per batch, the per-batch segment lists, PCM concatenation, and
+    timestamp offsets. Returns (TestClient, calls) where ``calls`` is the
+    ordered list of ``segments`` argument lists passed to synthesize.
+    """
+    calls = []
+
+    def fake_meta(wiki_id, rev_id):
+        return {"page": {"id": 9228}, "timestamp": "2026-07-01T00:00:00Z"}
+
+    def fake_html(wiki_id, rev_id):
+        return FIXTURE_HTML, None
+
+    def fake_synthesize(segments, voice, lang, timestamps="full", encoding="pcm_s16le"):
+        pcm = pcm_fn(len(calls)) if pcm_fn else _pcm()
+        calls.append(segments)
+        return {
+            "audio_b64": base64.b64encode(pcm).decode("ascii"),
+            "encoding": "pcm_s16le",
+            "timestamps_mode": timestamps,
+            "sample_rate": SR,
+            "duration_ms": 1000.0,
+            "timestamps": []
+            if timestamps == "none"
+            else [
+                {"word": s["text"].split()[0], "start_ms": 0.0, "end_ms": 100.0}
+                for s in segments
+            ],
+        }
+
+    monkeypatch.setattr(service, "fetch_revision_meta", fake_meta)
+    monkeypatch.setattr(service, "fetch_revision_html", fake_html)
+    monkeypatch.setattr(service, "split_text", lambda text, n: chunks)
+    monkeypatch.setattr(service, "SPLIT_BATCH_CHARS", budget)
+    monkeypatch.setattr(service.isvc_client, "synthesize", fake_synthesize)
+    return TestClient(service.app), calls
+
+
+def test_long_section_issues_one_call_per_batch(monkeypatch):
+    """A section over the budget issues one isvc call per batch, in order.
+    Fails against the pre-split single-call path, so it discriminates the
+    change from a no-op."""
+    chunks = [
+        "One sentence.",
+        "Two sentence.",
+        "Three sentence.",
+        "Four sentence.",
+    ]
+    c, calls = _recording_client(monkeypatch, chunks, budget=25)
+    r = c.post("/generate-section", json=_req(["audio_opus"]))
+    assert r.status_code == 200, r.text
+    assert len(calls) > 1
+    # Every chunk sent, in order, never dropped or reordered.
+    assert [s["text"] for call in calls for s in call] == chunks
+
+
+def test_below_threshold_issues_exactly_one_call(monkeypatch):
+    """The no-op path: a section under the budget is a single request and
+    byte-identical to pre-split output."""
+    chunks = ["One sentence.", "Two sentence."]
+    c, calls = _recording_client(monkeypatch, chunks, budget=1000)
+    r = c.post("/generate-section", json=_req(["audio_opus"]))
+    assert r.status_code == 200, r.text
+    assert len(calls) == 1
+
+
+def test_split_concatenates_pcm_with_silence_gap(monkeypatch):
+    """Batch PCM is joined as b0 + gap + b1 + ... with the configured
+    silence between batches (no crossfade across request boundaries)."""
+    chunks = ["One sentence.", "Two sentence.", "Three sentence."]
+    pcm0 = b"\x01\x02" * 100
+    pcm1 = b"\x03\x04" * 100
+    c, calls = _recording_client(
+        monkeypatch, chunks, budget=20, pcm_fn=lambda i: [pcm0, pcm1][i]
+    )
+    r = c.post("/generate-section", json=_req(["audio_pcm_s16le"]))
+    assert r.status_code == 200, r.text
+    assert len(calls) == 2
+    raw = base64.b64decode(
+        [a for a in r.json()["artifacts"] if a["artifact_type"] == "audio_pcm_s16le"][
+            0
+        ]["bytes_b64"]
+    )
+    gap = service._silence_pcm(service.SPLIT_GAP_MS, SR)
+    assert raw == pcm0 + gap + pcm1
+
+
+def test_split_offsets_timestamps_by_cumulative_duration(monkeypatch):
+    """Each batch's word timestamps are shifted by the duration of every
+    preceding batch plus its gap, so captions stay in sync with the
+    concatenated audio."""
+    chunks = ["One sentence.", "Two sentence.", "Three sentence."]
+    # budget 20 -> [["One", "Two"], ["Three"]]: two batches, one gap.
+    c, calls = _recording_client(monkeypatch, chunks, budget=20)
+    r = c.post("/generate-section", json=_req(["audio_opus", "timestamps_json"]))
+    assert r.status_code == 200, r.text
+    ts = [a for a in r.json()["artifacts"] if a["artifact_type"] == "timestamps_json"][
+        0
+    ]["timestamps"]
+
+    assert [t["word"] for t in ts] == ["One", "Two", "Three"]
+    # Batch 0 words are unshifted.
+    assert ts[0]["start_ms"] == 0.0
+    # Batch 1 word ("Three") is shifted by pcm0 (1000 ms) + gap (250 ms).
+    assert ts[2]["start_ms"] == pytest.approx(1250.0)

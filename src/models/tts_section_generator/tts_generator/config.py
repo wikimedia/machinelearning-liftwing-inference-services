@@ -62,6 +62,26 @@ MIN_TEXT_LENGTH = int(os.environ.get("TTS_GEN_MIN_TEXT_LENGTH", "50"))
 # the prosody a natural sentence cadence. Tune with listening in Phase 4.
 MAX_SEGMENT_CHARS = int(os.environ.get("TTS_GEN_MAX_SEGMENT_CHARS", "400"))
 
+# ── Long-section splitting ──────────────────────────────────────────────────
+# A section is synthesized in one isvc request per batch of chunks (see
+# batching.py). Batching exists so a single request finishes inside the 600 s
+# chain: a 19,877-char section exceeded it in the v2 trial (T441983).
+#
+# 4000 is sized for concurrency headroom, not to minimise how many sections
+# split. At the spike's calibration (16.9 chars/audio-s) a 4000-char batch is
+# ~4 min of audio, which stays inside the 600 s chain even under multi-
+# container contention. The v2 trial's 19,877-char section (~20 min of audio)
+# was a single request that timed out -- the bug this fixes. Measured on the
+# corpus: ~7% of sections exceed 4000 chars, so
+# ~93% are a single batch and byte-identical to the pre-split output.
+SPLIT_BATCH_CHARS = int(os.environ.get("TTS_GEN_SPLIT_BATCH_CHARS", "4000"))
+
+# Silence inserted between batches, replacing the crossfade the isvc applies
+# within a request but cannot apply across requests. Batches end at sentence
+# boundaries, where Kokoro already pauses 250 ms (its own sentence_pause), so
+# the join matches what the voice does elsewhere.
+SPLIT_GAP_MS = float(os.environ.get("TTS_GEN_SPLIT_GAP_MS", "250"))
+
 # ── Generation identity (feeds generation_version, see version.py) ─────────
 KOKORO_MODEL_VERSION = os.environ.get("TTS_GEN_KOKORO_VERSION", "kokoro-v1.0")
 DEFAULT_VOICE = os.environ.get("TTS_GEN_DEFAULT_VOICE", "af_heart")

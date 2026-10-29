@@ -136,6 +136,8 @@ development against the ml-staging TTS isvc.
 | `TTS_GEN_USER_AGENT` | WMF-ML UA string | User-Agent for all outbound requests. |
 | `TTS_GEN_MIN_TEXT_LENGTH` | `50` | Cleaned text at or below this length is a deterministic skip. |
 | `TTS_GEN_MAX_SEGMENT_CHARS` | `400` | Segment size sent to the isvc (isvc practical ceiling 800). Quality knob. |
+| `TTS_GEN_SPLIT_BATCH_CHARS` | `4000` | Long sections are synthesized in one isvc request per batch of chunks up to this many chars, sized so a batch finishes inside the 600 s chain. |
+| `TTS_GEN_SPLIT_GAP_MS` | `250` | Silence inserted between batches (joins land at sentence ends). |
 | `TTS_GEN_KOKORO_VERSION` | `kokoro-v1.0` | Model component of `generation_version`. |
 | `TTS_GEN_DEFAULT_VOICE` | `af_heart` | Default voice. |
 | `TTS_GEN_DEFAULT_LANG` | `en-us` | Default language. |

@@ -34,6 +34,8 @@ from tts_generator.config import (
     KOKORO_MODEL_VERSION,
     NEMO_WHITELIST,
     NORMALIZATION_RULESET,
+    SPLIT_BATCH_CHARS,
+    SPLIT_GAP_MS,
 )
 from tts_generator.text import nemo_available
 
@@ -66,9 +68,22 @@ def normalizer_version() -> str:
     return f"norm-{NORMALIZATION_RULESET}-{engine}-{translit}-{_whitelist_hash()}"
 
 
+def split_version() -> str:
+    """Identity of the long-section split, which changes the audio.
+
+    A section over ``SPLIT_BATCH_CHARS`` is synthesized in several isvc
+    requests joined by ``SPLIT_GAP_MS`` of silence, so both settings change
+    the output for those sections and belong in the identity. Emitted
+    unconditionally: a component that appeared only when a section happened
+    to split would make the identity depend on the text rather than on the
+    configuration that produced it.
+    """
+    return f"split-v1:{SPLIT_BATCH_CHARS}:{SPLIT_GAP_MS:g}"
+
+
 def generation_version(voice: str = DEFAULT_VOICE) -> str:
-    """E.g. ``kokoro-v1.0+af_heart+norm-2026.09.21-nemo1.2.0-aa0.3.3-3f9a1c2b``."""
-    return f"{KOKORO_MODEL_VERSION}+{voice}+{normalizer_version()}"
+    """E.g. ``kokoro-v1.0+af_heart+norm-2026.09.21-nemo1.2.0-aa0.3.3-3f9a1c2b+split-v1:4000:250``."""
+    return f"{KOKORO_MODEL_VERSION}+{voice}+{normalizer_version()}+{split_version()}"
 
 
 def content_sha256(normalized_text: str) -> str:
