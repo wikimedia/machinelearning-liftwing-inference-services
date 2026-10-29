@@ -18,7 +18,7 @@ blessings==1.7
 boto3==1.21.0
 botocore==1.24.0
 cachetools==4.2.2
-certifi==2021.5.30
+certifi==2026.10.23
 cffi==1.14.6
 charset-normalizer==2.0.9
 click==8.0.3
