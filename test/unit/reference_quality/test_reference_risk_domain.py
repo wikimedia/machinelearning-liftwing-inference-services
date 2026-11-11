@@ -30,6 +30,8 @@ mock_modules(
         "kserve.constants",
         "kserve.errors",
         "kserve.logging",
+        "kserve.protocol",
+        "kserve.protocol.infer_type",
         "kserve.utils",
         "knowledge_integrity",
         "knowledge_integrity.mediawiki",

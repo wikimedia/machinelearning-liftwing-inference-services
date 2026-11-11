@@ -17,6 +17,8 @@ mock_modules(
         "kserve",
         "kserve.errors",
         "kserve.constants",
+        "kserve.protocol",
+        "kserve.protocol.infer_type",
         "fastapi.middleware.cors",
         "torch",
         "transformers",
