@@ -2,48 +2,8 @@
 
 The policy violation detection inference services evaluate user content against defined safety policies and classify whether the content violates those policies. Two models are available:
 
-## gpt-oss-safeguard-20b
-
-* Model Card: https://arxiv.org/pdf/2508.10925
-* Source: https://github.com/roostorg/model-community/tree/142367c67cd8a1d83e293dd0985b50fff0f05b54/gpt
-* Model: https://huggingface.co/openai/gpt-oss-safeguard-20b
-* Model license: Apache 2.0 License
-
-Uses OpenAI's Harmony encoding for structured input/output with reasoning and verdict channels.
-
-### Error handling
-
-A verdict is only served when the generation completed with a final channel.
-If the model output cannot be parsed as Harmony messages, was truncated at
-`max_tokens`, or contains no final channel (degenerate generation on
-pathological input, or reasoning loops exhausting the token budget), the
-server returns a readable error response instead of an HTTP 500 or a bogus
-verdict:
-
-```json
-{"reasoning": "<partial reasoning, if any>", "verdict": null, "error": "<explanation>", "finish_reason": "length"}
-```
-
-### How to run locally
-
 > [!NOTE]
-> This model-server is designed to be hosted in a custom-built Docker image that supports vLLM 0.14 and can be found here: https://docker-registry.wikimedia.org/ml/amd-vllm014/tags/
->
-> The software stack used in this vLLM image is: ROCm 7.0.0, Torch 2.10.0, MoRi 0.1, FlashAttention 2.8.3, Aiter 0.1.7, and vLLM 0.14. Since we use AMD GPUs on LiftWing, these software packages were built from source to target both MI210 (gfx90a) and MI300X (gfx942) GPUs.
->
-> Because these heavy ML dependencies are pre-packaged within the Docker image, the `requirements.txt` file used below only contains the `kserve` dependency needed for the model-server.
-
-If you are running outside the recommended Docker environment and your system already supports vLLM 0.14, create a virtual environment and install the dependencies using:
-```console
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r src/models/policy_violation/requirements.txt
-```
-
-Run the server:
-```console
-MODEL_NAME=policy-violation MODEL_PATH="openai/gpt-oss-safeguard-20b" TRUST_REMOTE_CODE="True" python3 src/models/policy_violation/gpt_oss_safeguard_20b/model.py
-```
+> `gpt-oss-safeguard-20b` no longer has a model server here. It runs as an LLMInferenceService (`llm-gpt-oss-safeguard-20b`) that exposes vLLM's OpenAI-compatible endpoints directly ([T441822](https://phabricator.wikimedia.org/T441822)).
 
 ## CoPE-A-9B
 
@@ -203,7 +163,7 @@ run directly from the published weights.
 > [!NOTE]
 > This model-server uses HuggingFace transformers rather than vLLM. The `Gemma4ForCausalLM` architecture (model_type `gemma4_text`) [requires vLLM >= 0.19.0](https://github.com/vllm-project/vllm/pull/39291), which is newer than the vLLM 0.14 in the current `amd-vllm014` base image.
 >
-> On vLLM 0.14 the model falls back to the generic Transformers-MoE backend and fails to load (it cannot resolve the MoE `top_k` as shown in [P93623](https://phabricator.wikimedia.org/P93623)). Until a vLLM >= 0.19.0 base image is available, this server runs the model using HF transformers (see [P93624](https://phabricator.wikimedia.org/P93624)). This model-server has its own `requirements.txt` (kserve + transformers) rather than sharing `policy_violation/requirements.txt`, so that the two vLLM-based servers above keep their lean kserve-only dependency set.
+> On vLLM 0.14 the model falls back to the generic Transformers-MoE backend and fails to load (it cannot resolve the MoE `top_k` as shown in [P93623](https://phabricator.wikimedia.org/P93623)). Until a vLLM >= 0.19.0 base image is available, this server runs the model using HF transformers (see [P93624](https://phabricator.wikimedia.org/P93624)). This model-server has its own `requirements.txt` (kserve + transformers) rather than sharing `policy_violation/requirements.txt`, so that the vLLM-based CoPE-A-9B server above keeps its lean kserve-only dependency set.
 
 ### How to run locally
 

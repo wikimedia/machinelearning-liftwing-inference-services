@@ -4,7 +4,7 @@
 `predict`. The tests need neither for real: the model is never loaded, so CI
 does not pull a ROCm wheel to test payload validation and an image resize.
 This follows test/unit/semantic_highlighting, which stubs torch and
-transformers the same way, and test/unit/qwen36, which stubs vLLM.
+transformers the same way, and test/unit/embeddings, which stubs vLLM.
 
 Pillow is deliberately not stubbed. These tests decode real PNGs and check the
 downscale and the decompression bomb guard, all of which a stub would make

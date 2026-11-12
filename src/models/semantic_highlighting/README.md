@@ -171,8 +171,8 @@ Recorded so they are not undone by accident.
   devices.
 - **Modules are copied path-preserved in the `production` variant**
   (`src/models/semantic_highlighting/model_server` → same path), not flattened
-  into `/srv/app` the way `qwen36` and `embeddings` do. Those are single-module
-  servers; this one is six modules that import each other, and path-preserving
+  into `/srv/app` the way `embeddings` does. That is a single-module
+  server; this one is six modules that import each other, and path-preserving
   means the `src.models.semantic_highlighting.model_server.*` imports resolve
   identically at runtime and under `pytest test/unit`.
 - **`production` copies only blubber's venv**, not the whole site-packages tree.
@@ -181,7 +181,7 @@ Recorded so they are not undone by accident.
   packages — which is what keeps two versions of a package from ending up merged
   in one directory.
 - **The `test` variant overrides `base:` to bookworm** and stubs torch and
-  transformers via `sys.modules` (the `test/unit/qwen36` pattern), so CI lints and
+  transformers via `sys.modules` (the `test/unit/embeddings` pattern), so CI lints and
   tests in seconds instead of pulling the multi-GB GPU base. Its requirements
   deliberately exclude the service `requirements.txt`.
 - **Unknown request fields are ignored, not rejected**, and a body with neither

@@ -3,8 +3,8 @@
 `qa.py` reads torch while it is imported, to build `DTYPES`, and imports two
 classes from transformers. The tests need neither for real: the model is
 monkeypatched out, so CI does not pull a multi-hundred-MB wheel to test span
-arithmetic and the response envelope. This follows test/unit/qwen36, which stubs
-vLLM the same way.
+arithmetic and the response envelope. This follows test/unit/embeddings, which
+stubs vLLM the same way.
 
 `test_boundaries.py` needs none of this. `boundaries.py` reads no torch and no
 transformers, so it imports on any Python. The stubs are here for the modules
