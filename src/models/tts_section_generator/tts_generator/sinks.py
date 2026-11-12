@@ -53,6 +53,8 @@ _EXT = {
     "audio_mp3": "mp3",
     "captions_vtt": "vtt",
     "timestamps_json": "json",
+    "paragraphs_json": "json",
+    "paragraphs_vtt": "vtt",
     "audio_pcm_s16le": "pcm",
 }
 

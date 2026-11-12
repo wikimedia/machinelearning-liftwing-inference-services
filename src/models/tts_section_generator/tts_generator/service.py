@@ -42,12 +42,13 @@ from tts_generator.config import (
     SPLIT_GAP_MS,
 )
 from tts_generator.fetch import FetchError, fetch_revision_html, fetch_revision_meta
+from tts_generator.paragraphs import paragraph_entries, paragraph_word_ranges
 from tts_generator.sections import extract_sections, find_section
 from tts_generator.sinks import InlineSink, SinkWriteError, artifact_key, build_sink
 from tts_generator.text import clean_spoken_text, init_nemo
 from tts_generator.transcode import TranscodeError, pcm_to_mp3, pcm_to_opus
 from tts_generator.version import content_sha256, generation_version
-from tts_generator.vtt import timestamps_to_vtt
+from tts_generator.vtt import paragraphs_to_vtt, timestamps_to_vtt
 
 logging.basicConfig(
     level=LOG_LEVEL,
@@ -61,15 +62,28 @@ SUPPORTED_ARTIFACTS = {
     "audio_mp3",
     "captions_vtt",
     "timestamps_json",
+    "paragraphs_json",
+    "paragraphs_vtt",
     "audio_pcm_s16le",
 }
-TIMING_ARTIFACTS = {"captions_vtt", "timestamps_json"}
+# Artifacts built from word timestamps. Requesting one forces the
+# alignment-bearing isvc path: the paragraph artifacts belong here too,
+# because their boundaries are word timestamps looked up by index, and
+# without alignment they would silently degrade to estimates.
+TIMING_ARTIFACTS = {
+    "captions_vtt",
+    "timestamps_json",
+    "paragraphs_json",
+    "paragraphs_vtt",
+}
 
 MEDIA_TYPES = {
     "audio_opus": "audio/ogg; codecs=opus",
     "audio_mp3": "audio/mpeg",
     "captions_vtt": "text/vtt",
     "timestamps_json": "application/json",
+    "paragraphs_json": "application/json",
+    "paragraphs_vtt": "text/vtt",
     "audio_pcm_s16le": "audio/L16; rate=24000; channels=1",
 }
 
@@ -360,6 +374,7 @@ def generate_section(req: GenerateRequest):
 
     artifacts = []
     transcode_s = 0.0
+    paragraph_entries_cache: list[dict] | None = None
     try:
         for kind in cfg.artifacts:
             entry = {**common, "artifact_type": kind, "media_type": MEDIA_TYPES[kind]}
@@ -377,6 +392,29 @@ def generate_section(req: GenerateRequest):
             elif kind == "timestamps_json":
                 entry["timestamps"] = all_timestamps
                 entry["timestamps_mode"] = timestamps_mode
+            elif kind in ("paragraphs_json", "paragraphs_vtt"):
+                # Computed once even when both are requested: the second
+                # branch reuses what the first put in paragraph_entries.
+                if paragraph_entries_cache is None:
+                    ranges, method = paragraph_word_ranges(
+                        cleaned, section.blocks, clean_spoken_text
+                    )
+                    paragraph_entries_cache = paragraph_entries(
+                        ranges,
+                        section.blocks,
+                        cleaned.split(),
+                        all_timestamps,
+                        duration_ms,
+                        method,
+                    )
+                entry["timestamps_mode"] = timestamps_mode
+                if kind == "paragraphs_json":
+                    entry["paragraphs"] = paragraph_entries_cache
+                else:
+                    _emit(
+                        entry,
+                        paragraphs_to_vtt(paragraph_entries_cache).encode("utf-8"),
+                    )
             elif kind == "audio_pcm_s16le":
                 entry["sample_rate"] = sample_rate
                 entry["encoding"] = encoding

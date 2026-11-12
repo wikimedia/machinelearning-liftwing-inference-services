@@ -18,6 +18,24 @@ def timestamps_to_vtt(timestamps: list[dict]) -> str:
     return "\n".join(lines)
 
 
+def paragraphs_to_vtt(paragraphs: list[dict]) -> str:
+    """Format paragraph time ranges as WebVTT (one cue per paragraph).
+
+    The cue text is the paragraph's pruned prose -- citation markers and
+    other non-spoken noise removed -- not its normalized form, so "1000"
+    stays "1000" rather than "one thousand". It matches what the voice
+    speaks modulo normalization, not the fully-rendered page. Word cues
+    carry normalized text instead, which is exactly why they cannot be
+    matched that way.
+    """
+    lines = ["WEBVTT\n"]
+    for p in paragraphs:
+        start = _ms_to_vtt(p["start_ms"])
+        end = _ms_to_vtt(p["end_ms"])
+        lines.append(f"{start} --> {end}\n{p['excerpt']}\n")
+    return "\n".join(lines)
+
+
 def timestamps_to_json(timestamps: list[dict]) -> str:
     """Format word timestamps as a JSON array."""
     return json.dumps(timestamps, indent=2)

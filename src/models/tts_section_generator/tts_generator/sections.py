@@ -149,6 +149,10 @@ class Section:
     level: int  # 1 = lead, 2..6 = heading level
     raw_text: str  # extracted prose, pre-normalization
     mw_section_id: int  # Parsoid's data-mw-section-id, kept for debugging
+    # The same prose as its source blocks, for paragraph-level timings.
+    # Defaulted so existing callers that build a Section by hand (tests,
+    # fixtures) keep working unchanged.
+    blocks: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -171,13 +175,23 @@ def _should_strip(el) -> bool:
     return bool(classes & _STRIP_CLASS_TOKENS)
 
 
-def _own_text(section_el) -> str:
-    """Extract a section element's own prose.
+# Block elements that carry prose. A section's text is the concatenation
+# of these; anything outside them (stray tails, wrapper divs) belongs to
+# no paragraph and is picked up by the alignment rather than attributed.
+# figcaption is absent because it is always stripped (_STRIP_TAGS).
+_BLOCK_TAGS = ("p", "li", "dd", "dt", "blockquote")
 
-    Works on a copy: drops nested <section> elements (subsections are
-    emitted separately), drops the heading itself (spoken section titles
-    are the client's concern, not part of the body audio), then drops
-    noise elements and flattens to whitespace-normalized text.
+
+def _pruned_copy(section_el):
+    """A copy of a section element holding only its own prose.
+
+    Drops nested <section> elements (subsections are emitted separately),
+    drops the heading itself (spoken section titles are the client's
+    concern, not part of the body audio), then drops noise elements.
+
+    Shared by _own_text and _own_blocks so the two can never prune
+    differently: the blocks must be the blocks of the text that is
+    actually synthesized, or paragraph timings point at the wrong words.
     """
     el = lxml_html.fromstring(lxml_html.tostring(section_el))
     for nested in el.findall(".//section"):
@@ -193,8 +207,48 @@ def _own_text(section_el) -> str:
         if _should_strip(node):
             node.drop_tree()
     _translate_supsub(el)
-    text = el.text_content()
+    return el
+
+
+def _own_text(section_el) -> str:
+    """Extract a section element's own prose, whitespace-normalized.
+
+    This is the text the whole pipeline is built on: it is normalized,
+    synthesized, and hashed into content_sha256. It is deliberately NOT
+    derived from _own_blocks -- see that function's note.
+    """
+    text = _pruned_copy(section_el).text_content()
     return re.sub(r"\s+", " ", text).strip()
+
+
+def _own_blocks(section_el) -> list[str]:
+    """The same prose, as the list of block elements it came from.
+
+    Paragraph-level timings need to know where each paragraph begins and
+    ends in the spoken text, and _own_text has already flattened that
+    away. This returns the blocks alongside it, from the same pruned
+    copy, so the two describe the same prose.
+
+    What it does NOT do is define _own_text. ``" ".join(blocks)`` does not
+    always reproduce _own_text's output -- text_content() concatenates
+    adjacent blocks with no separator, so "<p>One.</p><p>Two.</p>" flattens
+    to "One.Two." where joining gives "One. Two.". Deriving raw_text from
+    blocks would therefore move content_sha256 for those sections and
+    invalidate their published audio, so raw_text stays as it is and the
+    caller aligns the block boundaries against it instead.
+
+    Nested blocks (a <p> inside an <li>) are skipped so each run of text
+    is attributed once, to its outermost block.
+    """
+    el = _pruned_copy(section_el)
+    blocks: list[str] = []
+    for node in el.iter(*_BLOCK_TAGS):
+        if any(a.tag in _BLOCK_TAGS for a in node.iterancestors()):
+            continue
+        text = re.sub(r"\s+", " ", node.text_content()).strip()
+        if text:
+            blocks.append(text)
+    return blocks
 
 
 def _heading_of(section_el) -> tuple[str, int] | None:
@@ -268,6 +322,7 @@ def extract_sections(html: str) -> list[Section]:
                         title="Lead",
                         level=1,
                         raw_text=_own_text(child),
+                        blocks=_own_blocks(child),
                         mw_section_id=0,
                     )
                 )
@@ -289,6 +344,7 @@ def extract_sections(html: str) -> list[Section]:
                     title=title,
                     level=level,
                     raw_text=_own_text(child),
+                    blocks=_own_blocks(child),
                     mw_section_id=mw_id,
                 )
             )

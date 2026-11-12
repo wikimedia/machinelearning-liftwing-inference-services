@@ -184,8 +184,8 @@ Produces the artifact family for one section of one pinned revision.
 | `section_id` | yes | Section address from `GET /sections` (lowercase heading slug; `lead` for the lead). |
 | `generation_config.voice` | no (`af_heart`) | Voice. |
 | `generation_config.lang` | no (`en-us`) | Language. |
-| `generation_config.timestamps` | no (`full`) | `full`, `proportional`, or `none`; ignored when no timing artifact is requested (audio-only rides the isvc's cheapest path). |
-| `generation_config.artifacts` | no | Any of `audio_opus`, `audio_mp3`, `captions_vtt`, `timestamps_json`, `audio_pcm_s16le`. `audio_mp3` is the v1 experiment delivery codec (audio_opus remains the recommended codec, regenerable from config). Default: `["audio_opus", "captions_vtt", "timestamps_json"]`. |
+| `generation_config.timestamps` | no (`full`) | `full`, `proportional`, or `none`; ignored when no timing artifact (`captions_vtt` / `timestamps_json` / `paragraphs_json` / `paragraphs_vtt`) is requested (audio-only rides the isvc's cheapest path). |
+| `generation_config.artifacts` | no | Any of `audio_opus`, `audio_mp3`, `captions_vtt`, `timestamps_json`, `paragraphs_json`, `paragraphs_vtt`, `audio_pcm_s16le`. `paragraphs_json` / `paragraphs_vtt` give paragraph-level timing for highlighting (see Output). `audio_mp3` is the v1 experiment delivery codec (audio_opus remains the recommended codec, regenerable from config). Default: `["audio_opus", "captions_vtt", "timestamps_json"]`. |
 
 ```console
 curl -s -X POST http://localhost:8080/generate-section \
@@ -232,9 +232,29 @@ index-record field set:
 | `artifact_type`, `media_type` | e.g. `audio_opus` / `audio/ogg; codecs=opus`. |
 | `duration_ms` | Audio duration. |
 | `bytes_b64` **or** `blob_uri` (+ `size_bytes`) | Inline bytes or a written-blob pointer, depending on the configured sink; the schema differs by exactly this field. |
-| `timestamps`, `timestamps_mode` | On `timestamps_json` (and mode on `captions_vtt`). |
+| `timestamps`, `timestamps_mode` | On `timestamps_json`; `timestamps_mode` also on `captions_vtt`, `paragraphs_json`, and `paragraphs_vtt`. |
+| `paragraphs` | On `paragraphs_json`: one entry per source paragraph with `index`, `start_ms`, `end_ms`, `word_count`, `char_count`, `excerpt` (pruned prose, citation markers removed), and `method` (`identity` / `alignment` / `proportional`). |
 | `sample_rate`, `encoding` | On `audio_pcm_s16le`. |
 | `render_id` | MediaWiki Parser render identity (UUID). Present when captured from the Parsoid response; omitted otherwise. |
+
+### Paragraph-level captions
+
+`paragraphs_json` and `paragraphs_vtt` give the reading interface
+paragraph-level timing for highlighting: `paragraphs_json` is the
+structured form, `paragraphs_vtt` the WebVTT form (one cue per paragraph,
+its text the pruned excerpt). Each paragraph carries `start_ms` / `end_ms`, an
+`excerpt` of its pruned prose (citation markers and other non-spoken noise
+removed, but not normalized), and a `method` field
+marking how its boundary was located. Requesting either forces the
+alignment-bearing isvc path, like the word-level timing artifacts.
+
+Section extraction flattens a section's prose before normalization, so
+paragraph boundaries are recovered afterwards from the section's source
+blocks, in three tiers: `identity` (exact), `alignment` (difflib-matched),
+and `proportional` (char-share estimate, flagged so a consumer never
+mistakes an estimate for a measurement). Audio and word-level captions are
+unchanged (`content_sha256` does not move), so the published corpus needs
+no regeneration.
 
 ### Errors
 
@@ -320,6 +340,16 @@ separately), NeMo 1.2.0 with the engine version embedded in
 `generation_version` (rulesets 2026.07.30/31 at the time; the current
 ruleset is in the env table above). The batch generation script and
 per-article manifest landed as workstream B; see Scripts below.
+
+**Paragraph-level captions (done, T444576).** New `paragraphs_json` and
+`paragraphs_vtt` artifacts for the reading interface's paragraph-level
+highlighting: each paragraph's start/end time plus its pruned prose
+(citation markers and other non-spoken noise removed, but not
+normalized). Paragraph boundaries are recovered from
+the section's source blocks in three tiers (identity / alignment /
+proportional), with `method` marking measured vs estimated. Audio and
+word-level captions are unchanged (`content_sha256` does not move), so the
+published corpus needs no regeneration.
 
 ## What this service deliberately does NOT do
 

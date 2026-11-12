@@ -108,6 +108,28 @@ def test_full_artifact_family(client):
         assert a["media_type"]
 
 
+def test_paragraph_artifacts_write_through_sink_without_key_error(client):
+    """Regression: paragraphs_vtt/paragraphs_json go through _emit ->
+    artifact_key -> _EXT[artifact_type]. If _EXT lacks either key the
+    request dies with an unhandled KeyError (500) instead of 200."""
+    c, _ = client
+    r = c.post(
+        "/generate-section",
+        json=_req(["paragraphs_json", "paragraphs_vtt"]),
+    )
+    assert r.status_code == 200, r.text
+    arts = {a["artifact_type"]: a for a in r.json()["artifacts"]}
+    assert set(arts) == {"paragraphs_json", "paragraphs_vtt"}
+
+    paragraphs = arts["paragraphs_json"]["paragraphs"]
+    assert paragraphs[0]["excerpt"].startswith("Earth")
+    assert paragraphs[0]["word_count"] > 0
+
+    vtt = base64.b64decode(arts["paragraphs_vtt"]["bytes_b64"]).decode()
+    assert vtt.startswith("WEBVTT")
+    assert paragraphs[0]["excerpt"] in vtt
+
+
 def test_audio_only_rides_alignment_free_path(client):
     c, calls = client
     r = c.post("/generate-section", json=_req(["audio_opus"]))

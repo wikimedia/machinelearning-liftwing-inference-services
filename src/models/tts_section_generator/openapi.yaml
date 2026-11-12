@@ -163,22 +163,25 @@ components:
           enum: [full, proportional, none]
           default: full
           description: >
-            Word-timestamp fidelity for timestamps_json / captions_vtt.
-            full = CTC forced alignment; proportional = char-weighted
-            (near-zero cost); ignored when neither timing artifact is
-            requested (audio-only rides the isvc's cheapest path).
+            Word-timestamp fidelity for timestamps_json / captions_vtt /
+            paragraphs_json / paragraphs_vtt. full = CTC forced
+            alignment; proportional = char-weighted (near-zero cost);
+            ignored when no timing artifact is requested (audio-only
+            rides the isvc's cheapest path).
         artifacts:
           type: array
           items:
             type: string
-            enum: [audio_opus, audio_mp3, captions_vtt, timestamps_json, audio_pcm_s16le]
+            enum: [audio_opus, audio_mp3, captions_vtt, timestamps_json, paragraphs_json, paragraphs_vtt, audio_pcm_s16le]
           default: [audio_opus, captions_vtt, timestamps_json]
           description: >
             audio_mp3 is the v1 experiment delivery codec (Apps decision);
             audio_opus remains the recommended codec and is regenerable
             from config; audio_pcm_s16le is raw isvc passthrough
-            (debugging). Requests with no timing artifact
-            (captions_vtt / timestamps_json) ride the isvc's
+            (debugging). paragraphs_json / paragraphs_vtt give the
+            client paragraph-level highlighting boundaries. Requests with
+            no timing artifact (captions_vtt / timestamps_json /
+            paragraphs_json / paragraphs_vtt) ride the isvc's
             alignment-free path.
 
     GenerateRequest:
@@ -225,7 +228,7 @@ components:
           example: audio/ogg; codecs=opus
         artifact_type:
           type: string
-          enum: [audio_opus, audio_mp3, captions_vtt, timestamps_json, audio_pcm_s16le]
+          enum: [audio_opus, audio_mp3, captions_vtt, timestamps_json, paragraphs_json, paragraphs_vtt, audio_pcm_s16le]
         bytes_b64:
           type: string
           description: >
@@ -250,6 +253,38 @@ components:
               word: {type: string}
               start_ms: {type: number}
               end_ms: {type: number}
+        paragraphs:
+          type: array
+          description: >
+            Present for paragraphs_json. One entry per source block, in
+            document order; times are the first and last word timestamps
+            of the block, or estimates when boundary recovery fell back
+            to proportional timing (the entry's method marks which).
+          items: {$ref: "#/components/schemas/Paragraph"}
+
+    Paragraph:
+      type: object
+      required: [index, start_ms, end_ms, word_count, char_count, excerpt, method]
+      properties:
+        index: {type: integer}
+        start_ms: {type: number}
+        end_ms: {type: number}
+        word_count: {type: integer}
+        char_count: {type: integer}
+        excerpt:
+          type: string
+          description: >
+            The block's prose after noise pruning (citation markers and
+            other non-spoken elements removed), but not normalized, so
+            "1000" stays "1000" rather than "one thousand". It matches
+            what the voice speaks, not the fully-rendered page.
+        method:
+          type: string
+          enum: [identity, alignment, proportional]
+          description: >
+            How the paragraph's word range was located: identity (exact),
+            alignment (difflib-matched), proportional (estimated by char
+            share).
 
     GenerateResponse:
       type: object
