@@ -161,11 +161,14 @@ Recorded so they are not undone by accident.
   concurrent search requests cannot run several batches at once and exhaust GPU
   memory. `ModelServer(workers=1)` keeps one model copy in memory — scale with
   replicas, not in-process workers.
-- **Answer decoding happens on the CPU on purpose.** `qa._decode_answer` reads
-  `top_k * top_k` probabilities per item as Python scalars; on a GPU each read is
-  a host-device sync costing more than the forward pass. The logits are moved
-  across once per batch (`out.start_logits.float().cpu()`), which keeps the
-  decoder identical on both devices.
+- **Answer decoding is vectorized over the batch.** `qa._best_spans` scores
+  every pair of the `top_k` start and `top_k` end candidates of every item with
+  tensor operations, not with a Python loop that reads `top_k * top_k`
+  probabilities per item. That loop cost about 1.25 ms per passage on the CPU.
+  Only the items that do not abstain then go through the Python word alignment
+  (`boundaries.answer_span`). The logits are moved to the CPU once per batch
+  (`out.start_logits.float().cpu()`), which keeps the decoder identical on both
+  devices.
 - **Modules are copied path-preserved in the `production` variant**
   (`src/models/semantic_highlighting/model_server` → same path), not flattened
   into `/srv/app` the way `qwen36` and `embeddings` do. Those are single-module

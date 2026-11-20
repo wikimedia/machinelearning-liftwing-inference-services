@@ -93,26 +93,28 @@ def highlight(context: str, start: int, end: int) -> str:
     return f"{context[:start]}[[ {context[start:end]} ]]{context[end:]}"
 
 
-def _decode_answer(
+def _best_spans(
     start_logits,
     end_logits,
     attention_mask,
-    sequence_ids,
-    offsets,
-    token_words,
-    context: str,
+    context_mask,
     max_answer_len: int,
     top_k: int,
-) -> dict:
-    """Turn one item's start/end logits into an answer dict.
+) -> tuple:
+    """Find the best answer token span of each item of a batch.
 
-    ``attention_mask`` masks padding tokens out of the softmax so a padded
-    (batched) item scores identically to the same item run on its own.
+    All arguments are ``(batch, length)`` tensors. ``attention_mask`` masks
+    padding tokens out of the softmax so a padded (batched) item scores
+    identically to the same item run on its own. ``context_mask`` is true on the
+    tokens of the context, the only valid answer positions.
 
-    ``token_words`` holds one entry per token -- the span of the word that token
-    belongs to, from :func:`boundaries.word_spans`. It carries the tokenizer's
-    word boundaries through to :func:`boundaries.answer_span`, which turns the
-    winning token span into the characters a reader sees.
+    Returns four lists with one entry per item: the null probability, the best
+    span probability, and the start and end tokens of that span. The best
+    probability is 0.0 when no span is valid.
+
+    This is one set of tensor operations for the whole batch. It computes the
+    same thing as a loop over the ``top_k`` starts and the ``top_k`` ends of each
+    item, without ``top_k * top_k`` Python reads per item.
     """
     neg_inf = torch.finfo(start_logits.dtype).min
     pad = ~attention_mask.bool()
@@ -121,44 +123,48 @@ def _decode_answer(
 
     # SQuAD 2.0 abstention: probability on the [CLS] token (index 0) is the
     # model's "no answer in this context" option.
-    null_prob = (start_probs[0] * end_probs[0]).item()
+    null_probs = start_probs[:, 0] * end_probs[:, 0]
 
-    # Only context tokens (sequence id 1) are valid answer positions; this also
-    # excludes padding, whose sequence id is None.
-    context_tokens = [i for i, sid in enumerate(sequence_ids) if sid == 1]
-    top_starts = sorted(context_tokens, key=lambda i: start_probs[i], reverse=True)[
-        :top_k
-    ]
-    top_ends = sorted(context_tokens, key=lambda i: end_probs[i], reverse=True)[:top_k]
+    # A token outside the context gets -1, which sorts it after every context
+    # token. When the context has fewer than k tokens, the top k thus include
+    # such tokens, and `valid` below removes them.
+    k = min(top_k, start_probs.shape[1])
+    outside = ~context_mask
+    top_start_probs, top_starts = start_probs.masked_fill(outside, -1.0).topk(k)
+    top_end_probs, top_ends = end_probs.masked_fill(outside, -1.0).topk(k)
 
-    best_prob = 0.0
-    best_tokens = None  # (start token, end token)
-    for s in top_starts:
-        for e in top_ends:
-            if e < s or (e - s + 1) > max_answer_len:
-                continue
-            prob = (start_probs[s] * end_probs[e]).item()
-            if prob > best_prob:
-                best_prob = prob
-                best_tokens = (s, e)
-
-    if best_tokens is None or null_prob >= best_prob:
-        return {"answer": "", "score": null_prob, "start": 0, "end": 0}
-
-    token_start, token_end = best_tokens
-    char_start, char_end = boundaries.answer_span(
-        context,
-        int(offsets[token_start][0]),
-        int(offsets[token_end][1]),
-        token_words[token_start],
-        token_words[token_end],
+    # (batch, k, k): the rows are the start candidates, the columns are the end
+    # candidates, both in decreasing probability.
+    probs = top_start_probs[:, :, None] * top_end_probs[:, None, :]
+    lengths = top_ends[:, None, :] - top_starts[:, :, None] + 1
+    valid = (
+        (lengths >= 1)
+        & (lengths <= max_answer_len)
+        & (top_start_probs[:, :, None] >= 0)
+        & (top_end_probs[:, None, :] >= 0)
     )
-    return {
-        "answer": context[char_start:char_end],
-        "score": best_prob,
-        "start": char_start,
-        "end": char_end,
-    }
+    # An invalid pair gets 0.0, and a span with probability 0.0 never wins.
+    # `max` returns the first maximum in (start, end) order, which is the pair a
+    # loop over the starts and then the ends keeps.
+    best_probs, best = probs.masked_fill(~valid, 0.0).flatten(1).max(dim=-1)
+    best_starts = top_starts.gather(1, (best // k)[:, None]).squeeze(1)
+    best_ends = top_ends.gather(1, (best % k)[:, None]).squeeze(1)
+    return (
+        null_probs.tolist(),
+        best_probs.tolist(),
+        best_starts.tolist(),
+        best_ends.tolist(),
+    )
+
+
+def _word_ids(enc, i):
+    """The word ids of item ``i``, or None from a slow tokenizer."""
+    try:
+        return enc.word_ids(i)
+    except ValueError:
+        # Raised by a slow tokenizer, which reports no words. `load_model`
+        # rejects one, so this covers a caller that brought its own.
+        return None
 
 
 def answer_question_batch(
@@ -189,39 +195,56 @@ def answer_question_batch(
     )
     offset_mapping = enc["offset_mapping"]
     attention_mask = enc["attention_mask"]
-    try:
-        # One call per item, and the only tokenizer feature `word_spans` needs.
-        word_ids = [enc.word_ids(i) for i in range(len(pairs))]
-    except ValueError:
-        # Raised by a slow tokenizer, which reports no words. `load_model`
-        # rejects one, so this covers a caller that brought its own.
-        word_ids = [None] * len(pairs)
     inputs = {k: v.to(model.device) for k, v in enc.items() if k != "offset_mapping"}
 
     with torch.inference_mode():
         out = model(**inputs)
 
-    # Decode on the CPU. `_decode_answer` reads individual probabilities as
-    # Python scalars (top_k * top_k of them per item), and on a GPU each read is
-    # a host-device sync -- far more expensive than the forward pass itself. Two
-    # transfers per batch instead.
+    # Decode on the CPU. The logits are small, and the answer edges must come
+    # back to the CPU anyway. Two transfers per batch.
     start_logits = out.start_logits.float().cpu()
     end_logits = out.end_logits.float().cpu()
 
+    sequence_ids = [enc.sequence_ids(i) for i in range(len(pairs))]
+    # Only context tokens (sequence id 1) are valid answer positions; this also
+    # excludes padding, whose sequence id is None.
+    context_mask = torch.tensor(
+        [[sid == 1 for sid in ids] for ids in sequence_ids], dtype=torch.bool
+    )
+    null_probs, best_probs, best_starts, best_ends = _best_spans(
+        start_logits,
+        end_logits,
+        attention_mask,
+        context_mask,
+        max_answer_len,
+        top_k,
+    )
+
     results = []
     for i, context in enumerate(contexts):
-        sequence_ids = enc.sequence_ids(i)
+        # The null probability is never negative, so this also abstains when no
+        # span is valid and the best probability is 0.0.
+        if null_probs[i] >= best_probs[i]:
+            results.append({"answer": "", "score": null_probs[i], "start": 0, "end": 0})
+            continue
+        # Read the word boundaries only for an item that answers. Most items
+        # abstain.
+        offsets = offset_mapping[i]
+        token_words = boundaries.word_spans(_word_ids(enc, i), sequence_ids[i], offsets)
+        token_start, token_end = best_starts[i], best_ends[i]
+        char_start, char_end = boundaries.answer_span(
+            context,
+            int(offsets[token_start][0]),
+            int(offsets[token_end][1]),
+            token_words[token_start],
+            token_words[token_end],
+        )
         results.append(
-            _decode_answer(
-                start_logits[i],
-                end_logits[i],
-                attention_mask[i],
-                sequence_ids,
-                offset_mapping[i],
-                boundaries.word_spans(word_ids[i], sequence_ids, offset_mapping[i]),
-                context,
-                max_answer_len,
-                top_k,
-            )
+            {
+                "answer": context[char_start:char_end],
+                "score": best_probs[i],
+                "start": char_start,
+                "end": char_end,
+            }
         )
     return results

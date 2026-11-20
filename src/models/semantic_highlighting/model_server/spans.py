@@ -87,7 +87,7 @@ def spans_from_result(
     ``score`` is unambiguous in a span, unlike in the result it comes from: a
     span exists only when the model did not abstain, so it is always the answer's
     own probability and never the ``[CLS]`` null probability that
-    ``decode_answer`` reports in its place. It is also the exact number
+    ``answer_question_batch`` reports in its place. It is also the exact number
     ``min_score`` was compared against, unrounded, so a recorded response can be
     replayed against a candidate ``SH_MIN_SCORE`` -- which is what the README's
     open calibration question needs.
