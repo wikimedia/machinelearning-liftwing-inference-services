@@ -8,6 +8,7 @@ import struct
 import pytest
 
 from src.models.tts_section_generator.tts_generator.sinks import (
+    _EXT,
     FileSink,
     InlineSink,
     S3Sink,
@@ -23,6 +24,12 @@ def test_artifact_key_layout():
     assert artifact_key("enwiki", 9228, 123, "lead", "captions_vtt").endswith(
         "lead.vtt"
     )
+
+
+def test_artifact_extensions_are_unique():
+    """artifact_key builds <section_id>.<ext>, so two artifacts sharing an
+    extension overwrite each other in a file or s3 sink."""
+    assert len(set(_EXT.values())) == len(_EXT)
 
 
 def test_inline_sink_returns_b64():

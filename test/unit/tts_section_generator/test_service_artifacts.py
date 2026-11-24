@@ -13,6 +13,7 @@ import struct
 import pytest
 from fastapi.testclient import TestClient
 from tts_generator import fetch as fetch_mod, isvc_client, service
+from tts_generator.sinks import _EXT
 
 SR = 24000
 
@@ -106,6 +107,13 @@ def test_full_artifact_family(client):
         assert a["generation_version"].startswith("kokoro-v1.0+af_heart+norm-")
         assert len(a["content_sha256"]) == 64
         assert a["media_type"]
+
+
+def test_supported_artifacts_all_have_sink_extensions():
+    """Every artifact a request may ask for must be writable by the sink:
+    a supported artifact missing from _EXT makes _emit raise an unhandled
+    KeyError (500) instead of returning."""
+    assert service.SUPPORTED_ARTIFACTS <= set(_EXT)
 
 
 def test_paragraph_artifacts_write_through_sink_without_key_error(client):
