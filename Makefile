@@ -10,11 +10,9 @@ export PYTHONPATH := $(PYTHON_PATH):$(PYTHONPATH)
 # docs on what phony targets are and how to use them.
 .PHONY: \
 article-country \
-article-descriptions \
 articlequality \
 articletopic-outlink \
 clean \
-clone-descartes \
 clone-wmf-kserve-numpy-200 \
 download-nltk-punkt \
 edit-check \
@@ -66,23 +64,6 @@ article-country:
 	DEP_DIR=".." \
 	CUT_DIRS=2 \
 	ACCEPT_REGEX="'(category-countries.tsv.gz|ne_10m_admin_0_map_units.geojson|region-groundtruth-2025-01-01-qids.sqlite)'"
-
-# Command for article-descriptions model-server
-article-descriptions: clone-descartes
-	@$(MAKE) run-server MODEL_NAME="article-descriptions" \
-	MODEL_URL="article-descriptions/" \
-	MODEL_SERVER_PARENT_DIR="src/models/article_descriptions" \
-	MODEL_PATH="models/article-descriptions/" \
-	MODEL_SERVER_DIR="model_server" \
-	DEP_DIR="." \
-	CUT_DIRS=2 \
-	ACCEPT_REGEX="'(bert-base-multilingual-uncased|mbart-large-cc25)'"
-
-# Clone descartes repository if not already present (used by article-descriptions)
-clone-descartes:
-	@if [ ! -d "src/models/article_descriptions/model_server/descartes" ]; then \
-		git clone https://github.com/wikimedia/descartes.git --branch 1.0.1 src/models/article_descriptions/model_server/descartes; \
-	fi
 
 # Command for articlequality model-server
 articlequality: clone-wmf-kserve-numpy-200

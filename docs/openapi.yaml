@@ -32,8 +32,6 @@ paths:
     $ref: ./llm-chat-completions.yaml#/paths/~1service~1lw~1inference~1v1~1models~1{model}~1openai~1v1~1chat~1completions
   /service/lw/inference/v1/models/langid:predict:
     $ref: ./langid.yaml#/paths/~1service~1lw~1inference~1v1~1models~1langid:predict
-  /service/lw/inference/v1/models/article-descriptions:predict:
-    $ref: ./article-descriptions.yaml#/paths/~1service~1lw~1inference~1v1~1models~1article-descriptions:predict
   /service/lw/inference/v1/models/readability:predict:
     $ref: ./readability.yaml#/paths/~1service~1lw~1inference~1v1~1models~1readability:predict
   /service/lw/inference/v1/models/article-country:predict:

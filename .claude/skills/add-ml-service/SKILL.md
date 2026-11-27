@@ -64,7 +64,7 @@ List the existing namespaces by reading `helmfile.d/ml-services/` (exclude `_exa
 
 > "Should `<service-name>` be added to an existing namespace, or does it need a new one?"
 >
-> Existing namespaces: article-descriptions, article-models, revertrisk, edit-check, ...
+> Existing namespaces: article-models, revertrisk, edit-check, ...
 
 If **existing namespace**: ask which namespace to use, then jump to **Path A**.
 

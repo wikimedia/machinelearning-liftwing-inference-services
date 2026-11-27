@@ -106,16 +106,6 @@ pipelines:
             name: '${setup.project}-langid'
             tags: [stable]
 
-  article-descriptions-publish:
-    blubberfile: article_descriptions/blubber.yaml
-    stages:
-      - name: publish
-        build: production
-        publish:
-          image:
-            name: '${setup.project}-article-descriptions'
-            tags: [stable]
-
   huggingface-publish:
     blubberfile: huggingface/blubber.yaml
     stages:

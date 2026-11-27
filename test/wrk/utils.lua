@@ -1,5 +1,5 @@
 -- utils.lua: a module with shared functions used to run wrk load tests for LiftWing isvcs.
--- see article_descriptions.lua for an example.
+-- see langid/langid.lua for an example.
 -- wrk framework scripting docs: https://github.com/wg/wrk/blob/master/SCRIPTING
 
 

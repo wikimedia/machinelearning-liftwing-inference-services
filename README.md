@@ -34,8 +34,7 @@ A list of the out-of-the-box available pre-commit hooks can be found [here](http
 
 ### Running locally with `make`
 > [!NOTE]
-> 1. Please ensure the following prerequisites are installed on your system: Python3, pip, wget, git, cmake, pkg-config, and make.
-> 2. `make article-descriptions` works well on linux (statbox and ml-sandbox) and it appears that the model download issue faced on some machines is due to a cap from the analytics public repository website.
+> Please ensure the following prerequisites are installed on your system: Python3, pip, wget, git, cmake, pkg-config, and make.
 
 To start a model server locally, you can use the `make` command with the appropriate target. For example, running `make revertrisk-language-agnostic` sets up the revertrisk-language-agnostic model server. The [Makefile](Makefile) includes all required commands to download the model from the [public repository](https://analytics.wikimedia.org/published/wmf-ml-models/), create a virtual environment and install the necessary packages for the model.
 
